@@ -31,6 +31,9 @@ struct RootView: View {
                 FavoritesView()
                     .tabItem { Label("Favorites", systemImage: "heart") }
                     .tag("favorites")
+                BookmarksView()
+                    .tabItem { Label("Bookmarks", systemImage: "bookmark") }
+                    .tag("bookmarks")
                 SearchView()
                     .tabItem { Label("Search", systemImage: "magnifyingglass") }
                     .tag("search")

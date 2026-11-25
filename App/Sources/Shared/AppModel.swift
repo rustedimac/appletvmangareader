@@ -54,6 +54,7 @@ final class AppModel {
             UITestingSeed.seedPINs(store.load(), into: pins)
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore(), pins: pins)
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
@@ -357,6 +358,13 @@ final class AppModel {
     /// built from saved series (Favorites, Top Shelf) goes through this.
     func visibleSeries(_ series: [SeriesSummary]) -> [SeriesSummary] {
         ContentVisibility.visible(series, filter: contentFilter, hidden: hiddenSeries)
+    }
+
+    /// The active profile's bookmarks, leaving out series its content
+    /// filter hides.
+    var visibleBookmarks: [Bookmark] {
+        let allowed = Set(visibleSeries(bookmarks.map(\.series)).map(\.ref))
+        return bookmarks.filter { allowed.contains($0.series.ref) }
     }
 
     // MARK: Profile PINs

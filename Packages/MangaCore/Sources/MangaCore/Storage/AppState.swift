@@ -5,12 +5,23 @@ import Foundation
 public struct Favorite: Codable, Hashable, Identifiable, Sendable {
     public var series: SeriesSummary
     public var addedAt: Date
+    /// When the series' newest chapter was added, for sorting. Refreshed
+    /// from series detail (see `AppState.updateFavorite(from:)`).
+    public var latestChapterAt: Date?
+    /// Unread chapters as of the last refresh, for sorting.
+    public var unreadChapters: Int?
+    /// When `latestChapterAt` and `unreadChapters` were last refreshed.
+    public var refreshedAt: Date?
 
     public var id: SeriesRef { series.ref }
 
-    public init(series: SeriesSummary, addedAt: Date = Date()) {
+    public init(series: SeriesSummary, addedAt: Date = Date(), latestChapterAt: Date? = nil,
+                unreadChapters: Int? = nil, refreshedAt: Date? = nil) {
         self.series = series
         self.addedAt = addedAt
+        self.latestChapterAt = latestChapterAt
+        self.unreadChapters = unreadChapters
+        self.refreshedAt = refreshedAt
     }
 }
 
@@ -83,6 +94,10 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// Whether opening the profile asks for its PIN. The PIN itself is in
     /// the Keychain (`PINStore`); without one this does nothing.
     public var requiresPINToOpen: Bool?
+    /// Bookmarked pages across every server.
+    public var bookmarks: [Bookmark]
+    /// How the Favorites tab is sorted.
+    public var favoritesSort: FavoritesSort
     /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
     /// `autoScrollLevel`.
     public var webtoonAutoScrollLevel: Int? = nil
@@ -92,6 +107,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 progress: [String: SeriesProgress] = [:],
                 defaultReaderSettings: ReaderSettings = .default,
                 readerOverrides: [String: ReaderSettings] = [:],
+                bookmarks: [Bookmark] = [],
+                favoritesSort: FavoritesSort = .default,
                 contentFilter: ContentFilter? = nil,
                 requiresPINToOpen: Bool? = nil) {
         self.serverSettings = serverSettings
@@ -99,8 +116,44 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.progress = progress
         self.defaultReaderSettings = defaultReaderSettings
         self.readerOverrides = readerOverrides
+        self.bookmarks = bookmarks
+        self.favoritesSort = favoritesSort
         self.contentFilter = contentFilter
         self.requiresPINToOpen = requiresPINToOpen
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookmarks, favoritesSort, webtoonAutoScrollLevel,
+             contentFilter, requiresPINToOpen
+    }
+
+    // State saved by older versions lacks the newer fields.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        serverSettings = try c.decodeIfPresent([String: ProfileServerSettings].self, forKey: .serverSettings) ?? [:]
+        favorites = try c.decodeIfPresent([Favorite].self, forKey: .favorites) ?? []
+        progress = try c.decodeIfPresent([String: SeriesProgress].self, forKey: .progress) ?? [:]
+        defaultReaderSettings = try c.decodeIfPresent(ReaderSettings.self, forKey: .defaultReaderSettings) ?? .default
+        readerOverrides = try c.decodeIfPresent([String: ReaderSettings].self, forKey: .readerOverrides) ?? [:]
+        bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
+        favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
+        webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        contentFilter = try c.decodeIfPresent(ContentFilter.self, forKey: .contentFilter)
+        requiresPINToOpen = try c.decodeIfPresent(Bool.self, forKey: .requiresPINToOpen)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(serverSettings, forKey: .serverSettings)
+        try c.encode(favorites, forKey: .favorites)
+        try c.encode(progress, forKey: .progress)
+        try c.encode(defaultReaderSettings, forKey: .defaultReaderSettings)
+        try c.encode(readerOverrides, forKey: .readerOverrides)
+        if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
+        if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
+        try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
+        try c.encodeIfPresent(contentFilter, forKey: .contentFilter)
+        try c.encodeIfPresent(requiresPINToOpen, forKey: .requiresPINToOpen)
     }
 }
 
@@ -213,6 +266,7 @@ public struct AppState: Codable, Hashable, Sendable {
             guard var data = profileData[key] else { continue }
             data.serverSettings[id.uuidString] = nil
             data.favorites.removeAll { $0.series.ref.serverID == id }
+            data.bookmarks.removeAll { $0.series.ref.serverID == id }
             data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
             data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
             profileData[key] = data
