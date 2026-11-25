@@ -4,6 +4,7 @@ import Foundation
 public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case kavita
     case suwayomi
+    case komga
 
     public var id: String { rawValue }
 
@@ -11,8 +12,12 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .kavita: return "Kavita"
         case .suwayomi: return "Suwayomi"
+        case .komga: return "Komga"
         }
     }
+
+    /// The kinds offered when adding a server, in picker order.
+    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi] }
 }
 
 /// A saved server connection, shared by every profile. Credentials are not

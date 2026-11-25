@@ -59,6 +59,9 @@ public enum MangaServerFactory {
         case .suwayomi:
             return SuwayomiClient(config: config, username: credential?.username, password: credential?.password,
                                   categoryScope: categoryScope, transport: transport)
+        case .komga:
+            return KomgaClient(config: config, apiKey: credential?.apiKey, username: credential?.username,
+                               password: credential?.password, categoryScope: categoryScope, transport: transport)
         }
     }
 }

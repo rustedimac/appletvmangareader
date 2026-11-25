@@ -46,22 +46,20 @@ public struct CategorySelection: Equatable, Sendable {
     /// "All 4 libraries", "2 of 4 categories".
     public func summary(kind: ServerKind) -> String {
         let noun: String
-        switch kind {
-        case .kavita: noun = available.count == 1 ? "library" : "libraries"
-        case .suwayomi: noun = available.count == 1 ? "category" : "categories"
+        if kind == .suwayomi {
+            noun = available.count == 1 ? "category" : "categories"
+        } else {
+            noun = available.count == 1 ? "library" : "libraries"
         }
-        if available.isEmpty { return "No \(kind == .kavita ? "libraries" : "categories")" }
+        if available.isEmpty { return "No \(kind.categoryNoun.lowercased())" }
         if allSelected { return available.count == 1 ? "1 \(noun)" : "All \(available.count) \(noun)" }
         return "\(selected.count) of \(available.count) \(noun)"
     }
 }
 
 public extension ServerKind {
-    /// "Libraries" for Kavita, "Categories" for Suwayomi.
+    /// "Categories" for Suwayomi, "Libraries" for Kavita and Komga.
     var categoryNoun: String {
-        switch self {
-        case .kavita: return "Libraries"
-        case .suwayomi: return "Categories"
-        }
+        self == .suwayomi ? "Categories" : "Libraries"
     }
 }

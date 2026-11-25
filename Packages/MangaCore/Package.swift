@@ -9,6 +9,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "MangaCore"),
-        .testTarget(name: "MangaCoreTests", dependencies: ["MangaCore"]),
+        .testTarget(name: "MangaCoreTests", dependencies: ["MangaCore"],
+                    resources: [.copy("Fixtures")]),
     ]
 )

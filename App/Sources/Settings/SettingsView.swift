@@ -73,7 +73,7 @@ private struct ServerRow: View {
     private var subtitle: String {
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
-            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+            let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()
             parts.append("\(pickedCount) \(noun) picked")
         }
@@ -88,7 +88,7 @@ private struct ServerRow: View {
 
     var body: some View {
         HStack(spacing: 30) {
-            Image(systemName: server.kind == .kavita ? "books.vertical.fill" : "square.stack.3d.up.fill")
+            Image(systemName: server.kind.symbolName)
                 .frame(width: 50)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
@@ -97,8 +97,8 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind == .kavita && !hasLogin {
-                Text("No API key").font(.caption).foregroundStyle(.orange)
+            if server.kind.requiresLogin && !hasLogin {
+                Text(server.kind == .kavita ? "No API key" : "No login").font(.caption).foregroundStyle(.orange)
             } else if !syncs {
                 Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
             }

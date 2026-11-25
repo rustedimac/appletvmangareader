@@ -62,6 +62,10 @@ public struct ServerDraft: Equatable, Sendable {
         if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == .suwayomi, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
+        if kind == .komga, resolvedAPIKey.isEmpty {
+            if user.isEmpty && password.isEmpty { return "Enter an API key, or your Komga email and password." }
+            if user.isEmpty || password.isEmpty { return "Enter both your Komga email and password." }
+        }
         return nil
     }
 
@@ -80,6 +84,12 @@ public struct ServerDraft: Equatable, Sendable {
             let key = resolvedAPIKey
             return key.isEmpty ? nil : ServerCredential(apiKey: key)
         case .suwayomi:
+            let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            return user.isEmpty ? nil : ServerCredential(username: user, password: password)
+        case .komga:
+            // An API key wins; the email and password are the fallback.
+            let key = resolvedAPIKey
+            if !key.isEmpty { return ServerCredential(apiKey: key) }
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)
         }

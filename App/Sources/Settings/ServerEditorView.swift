@@ -24,7 +24,7 @@ struct ServerEditorView: View {
             if editing == nil {
                 Section {
                     Picker("Type", selection: $draft.kind) {
-                        ForEach(ServerKind.allCases) { Text($0.displayName).tag($0) }
+                        ForEach(ServerKind.userAddable) { Text($0.displayName).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("serverEditor.kind")
@@ -35,7 +35,7 @@ struct ServerEditorView: View {
                 TextField("Name (optional)", text: $draft.name)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("serverEditor.name")
-                TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.local:4567",
+                TextField(addressPrompt,
                           text: $draft.address)
                     .keyboardType(.URL)
                     .textContentType(.URL)
@@ -58,6 +58,20 @@ struct ServerEditorView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.apiKey")
+                case .komga:
+                    TextField("API key (recommended)", text: $draft.apiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.apiKey")
+                    TextField("Email", text: $draft.username)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.username")
+                    SecureField("Password", text: $draft.password)
+                        .textContentType(.password)
+                        .accessibilityIdentifier("serverEditor.password")
                 case .suwayomi:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
@@ -71,9 +85,7 @@ struct ServerEditorView: View {
             } header: {
                 Text("Login for \(model.activeProfile.name)")
             } footer: {
-                Text(draft.kind == .kavita
-                     ? "Each profile can sign in as its own Kavita user."
-                     : "Only needed if basic authentication is turned on in Suwayomi.")
+                Text(loginFooter)
             }
 
             Section {
@@ -160,11 +172,29 @@ struct ServerEditorView: View {
         switch draft.kind {
         case .kavita:
             return "Kavita keeps progress per user, so this is normally on."
+        case .komga:
+            return "Komga keeps progress per user, so this is normally on."
         case .suwayomi:
             let others = otherSyncingProfiles
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
             guard draft.syncProgress, !others.isEmpty else { return base }
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
+        }
+    }
+
+    private var addressPrompt: String {
+        switch draft.kind {
+        case .kavita: return "OPDS URL or address"
+        case .komga: return "Address, e.g. komga.local:25600"
+        case .suwayomi: return "Address, e.g. suwayomi.local:4567"
+        }
+    }
+
+    private var loginFooter: String {
+        switch draft.kind {
+        case .kavita: return "Each profile can sign in as its own Kavita user."
+        case .komga: return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
+        case .suwayomi: return "Only needed if basic authentication is turned on in Suwayomi."
         }
     }
 
