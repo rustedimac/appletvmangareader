@@ -40,6 +40,8 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
+        // Select on a failed page retries it in place.
+        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
         .onAppear {
             if loader == nil { loader = PageImageLoader(server: session.server) }
@@ -123,7 +125,8 @@ private struct PageImageView: View {
     let loader: PageImageLoader
 
     @State private var loaded: LoadedPage?
-    @State private var failed = false
+
+    private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
 
     var body: some View {
         ZStack {
@@ -132,39 +135,83 @@ private struct PageImageView: View {
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
-            } else if failed {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                    Text("Page \(index + 1) didn't load").font(.caption)
-                }
-                .foregroundStyle(.secondary)
+            } else if let failure {
+                PageFailureCard(page: index + 1, message: failure)
             } else {
                 ProgressView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Page \(index + 1)")
+        .accessibilityLabel(failure == nil ? "Page \(index + 1)" : "Page \(index + 1) didn't load")
+        .accessibilityValue(loaded != nil ? "loaded" : failure != nil ? "failed" : "loading")
+        .accessibilityHint(failure == nil ? "" : "Press Select to retry")
         .accessibilityIdentifier("reader.page.\(index)")
-        .task(id: session.page(index)?.url) { await load() }
+        .task(id: LoadKey(url: session.page(index)?.url, retry: session.pageRetryTokens[index] ?? 0)) { await load() }
+    }
+
+    private struct LoadKey: Hashable {
+        var url: URL?
+        var retry: Int
     }
 
     private func load() async {
         guard let url = session.page(index)?.url else { return }
         if let hit = loader.cached(url) {
             loaded = hit
+            session.reportPageLoaded(index)
             session.reportSize(hit.pixelSize, forPage: index)
             return
         }
-        failed = false
+        guard loaded == nil else { return }
         do {
             let page = try await loader.load(url)
             loaded = page
+            session.reportPageLoaded(index)
             session.reportSize(page.pixelSize, forPage: index)
         } catch is CancellationError {
         } catch {
-            failed = true
+            guard !Task.isCancelled else { return }
+            session.reportPageFailure(PageLoadFailure.message(for: error), forPage: index)
         }
+    }
+}
+
+/// Shown in place of a page that didn't load after automatic retries. The
+/// reader keeps focus (left/right still turn pages), so the Retry pill is
+/// drawn as the focused control and Select presses it.
+struct PageFailureCard: View {
+    let page: Int
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Page \(page) didn't load")
+                .font(.headline)
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+            Text("Retry")
+                .font(.headline)
+                .foregroundStyle(.black)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 10)
+                .background(.white, in: RoundedRectangle(cornerRadius: 12))
+            Text("Press Select to retry")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.white)
+        .minimumScaleFactor(0.6)
+        .padding(32)
+        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: 24))
+        .padding(16)
+        .frame(maxWidth: 640)
     }
 }
 

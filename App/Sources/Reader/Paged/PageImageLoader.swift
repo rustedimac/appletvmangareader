@@ -25,8 +25,13 @@ final class PageImageLoader {
         init(_ page: LoadedPage) { self.page = page }
     }
 
-    init(server: MangaServer, maxPixelSize: Int = 2160) {
+    /// Per-attempt timeout and automatic retries for downloads.
+    private let retryPolicy: RetryPolicy
+
+    init(server: MangaServer, maxPixelSize: Int = 2160,
+         retryPolicy: RetryPolicy = ReaderDemo.isEnabled ? ReaderDemo.retryPolicy : .images) {
         self.server = server
+        self.retryPolicy = retryPolicy
         self.maxPixelSize = maxPixelSize
         cache.countLimit = 14
     }
@@ -40,16 +45,20 @@ final class PageImageLoader {
         if let task = inFlight[url] { return try await task.value }
         let request = server.imageRequest(url)
         let maxPixelSize = self.maxPixelSize
+        let policy = retryPolicy
         let task = Task<LoadedPage, Error> {
-            let data: Data
-            if url.scheme == DemoPageRenderer.scheme {
-                data = DemoPageRenderer.pngData(for: url)
-            } else {
+            // Timeouts, dropped connections and 5xx are retried before the
+            // page shows as failed; Select then retries it by hand.
+            let data: Data = try await policy.run { _ in
+                if url.scheme == DemoPageRenderer.scheme {
+                    try await DemoPageFaults.shared.apply(to: url)
+                    return DemoPageRenderer.pngData(for: url)
+                }
                 let (body, response) = try await URLSession.shared.data(for: request)
                 if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
                     throw MangaError.http(status: http.statusCode, body: "")
                 }
-                data = body
+                return body
             }
             return try await Task.detached(priority: .userInitiated) {
                 try PageImageLoader.decode(data, maxPixelSize: maxPixelSize)
