@@ -2,8 +2,9 @@ import SwiftUI
 import MangaCore
 
 extension AppModel {
-    /// The active profile's favorites across every server, newest first.
-    var favorites: [Favorite] { state.favorites(profile: activeProfile.id) }
+    /// The active profile's favorites across every server, newest first,
+    /// leaving out libraries/categories the profile doesn't import.
+    var favorites: [Favorite] { state.visibleFavorites(profile: activeProfile.id) }
 }
 
 struct FavoritesView: View {

@@ -16,10 +16,11 @@ final class AppModel {
     /// True while the "Who's reading?" picker is showing. Set at launch when
     /// there's more than one profile, and by "Switch Profile" in Settings.
     var isPickingProfile = false
-    /// Builds server clients. UI tests swap in `SampleLibraryServer` (see
+    /// Builds server clients, limited to a set of library/category ids (nil
+    /// for all). UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
-    @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, HTTPTransport) -> MangaServer = {
-        MangaServerFactory.make(config: $0, credential: $1, transport: $2)
+    @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, Set<String>?, HTTPTransport) -> MangaServer = {
+        MangaServerFactory.make(config: $0, credential: $1, categoryScope: $2, transport: $3)
     }
 
     init(stateStore: StateStore, secrets: SecretStore, transport: HTTPTransport = URLSessionTransport()) {
@@ -37,6 +38,7 @@ final class AppModel {
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
+            if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
         }
         return AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore())
@@ -80,14 +82,26 @@ final class AppModel {
 
     // MARK: Servers
 
-    /// A client for a server, signed in as the active profile.
+    /// A client for a server, signed in as the active profile and limited to
+    /// the libraries/categories that profile imports.
     func client(for server: ServerConfig) -> MangaServer {
-        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)"
+        let scope = selectedCategories(for: server)
+        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)|\(Self.scopeKey(scope))"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: activeProfile.id, server: server.id)
-        let client = makeClient(server, credential, transport)
+        let client = makeClient(server, credential, scope, transport)
         clientCache[key] = client
         return client
+    }
+
+    /// A stable string for a selection, for cache keys and `.task(id:)`.
+    static func scopeKey(_ scope: Set<String>?) -> String {
+        scope.map { "only:" + $0.sorted().joined(separator: ",") } ?? "all"
+    }
+
+    /// Changes whenever the active profile's selection for `server` does.
+    func scopeKey(for server: ServerConfig) -> String {
+        Self.scopeKey(selectedCategories(for: server))
     }
 
     func client(for ref: SeriesRef) -> MangaServer? {
@@ -110,7 +124,23 @@ final class AppModel {
 
     /// Checks a server and login without saving them.
     func testConnection(_ server: ServerConfig, credential: ServerCredential?) async throws -> String {
-        try await makeClient(server, credential, transport).validate()
+        try await makeClient(server, credential, nil, transport).validate()
+    }
+
+    /// Every library/category on a server, selected or not, for the picker.
+    /// Works before the server is saved.
+    func availableCategories(_ server: ServerConfig, credential: ServerCredential?) async throws -> [MangaCategory] {
+        try await makeClient(server, credential, nil, transport).categories()
+    }
+
+    /// The library/category ids the active profile imports (nil = all).
+    func selectedCategories(for server: ServerConfig) -> Set<String>? {
+        state.selectedCategories(profile: activeProfile.id, server: server.id)
+    }
+
+    func setSelectedCategories(_ ids: Set<String>?, for server: ServerConfig) {
+        let profile = activeProfile.id
+        update { $0.setSelectedCategories(ids, profile: profile, server: server.id) }
     }
 
     func serverSettings(for server: ServerConfig) -> ProfileServerSettings {

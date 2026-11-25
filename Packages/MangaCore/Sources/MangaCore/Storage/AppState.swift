@@ -219,10 +219,28 @@ public struct AppState: Codable, Hashable, Sendable {
         mutateData(profile) { $0.serverSettings[server.uuidString] = settings }
     }
 
+    /// The libraries/categories a profile imports from a server (nil = all).
+    public func selectedCategories(profile: UUID, server: UUID) -> Set<String>? {
+        serverSettings(profile: profile, server: server).selectedCategoryIDs
+    }
+
+    public mutating func setSelectedCategories(_ ids: Set<String>?, profile: UUID, server: UUID) {
+        var settings = serverSettings(profile: profile, server: server)
+        settings.selectedCategoryIDs = ids
+        setServerSettings(settings, profile: profile, server: server)
+    }
+
     // MARK: Favorites
 
     public func favorites(profile: UUID) -> [Favorite] {
         (profileData[profile.uuidString]?.favorites ?? []).sorted { $0.addedAt > $1.addedAt }
+    }
+
+    /// Favorites from libraries/categories the profile imports, newest first.
+    public func visibleFavorites(profile: UUID) -> [Favorite] {
+        favorites(profile: profile).filter {
+            serverSettings(profile: profile, server: $0.series.ref.serverID).includes($0.series)
+        }
     }
 
     public func isFavorite(_ ref: SeriesRef, profile: UUID) -> Bool {
