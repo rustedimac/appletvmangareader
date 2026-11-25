@@ -22,6 +22,7 @@ struct SeriesDetailView: View {
             VStack(alignment: .leading, spacing: 50) {
                 header
                 if let detail {
+                    SeriesBookmarksSection(series: series.ref, chapters: detail.chapters) { open($0, page: $1) }
                     chapterList(detail)
                 } else if let errorMessage {
                     BrowseMessage(title: "Couldn't load this series", message: errorMessage,
@@ -170,9 +171,9 @@ struct SeriesDetailView: View {
         }
     }
 
-    private func open(_ chapter: Chapter) {
+    private func open(_ chapter: Chapter, page: Int? = nil) {
         guard let detail else { return }
-        reader = ReaderRoute(series: summary, chapters: detail.chapters, start: chapter)
+        reader = ReaderRoute(series: summary, chapters: detail.chapters, start: chapter, startPage: page)
     }
 
     /// Shows the chapters (nil: the whole series) as unread right away,
@@ -202,6 +203,7 @@ struct SeriesDetailView: View {
             model.noteSeriesDetail(loaded, summary: summary)
             errorMessage = nil
             if firstLoad { focus = .primary }
+            await model.didLoadSeriesDetail(loaded)
         } catch {
             if detail == nil {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

@@ -27,9 +27,16 @@ struct ReaderMenu: View {
     enum Tab: String, CaseIterable, Identifiable {
         case settings
         case chapters
+        case bookmarks
 
         var id: String { rawValue }
-        var title: String { self == .settings ? "Settings" : "Chapters" }
+        var title: String {
+            switch self {
+            case .settings: return "Settings"
+            case .chapters: return "Chapters"
+            case .bookmarks: return "Bookmarks"
+            }
+        }
     }
 
     private var settings: ReaderSettings { session.settings }
@@ -76,6 +83,8 @@ struct ReaderMenu: View {
                 settingsPane
             case .chapters:
                 ChapterListPane(session: session, focus: $focus)
+            case .bookmarks:
+                BookmarkListPane(session: session, focus: $focus)
             }
         }
         .padding(.horizontal, 60)
@@ -99,7 +108,23 @@ struct ReaderMenu: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            bookmarkButton.padding(.top, 12)
         }
+    }
+
+    /// Bookmarks the page on screen, or removes its bookmark.
+    private var bookmarkButton: some View {
+        let on = session.isShowingBookmarkedPage
+        return Button {
+            session.toggleBookmark()
+        } label: {
+            Label(on ? "Remove Bookmark" : "Bookmark This Page", systemImage: on ? "bookmark.fill" : "bookmark")
+                .font(.callout)
+        }
+        .disabled(session.loadState != .loaded || session.edge != nil)
+        .focused($focus, equals: "bookmark")
+        .accessibilityIdentifier("reader.menu.bookmark")
+        .accessibilityValue(on ? "on" : "off")
     }
 
     // MARK: Settings
@@ -361,6 +386,56 @@ private struct ChapterListPane: View {
         .focused(focus, equals: "chapter.\(chapter.id)")
         .accessibilityAddTraits(isCurrent ? .isSelected : [])
         .accessibilityIdentifier("reader.menu.chapter.\(chapter.id)")
+    }
+}
+
+/// This series' bookmarks. Picking one turns to its page (opening its
+/// chapter if needed) and closes the menu.
+private struct BookmarkListPane: View {
+    let session: ReaderSession
+    var focus: FocusState<String?>.Binding
+
+    var body: some View {
+        let bookmarks = session.seriesBookmarks
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                if bookmarks.isEmpty {
+                    Text("No bookmarks in this series yet. Choose Bookmark This Page, or in the page reader press up on the remote.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("reader.menu.bookmarks.empty")
+                }
+                ForEach(bookmarks) { bookmark in
+                    row(bookmark)
+                }
+            }
+            .padding(.vertical, 20)
+            .padding(.bottom, 40)
+        }
+        .scrollClipDisabled()
+    }
+
+    private func row(_ bookmark: Bookmark) -> some View {
+        let available = session.chapters.contains { $0.id == bookmark.chapterID }
+        return Button {
+            session.open(bookmark)
+        } label: {
+            HStack(spacing: 20) {
+                Image(systemName: "bookmark.fill").foregroundStyle(.red)
+                Text(bookmark.chapterTitle.isEmpty ? "Chapter" : bookmark.chapterTitle).lineLimit(1)
+                Spacer(minLength: 20)
+                Text(bookmark.pageLabel).foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .disabled(!available)
+        .focused(focus, equals: "bookmark.\(bookmark.id)")
+        .accessibilityIdentifier("reader.menu.bookmark.\(bookmark.chapterID).\(bookmark.page)")
+        .contextMenu {
+            Button("Remove Bookmark", role: .destructive) { session.model.removeBookmark(bookmark) }
+        }
     }
 }
 
