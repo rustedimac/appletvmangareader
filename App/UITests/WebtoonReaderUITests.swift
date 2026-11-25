@@ -92,7 +92,8 @@ final class WebtoonReaderUITests: XCTestCase {
         expectIndicator("Chapter 1 · 1 / 6")
         let before = page(1, 0).frame.minY
         press(.down)
-        XCTAssertEqual(page(1, 0).frame.minY, before - window.height * 0.75, accuracy: 1, "one click moves 75% of a screen")
+        XCTAssertEqual(page(1, 0).frame.minY, before - window.height * 0.75, accuracy: 1,
+                       "one click moves 75% of a screen; strip: \(String(describing: element("reader.webtoon.strip").value)), window \(window)")
         press(.down, times: 2)
         expectIndicator("Chapter 1 · 2 / 6")
         press(.up)
@@ -123,6 +124,10 @@ final class WebtoonReaderUITests: XCTestCase {
         remote.press(.menu)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element("reader.menu"))
         XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 5), .completed)
+        let strip = element("reader.webtoon.strip")
+        let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value BEGINSWITH 'focused'"), object: strip)
+        XCTAssertEqual(XCTWaiter().wait(for: [focused], timeout: 5), .completed,
+                       "strip should take focus back, value=\(strip.exists ? String(describing: strip.value) : "<missing>")\n\(app.debugDescription)")
         press(.down, times: 3)
         expectIndicator("Chapter 1 · 2 / 6")
     }

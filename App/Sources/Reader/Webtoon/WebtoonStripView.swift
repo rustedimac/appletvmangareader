@@ -11,6 +11,20 @@ final class WebtoonScrollView: UIScrollView {
 
     override var canBecomeFocused: Bool { true }
 
+    override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+        super.didUpdateFocus(in: context, with: coordinator)
+        updateDiagnostics()
+    }
+
+    override var contentOffset: CGPoint {
+        didSet { updateDiagnostics() }
+    }
+
+    /// Exposed for UI tests: whether the strip has the remote, and where it is.
+    private func updateDiagnostics() {
+        accessibilityValue = "\(isFocused ? "focused" : "unfocused"); offset=\(Int(contentOffset.y.rounded())); viewport=\(Int(bounds.height))"
+    }
+
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         let rest = presses.filter { !(onPress?($0.type, true) ?? false) }
         if !rest.isEmpty { super.pressesBegan(rest, with: event) }
@@ -54,21 +68,22 @@ final class WebtoonContainerView: UIView {
         if window != nil { requestFocus() }
     }
 
-    /// Moves focus to the strip, e.g. after the reader menu closes.
+    /// Moves focus to the strip, e.g. after the reader menu closes. Asks the
+    /// window's root controller to re-run focus too, because a request from
+    /// a view outside the focused branch is otherwise ignored.
     func requestFocus() {
         guard window != nil, !scrollView.isFocused else { return }
-        if let system = UIFocusSystem.focusSystem(for: self) {
-            system.requestFocusUpdate(to: scrollView)
-            system.updateFocusIfNeeded()
+        UIFocusSystem.focusSystem(for: self)?.requestFocusUpdate(to: scrollView)
+        setNeedsFocusUpdate()
+        if let root = window?.rootViewController {
+            root.setNeedsFocusUpdate()
+            root.updateFocusIfNeeded()
         } else {
-            setNeedsFocusUpdate()
             updateFocusIfNeeded()
         }
     }
 }
 
-/// One page in the strip: a placeholder until the image arrives, then the
-/// image as one or more tile layers stacked edge to edge.
 final class WebtoonPageView: UIView {
     var kind: WebtoonItemKind?
     var url: URL?
@@ -249,7 +264,7 @@ final class WebtoonScrollDriver {
     private var lastTick: CFTimeInterval = 0
     private var link: CADisplayLink?
     /// How long a press must be held before it turns into continuous scrolling.
-    let holdDelay: CFTimeInterval = 0.35
+    let holdDelay: CFTimeInterval = 0.5
     /// How long one click's glide takes.
     let glideDuration: CFTimeInterval = 0.25
 
@@ -279,7 +294,7 @@ final class WebtoonScrollDriver {
         let wasContinuous = CACurrentMediaTime() - holdStart >= holdDelay
         holdDirection = 0
         // A long hold stops where it is; a click keeps gliding to its target.
-        if wasContinuous { target = nil; stopIfIdle() }
+        if wasContinuous, target == nil { stopIfIdle() }
     }
 
     func stop() {
@@ -321,10 +336,16 @@ final class WebtoonScrollDriver {
         let scale = max(1, scrollView.traitCollection.displayScale)
         var y = scrollView.contentOffset.y
         if holdDirection != 0, now - holdStart >= holdDelay {
-            target = nil
             let speed = WebtoonScrolling.holdSpeed(heldFor: now - holdStart - holdDelay,
                                                    viewport: Double(scrollView.bounds.height))
             y += holdDirection * CGFloat(speed) * CGFloat(dt)
+            // A hold never ends up short of the click's step it started with.
+            if let t = target {
+                let p = min(1, max(0, (now - glideStart) / glideDuration))
+                let glideY = glideFrom + (t - glideFrom) * CGFloat(1 - pow(1 - p, 3))
+                y = holdDirection > 0 ? max(y, glideY) : min(y, glideY)
+                if p >= 1 { target = nil }
+            }
         } else if let t = target {
             let p = min(1, max(0, (now - glideStart) / glideDuration))
             let eased = 1 - pow(1 - p, 3)
