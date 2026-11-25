@@ -1,3 +1,45 @@
 # Apple TV Manga Reader
 
-A tvOS manga reader for self-hosted Kavita and Suwayomi servers.
+A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com) and
+[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) servers. Add as many
+servers as you like, read in a two-page spread reader or a seamless vertical
+(webtoon) scroll, keep favorites, and give each person their own profile.
+
+## Building
+
+Requirements: Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+```sh
+brew install xcodegen
+xcodegen generate
+open MangaReader.xcodeproj
+```
+
+The Xcode project is generated from `project.yml` and is not committed. Run
+`xcodegen generate` again after pulling changes that add or move files.
+
+To run on a real Apple TV, pick your team under Signing & Capabilities for the
+MangaReader target.
+
+## Tests
+
+```sh
+# Core logic (clients, storage, spread pairing). Runs on macOS.
+cd Packages/MangaCore && swift test
+
+# App UI tests in the tvOS simulator.
+xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
+  -destination 'platform=tvOS Simulator,name=Apple TV' CODE_SIGNING_ALLOWED=NO
+```
+
+CI runs both on every push and pull request (`.github/workflows/ci.yml`).
+
+## Connecting servers
+
+- **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.
+  `http://kavita.local:5000/api/opds/<api-key>`. The app extracts the server
+  address and API key from it. Each profile can use its own Kavita user.
+- **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
+  username and password if basic auth is enabled.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.
