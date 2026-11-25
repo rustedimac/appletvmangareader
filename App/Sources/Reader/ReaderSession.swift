@@ -155,6 +155,24 @@ final class ReaderSession {
         loadState = .loaded
     }
 
+    /// Webtoon reader: makes `chapter` current using pages the strip has
+    /// already loaded, without a loading state, when the reader scrolls
+    /// across a chapter boundary. Saves progress for the chapter it leaves.
+    func adopt(chapter: Chapter, pages loaded: [PageDescriptor], sizes known: [Int: PageSize], page: Int) {
+        guard chapter.id != self.chapter.id else { return }
+        flushProgress()
+        loadTask?.cancel()
+        self.chapter = chapter
+        let ordered = loaded.sorted { $0.index < $1.index }
+        pages = ordered
+        sizes = known
+        let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
+        navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
+        lastSaved = nil
+        loadState = .loaded
+        scheduleSave()
+    }
+
     /// Moves to the next chapter in reading order. Returns false at the end.
     @discardableResult
     func nextChapter() async -> Bool {
