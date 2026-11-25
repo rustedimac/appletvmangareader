@@ -21,9 +21,8 @@ struct ServerEditorView: View {
 
     var body: some View {
         Form {
-            ScreenTitle(editing?.name ?? "Add Server")
             if editing == nil {
-                Section {
+                Section(settingsHeader: "Server Type") {
                     Picker("Type", selection: $draft.kind) {
                         ForEach(ServerKind.userAddable) { Text($0.displayName).tag($0) }
                     }
@@ -36,7 +35,8 @@ struct ServerEditorView: View {
                 TextField("Name (optional)", text: $draft.name)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("serverEditor.name")
-                TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.local:4567",
+                    .settingsTextFieldRow()
+                TextField(addressPrompt,
                           text: $draft.address)
                     .keyboardType(.URL)
                     .textContentType(.URL)
@@ -44,8 +44,9 @@ struct ServerEditorView: View {
                     .autocorrectionDisabled()
                     .onSubmit { draft.absorbOPDS() }
                     .accessibilityIdentifier("serverEditor.address")
+                    .settingsTextFieldRow()
             } header: {
-                Text("\(draft.kind.displayName) Server")
+                SettingsHeader("\(draft.kind.displayName) Server")
             } footer: {
                 if draft.kind == .kavita {
                     Text("Paste the OPDS URL from Kavita → User Settings → 3rd Party Clients. It fills in the API key for you.")
@@ -59,38 +60,58 @@ struct ServerEditorView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.apiKey")
-                case .suwayomi:
+                        .settingsTextFieldRow()
+                case .komga:
+                    TextField("API key (recommended)", text: $draft.apiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.apiKey")
+                        .settingsTextFieldRow()
+                    TextField("Email", text: $draft.username)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.username")
+                        .settingsTextFieldRow()
+                    SecureField("Password", text: $draft.password)
+                        .textContentType(.password)
+                        .accessibilityIdentifier("serverEditor.password")
+                        .settingsTextFieldRow()
+                case .suwayomi, .opds:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.username")
+                        .settingsTextFieldRow()
                     SecureField("Password", text: $draft.password)
                         .textContentType(.password)
                         .accessibilityIdentifier("serverEditor.password")
+                        .settingsTextFieldRow()
                 case .freeLibrary:
                     EmptyView()
                 }
             } header: {
-                Text("Login for \(model.activeProfile.name)")
+                SettingsHeader("Login for \(model.activeProfile.name)")
             } footer: {
-                Text(draft.kind == .kavita
-                     ? "Each profile can sign in as its own Kavita user."
-                     : "Only needed if basic authentication is turned on in Suwayomi.")
+                Text(loginFooter)
             }
 
-            Section {
-                Toggle("Sync reading progress to this server", isOn: $draft.syncProgress)
-                    .accessibilityIdentifier("serverEditor.sync")
-            } footer: {
-                Text(syncFooter)
+            if draft.kind.canSyncProgress {
+                Section {
+                    Toggle("Sync reading progress to this server", isOn: $draft.syncProgress)
+                        .accessibilityIdentifier("serverEditor.sync")
+                } footer: {
+                    Text(syncFooter)
+                }
             }
 
             if categories != .idle {
                 Section {
                     CategoryChecklist(kind: draft.kind, load: $categories, retry: { loadCategories() })
                 } header: {
-                    Text("\(draft.kind.categoryNoun) to Import")
+                    SettingsHeader("\(draft.kind.categoryNoun) to Import")
                 } footer: {
                     if let footer = CategoryChecklist.footer(kind: draft.kind, load: categories) { Text(footer) }
                 }
@@ -127,6 +148,7 @@ struct ServerEditorView: View {
                 }
             }
         }
+        .settingsPage(editing?.name ?? "Add Server", systemImage: "server.rack")
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in
             // A pasted OPDS URL (Continuity Keyboard) splits right away.
@@ -162,6 +184,10 @@ struct ServerEditorView: View {
         switch draft.kind {
         case .kavita:
             return "Kavita keeps progress per user, so this is normally on."
+        case .komga:
+            return "Komga keeps progress per user, so this is normally on."
+        case .opds:
+            return "OPDS catalogs can't store reading progress, so it's kept on this Apple TV."
         case .suwayomi:
             let others = otherSyncingProfiles
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
@@ -169,6 +195,26 @@ struct ServerEditorView: View {
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
         case .freeLibrary:
             return "The Free Library keeps progress on this Apple TV."
+        }
+    }
+
+    private var addressPrompt: String {
+        switch draft.kind {
+        case .kavita: return "OPDS URL or address"
+        case .komga: return "Address, e.g. komga.local:25600"
+        case .suwayomi: return "Address, e.g. suwayomi.local:4567"
+        case .opds: return "Catalog URL or address, e.g. books.local:8083/opds"
+        case .freeLibrary: return ""
+        }
+    }
+
+    private var loginFooter: String {
+        switch draft.kind {
+        case .kavita: return "Each profile can sign in as its own Kavita user."
+        case .komga: return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
+        case .suwayomi: return "Only needed if basic authentication is turned on in Suwayomi."
+        case .opds: return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
+        case .freeLibrary: return "The Free Library needs no login."
         }
     }
 
@@ -258,7 +304,7 @@ struct ServerEditorView: View {
         let selected = categories.selection.map(\.storedValue)
             ?? editing.flatMap { model.selectedCategories(for: $0) }
         model.saveServer(config, credential: draft.credential)
-        model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.syncProgress,
+        model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && draft.syncProgress,
                                                       selectedCategoryIDs: selected), for: config)
         dismiss()
     }

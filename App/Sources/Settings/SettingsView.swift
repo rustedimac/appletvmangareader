@@ -7,15 +7,14 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ScreenTitle("Settings")
-                Section("Profile") {
+            Form {
+                Section(settingsHeader: "Profile") {
                     Button {
                         model.isPickingProfile = true
                     } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: model.activeProfile, size: 64)
-                            VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: Space.m) {
+                            ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
+                            VStack(alignment: .leading, spacing: Space.xxs) {
                                 Text(model.activeProfile.name)
                                 Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
                             }
@@ -68,7 +67,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.addFreeLibrary")
                     }
                 } header: {
-                    Text("Servers")
+                    SettingsHeader("Servers")
                 } footer: {
                     if model.servers.isEmpty {
                         Text("Add a Kavita or Suwayomi server to start reading.")
@@ -77,6 +76,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .settingsPage("Settings", systemImage: "gearshape")
         }
     }
 }
@@ -86,7 +86,7 @@ private struct ServerRow: View {
         if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
-            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+            let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()
             parts.append("\(pickedCount) \(noun) picked")
         }
@@ -100,9 +100,9 @@ private struct ServerRow: View {
     let pickedCount: Int?
 
     var body: some View {
-        HStack(spacing: 30) {
+        HStack(spacing: Space.m) {
             Image(systemName: server.kind.symbolName)
-                .frame(width: 50)
+                .frame(width: Size.avatarRow)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
                 Text(subtitle)
@@ -110,8 +110,8 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind == .kavita && !hasLogin {
-                Text("No API key").font(.caption).foregroundStyle(.orange)
+            if server.kind.requiresLogin && !hasLogin {
+                Text(server.kind == .kavita ? "No API key" : "No login").font(.caption).foregroundStyle(.orange)
             } else if !syncs && server.kind != .freeLibrary {
                 Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
             }
