@@ -54,9 +54,11 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
 
 ## Connecting servers
 
-- **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.
-  `http://kavita.local:5000/api/opds/<api-key>`. The app extracts the server
-  address and API key from it. Each profile can use its own Kavita user.
+- **Kavita**: the address you open Kavita at, e.g. `http://kavita.local:5000`,
+  plus the API key from User Settings → 3rd Party Clients. Or use the whole
+  OPDS URL from that page (`http://kavita.local:5000/api/opds/<api-key>`) as
+  the address, or paste it into the API key field: the app splits it when you
+  test or save. Each profile can use its own Kavita user.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if basic auth is enabled.
 

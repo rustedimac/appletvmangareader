@@ -33,33 +33,99 @@ public struct ServerDraft: Equatable, Sendable {
                   password: credential?.password ?? "", syncProgress: syncProgress)
     }
 
-    /// If `address` is a Kavita OPDS URL, splits it into the server address
-    /// and API key fields. Returns true when it did.
+    /// Tidies the address (and, for Kavita, the API key) once the person is
+    /// done typing: on Return, Test Connection or Save. Never call this on
+    /// every keystroke: the address would rewrite itself mid-typing.
+    ///
+    /// For Kavita, a full OPDS URL in either field splits into the server
+    /// address and the API key. Returns true when a field changed.
     @discardableResult
     public mutating func absorbOPDS() -> Bool {
-        guard kind == .kavita, let parsed = KavitaOPDS.parse(address) else { return false }
-        address = parsed.baseURL.absoluteString
-        apiKey = parsed.apiKey
-        return true
+        guard kind == .kavita else { return false }
+        let before = (address, apiKey)
+        if let parsed = KavitaOPDS.parse(address) {
+            address = parsed.baseURL.absoluteString
+            apiKey = parsed.apiKey
+        } else if let url = resolvedURL, Self.trimmedServicePath(address, kind: kind) {
+            // `http://host/api/opds/` with no key: keep just the server.
+            address = url.absoluteString
+        }
+        let key = resolvedAPIKey
+        if !key.isEmpty, key != apiKey { apiKey = key }
+        return before != (address, apiKey)
     }
 
     /// The server's base URL. Adds `http://` when no scheme was typed and
     /// drops a trailing slash. For Kavita, an OPDS URL resolves to its base.
+    /// The API path people often copy from the browser (`/api/opds/`,
+    /// `/api/graphql`, `/api/v1`) is dropped for Kavita, Suwayomi and Komga.
     public var resolvedURL: URL? {
         if kind == .kavita, let parsed = KavitaOPDS.parse(address) { return parsed.baseURL }
-        return Self.normalizedURL(address, keepQuery: kind == .opds)
+        guard let url = Self.normalizedURL(address, keepQuery: kind == .opds) else { return nil }
+        return Self.droppingServicePath(url, kind: kind)
     }
 
+    /// The API key to use. For Kavita it comes from an OPDS URL in the
+    /// address field, or from the API key field, which also accepts the
+    /// whole OPDS URL (or just `api/opds/<key>`) pasted into it.
     public var resolvedAPIKey: String {
         if kind == .kavita, let parsed = KavitaOPDS.parse(address) { return parsed.apiKey }
-        return apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let typed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard kind == .kavita else { return typed }
+        if let parsed = KavitaOPDS.parse(typed) { return parsed.apiKey }
+        if let parsed = KavitaOPDS.parse("http://host/" + typed) { return parsed.apiKey }
+        return typed
+    }
+
+    /// The help shown under the address field.
+    public static func addressHelp(for kind: ServerKind) -> String {
+        switch kind {
+        case .kavita:
+            return "Type the address you open Kavita at in a browser, for example http://kavita.local:5000. You can also use the full OPDS URL from Kavita → User Settings → 3rd Party Clients (it ends in /api/opds/ and your key); the API key is then filled in for you."
+        case .komga:
+            return "The address you open Komga at in a browser, for example http://komga.local:25600."
+        case .suwayomi:
+            return "The address you open Suwayomi at in a browser, for example http://suwayomi.local:4567."
+        case .opds:
+            return "The catalog URL, for example http://books.local:8083/opds. Just the address works for most servers."
+        case .freeLibrary:
+            return ""
+        }
+    }
+
+    /// Path suffixes that point at a server's API rather than the server.
+    static func servicePaths(for kind: ServerKind) -> [[String]] {
+        switch kind {
+        case .kavita: return [["api", "opds"], ["api"]]
+        case .suwayomi: return [["api", "graphql"], ["api", "v1"], ["api"]]
+        case .komga: return [["api", "v1"], ["api", "v2"], ["api"]]
+        case .opds, .freeLibrary: return []
+        }
+    }
+
+    static func droppingServicePath(_ url: URL, kind: ServerKind) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        let parts = components.path.split(separator: "/").map { $0.lowercased() }
+        for suffix in servicePaths(for: kind) where parts.count >= suffix.count && Array(parts.suffix(suffix.count)) == suffix {
+            let kept = components.path.split(separator: "/").dropLast(suffix.count)
+            components.path = kept.isEmpty ? "" : "/" + kept.joined(separator: "/")
+            return components.url ?? url
+        }
+        return url
+    }
+
+    /// True when the typed address carries a path, slash or missing scheme
+    /// that `resolvedURL` tidies away.
+    static func trimmedServicePath(_ address: String, kind: ServerKind) -> Bool {
+        guard let url = normalizedURL(address, keepQuery: kind == .opds) else { return false }
+        return droppingServicePath(url, kind: kind) != url
     }
 
     /// Why the form can't be saved yet, or nil when it can.
     public var validationMessage: String? {
         if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the server address." }
         guard resolvedURL != nil else { return "That doesn't look like a web address." }
-        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
+        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key from Kavita → User Settings → 3rd Party Clients, or use the full OPDS URL as the address." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
         if kind == .komga, resolvedAPIKey.isEmpty {
