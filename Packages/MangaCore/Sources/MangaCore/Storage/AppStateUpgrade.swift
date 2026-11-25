@@ -140,6 +140,7 @@ struct SalvagedProfileData: Decodable {
         d.progress = c.lossyDictionary(SeriesProgress.self, "progress")
         d.defaultReaderSettings = c.lossy(ReaderSettings.self, "defaultReaderSettings") ?? .default
         d.readerOverrides = c.lossyDictionary(ReaderSettings.self, "readerOverrides")
+        d.browse = c.lossy(BrowsePreferences.self, "browse")
         data = d
     }
 }
