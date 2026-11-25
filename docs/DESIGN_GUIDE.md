@@ -137,9 +137,9 @@ the server editor and category picker) uses the tvOS Settings layout:
 | 80 safe | hero column 600 | 80 | form column up to 1,000 | 80 safe |
 ```
 
-- The hero column shows a large SF Symbol (or the profile avatar) centered
-  vertically, in `.secondary`, so the page has an anchor and the form isn't
-  stretched across the whole TV.
+- The hero column shows a large SF Symbol (or the profile avatar) and the
+  page title (`.title3` semibold) centered vertically, so the page has an
+  anchor and the form isn't stretched across the whole TV.
 - The form column scrolls by itself. Its rows keep the system look (rounded
   platter, white when focused).
 - Section headers come from `Section("Title")`; footers explain consequences
@@ -150,13 +150,15 @@ the server editor and category picker) uses the tvOS Settings layout:
 
 ```swift
 Form { … }
-    .settingsPage(systemImage: "book")
-    .navigationTitle("Default Reader Settings")
+    .settingsPage("Default Reader Settings", systemImage: "book")
 ```
 
-`.settingsPage(hero:)` takes any view for the hero column (the profile
-screens show the avatar). `SettingsPage { } content: { }` is the same thing
-as a container.
+- The page title sits under the symbol in the hero column, **not** in
+  `.navigationTitle`. A navigation title above a scrolling form stays fixed on
+  tvOS and ends up drawn over the rows, and it's centered on the screen
+  instead of on the content.
+- `.settingsPage(_:hero:)` takes any view for the hero (the profile editor
+  shows the avatar being edited).
 
 ### Buttons
 

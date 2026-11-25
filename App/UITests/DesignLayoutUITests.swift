@@ -40,8 +40,6 @@ final class DesignLayoutUITests: XCTestCase {
         select(app.element("settings.readerDefaults"))
         XCTAssertTrue(app.element("readerDefaults.mode").waitForExistence(timeout: 5))
         audit(app, "settings-reader-defaults")
-        focus(app.element("readerDefaults.reset"))
-        audit(app, "settings-reader-defaults-bottom")
         back(app, to: "settings.readerDefaults")
 
         select(app.element("settings.addServer"))
@@ -56,24 +54,26 @@ final class DesignLayoutUITests: XCTestCase {
         audit(app, "settings-edit-server-bottom")
     }
 
-    /// Scrolling back to the first row must bring the navigation title back
-    /// above the rows instead of leaving it on top of them.
-    func testReaderDefaultsTitleReturnsAfterScrolling() {
+    /// Settings pages keep their title in the left column, so scrolling the
+    /// form never leaves the title on top of the rows.
+    func testSettingsTitleNeverOverlapsRows() {
         let app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.readerDefaults"))
         let first = app.element("readerDefaults.mode")
         XCTAssertTrue(first.waitForExistence(timeout: 5))
-        focus(app.element("readerDefaults.reset"))
-        focus(first, .up)
-        Thread.sleep(forTimeInterval: 0.8)
-        audit(app, "settings-reader-defaults-scrolled-back")
+        let title = app.element("settingsPage.title")
+        XCTAssertTrue(title.exists, "Default Reader Settings has no settings page title")
 
-        let title = app.staticTexts["Default Reader Settings"]
-        XCTExpectFailure("Known bug, owned by the live-testing work: the title stays over the rows", strict: false)
-        if title.exists {
-            XCTAssertLessThanOrEqual(title.frame.maxY, first.frame.minY + 2,
-                                     "Title \(title.frame) overlaps the first row \(first.frame)")
+        for step in ["top", "bottom", "back-to-top"] {
+            if step == "bottom" { focus(app.element("readerDefaults.reset")) }
+            if step == "back-to-top" { focus(first, .up) }
+            Thread.sleep(forTimeInterval: 0.8)
+            audit(app, "settings-reader-defaults-\(step)")
+            let form = app.element("settingsPage.form").frame
+            XCTAssertLessThanOrEqual(title.frame.maxX, form.minX,
+                                     "[\(step)] title \(title.frame) runs into the form \(form)")
         }
+        XCTAssertTrue(first.frame.minY > 0, "The first row didn't scroll back into view")
     }
 
     func testBrowseTabs() {
@@ -127,6 +127,8 @@ final class DesignLayoutUITests: XCTestCase {
         for (label, frame) in targets {
             // Tab bar items are drawn by the system.
             if frame.minY < 140 * scale { continue }
+            // A row cut off by the bottom edge reports only its visible part.
+            if frame.maxY > screen.maxY - 4 * scale { continue }
             // A button inside a form row reports only its label's frame;
             // the row around it is what gets focus and what we measure.
             if targets.contains(where: { $0.frame != frame && $0.frame.contains(frame) }) { continue }
@@ -153,7 +155,9 @@ final class DesignLayoutUITests: XCTestCase {
             }
         }
 
-        // Rows and buttons must not overlap each other.
+        // Rows and buttons must not overlap each other. The system tab bar
+        // floats over scrolled content, so leave its items out.
+        let targets = targets.filter { $0.frame.minY >= 140 * scale }
         for i in targets.indices {
             for j in targets.indices where j > i {
                 let a = targets[i].frame.insetBy(dx: 2 * scale, dy: 2 * scale)

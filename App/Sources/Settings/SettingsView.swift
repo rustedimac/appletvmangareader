@@ -64,8 +64,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .settingsPage(systemImage: "gearshape")
-            .navigationTitle("Settings")
+            .settingsPage("Settings", systemImage: "gearshape")
         }
     }
 }

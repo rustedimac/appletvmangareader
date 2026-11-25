@@ -19,17 +19,13 @@ struct ProfileEditorView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                HStack(spacing: Space.l) {
-                    ProfileAvatarView(symbol: symbol, colorIndex: colorIndex, size: 160)
-                    TextField("Name", text: $name)
-                        .textContentType(.name)
-                        .autocorrectionDisabled()
-                        .frame(maxWidth: Size.textField)
-                        .accessibilityIdentifier("profileEditor.name")
-                }
+                TextField("Name", text: $name)
+                    .textContentType(.name)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("profileEditor.name")
 
                 header("Avatar")
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(110), spacing: Space.l), count: 9),
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(110), spacing: Space.l), count: 6),
                           alignment: .leading, spacing: Space.l) {
                     ForEach(ProfileAvatars.symbols, id: \.self) { s in
                         Button { symbol = s } label: {
@@ -77,11 +73,12 @@ struct ProfileEditorView: View {
                     }
                 }
             }
-            // The safe area already gives 80 pt at the sides; only leave
-            // room for focused tiles to grow.
+            // Room for focused tiles to grow without clipping.
             .padding(.vertical, Space.l)
         }
-        .navigationTitle(editing == nil ? "New Profile" : "Edit Profile")
+        .settingsPage(editing == nil ? "New Profile" : "Edit Profile") {
+            ProfileAvatarView(symbol: symbol, colorIndex: colorIndex, size: Size.heroSymbol)
+        }
         .onAppear(perform: load)
         .confirmationDialog("Delete \(editing?.name ?? "")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {

@@ -124,8 +124,7 @@ struct ServerEditorView: View {
                 }
             }
         }
-        .settingsPage(systemImage: "server.rack")
-        .navigationTitle(editing?.name ?? "Add Server")
+        .settingsPage(editing?.name ?? "Add Server", systemImage: "server.rack")
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in
             // A pasted OPDS URL (Continuity Keyboard) splits right away.
