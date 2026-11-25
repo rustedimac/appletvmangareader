@@ -58,6 +58,8 @@ struct ProfileEditorView: View {
                         .accessibilityLabel("Color \(i + 1)")
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusSection()
 
                 HStack(spacing: 40) {
                     Button(editing == nil ? "Add Profile" : "Save") { save() }
@@ -69,6 +71,10 @@ struct ProfileEditorView: View {
                     }
                 }
                 .padding(.top, 20)
+                // Let focus move down into the buttons from anywhere in the
+                // rows above, even when nothing sits directly above them.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusSection()
             }
             .padding(.horizontal, 90)
             .padding(.vertical, 40)
