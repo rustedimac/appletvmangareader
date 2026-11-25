@@ -43,6 +43,8 @@ final class WebtoonPageRetryUITests: XCTestCase {
     }
 
     func testSelectRetriesAFailedPageInPlace() {
+        // Chapter 1's sizes are known up front, so nothing prefetches page 1
+        // ahead of its own load: the fault count maps to its attempts.
         // Both automatic attempts fail; the third request (the user's retry) works.
         launch(faults: "1.0=fail2")
         wait(page(1, 0), value: "failed")
@@ -67,8 +69,8 @@ final class WebtoonPageRetryUITests: XCTestCase {
                                               object: indicator)
         XCTAssertEqual(XCTWaiter().wait(for: [moved], timeout: 10), .completed, "indicator: \(indicator.label)")
         wait(page(1, 1), value: "loaded")
-        // Play/Pause still opens the menu.
-        remote.press(.playPause)
+        // With the failed page scrolled away, Select opens the menu as usual.
+        remote.press(.select)
         XCTAssertTrue(app.descendants(matching: .any)["reader.menu"].waitForExistence(timeout: 5))
     }
 }

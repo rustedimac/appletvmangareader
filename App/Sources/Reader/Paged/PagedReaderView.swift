@@ -12,17 +12,19 @@ import MangaCore
 struct PagedReaderView: View {
     let session: ReaderSession
 
-    @State private var loader: PageImageLoader?
+    @State private var preloading: Set<URL> = []
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.imagePipeline) private var pipeline
+    @State private var screenPixels: CGSize = .zero
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 if let edge = session.edge {
                     ChapterTransitionCard(session: session, edge: edge)
-                } else if let spread = session.currentSpread, let loader {
-                    SpreadView(session: session, spread: spread, loader: loader,
+                } else if let spread = session.currentSpread {
+                    SpreadView(session: session, spread: spread, images: images(for: geo.size),
                                container: geo.size, scale: displayScale)
                         .id(spread)
                 }
@@ -31,6 +33,7 @@ struct PagedReaderView: View {
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .onChange(of: geo.size, initial: true) { _, size in screenPixels = pixels(size) }
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())
@@ -44,16 +47,32 @@ struct PagedReaderView: View {
         .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
         .onAppear {
-            if loader == nil { loader = PageImageLoader(server: session.server) }
             focused = true
         }
         .onChange(of: session.isMenuPresented) { _, presented in
             if !presented { focused = true }
         }
         .task(id: PreloadKey(chapterID: session.chapter.id, spread: session.currentSpread,
-                             count: session.pageCount, loaded: session.loadState == .loaded)) {
+                             count: session.pageCount, loaded: session.loadState == .loaded,
+                             screen: screenPixels)) {
             preload()
         }
+        .onDisappear {
+            pipeline.cancelPrefetch(Array(preloading))
+            preloading = []
+        }
+    }
+
+    /// Pages are decoded to fit the screen: a page never needs more pixels
+    /// than the display has, alone or as half of a spread. The same target
+    /// for preloads and on-screen loads means preloaded pages are cache hits.
+    private func images(for container: CGSize) -> PageImages {
+        PageImages(pipeline: pipeline, server: session.server, targetSize: pixels(container))
+    }
+
+    private func pixels(_ container: CGSize) -> CGSize {
+        CGSize(width: (container.width * displayScale).rounded(),
+               height: (container.height * displayScale).rounded())
     }
 
     private func handleMove(_ direction: MoveCommandDirection) {
@@ -69,15 +88,24 @@ struct PagedReaderView: View {
     /// sizes as they arrive so later spreads pair correctly before they are
     /// shown.
     private func preload() {
-        guard let loader, session.loadState == .loaded else { return }
-        let indices = session.navigator.pagesToPreload(radius: 2)
+        guard session.loadState == .loaded, screenPixels != .zero else { return }
+        // Pages on screen are loaded by their own views at full priority.
+        let visible = Set(session.visiblePages)
+        let indices = session.navigator.pagesToPreload(radius: 2).filter { !visible.contains($0) }
         let urls = indices.compactMap { session.page($0)?.url }
         let byURL = Dictionary(indices.compactMap { i in session.page(i).map { ($0.url, i) } },
                                uniquingKeysWith: { a, _ in a })
+        // Drop preloads that fell out of the ±2 spread window.
+        let wanted = Set(urls)
+        pipeline.cancelPrefetch(Array(preloading.subtracting(wanted)))
+        preloading = wanted
         let chapterID = session.chapter.id
-        loader.preload(urls) { url, page in
-            guard session.chapter.id == chapterID, let index = byURL[url] else { return }
-            session.reportSize(page.pixelSize, forPage: index)
+        let reader = session
+        pipeline.prefetch(urls, server: reader.server, targetSize: screenPixels) { url, size in
+            Task { @MainActor in
+                guard reader.chapter.id == chapterID, let index = byURL[url] else { return }
+                reader.reportSize(size, forPage: index)
+            }
         }
     }
 
@@ -86,6 +114,22 @@ struct PagedReaderView: View {
         var spread: Spread?
         var count: Int
         var loaded: Bool
+        var screen: CGSize
+    }
+}
+
+/// Where page images come from: the shared pipeline, at screen size.
+struct PageImages {
+    let pipeline: any ImageLoading
+    let server: MangaServer
+    let targetSize: CGSize
+
+    func cached(_ url: URL) -> LoadedImage? {
+        pipeline.cachedImage(for: url, targetSize: targetSize, scaling: .fit)
+    }
+
+    func load(_ url: URL) async throws -> LoadedImage {
+        try await pipeline.load(url, server: server, targetSize: targetSize, scaling: .fit)
     }
 }
 
@@ -94,7 +138,7 @@ struct PagedReaderView: View {
 private struct SpreadView: View {
     let session: ReaderSession
     let spread: Spread
-    let loader: PageImageLoader
+    let images: PageImages
     let container: CGSize
     let scale: CGFloat
 
@@ -107,7 +151,7 @@ private struct SpreadView: View {
             ForEach(0..<min(order.count, frames.count), id: \.self) { i in
                 let index = order[i]
                 let frame = frames[i]
-                PageImageView(session: session, index: index, loader: loader)
+                PageImageView(session: session, index: index, images: images)
                     .frame(width: frame.width, height: frame.height)
                     .offset(x: frame.x, y: frame.y)
             }
@@ -122,9 +166,9 @@ private struct SpreadView: View {
 private struct PageImageView: View {
     let session: ReaderSession
     let index: Int
-    let loader: PageImageLoader
+    let images: PageImages
 
-    @State private var loaded: LoadedPage?
+    @State private var loaded: LoadedImage?
 
     private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
 
@@ -164,7 +208,7 @@ private struct PageImageView: View {
 
     private func load() async {
         guard let url = session.page(index)?.url else { return }
-        if let hit = loader.cached(url) {
+        if let hit = images.cached(url) {
             loaded = hit
             session.reportPageLoaded(index)
             session.reportSize(hit.pixelSize, forPage: index)
@@ -172,7 +216,7 @@ private struct PageImageView: View {
         }
         guard loaded == nil else { return }
         do {
-            let page = try await loader.load(url)
+            let page = try await images.load(url)
             loaded = page
             session.reportPageLoaded(index)
             session.reportSize(page.pixelSize, forPage: index)
@@ -269,6 +313,7 @@ struct ChapterTransitionCard: View {
                 .foregroundStyle(.secondary)
             Text(session.chapter.title)
                 .font(.title2)
+                .lineLimit(2)
             Divider().frame(width: 400)
             if let other {
                 Text(edge == .end ? "Next" : "Previous")
@@ -276,6 +321,7 @@ struct ChapterTransitionCard: View {
                     .foregroundStyle(.secondary)
                 Text(other.title)
                     .font(.title2)
+                    .lineLimit(2)
                     .accessibilityIdentifier("reader.transition.target")
                 Text("Press \(edge == .end ? forwardKey : backKey) again to continue")
                     .font(.callout)
@@ -289,9 +335,12 @@ struct ChapterTransitionCard: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .multilineTextAlignment(.center)
         .padding(80)
+        .frame(maxWidth: 1240)
         .foregroundStyle(.white)
         .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 32))
+        .padding(.horizontal, 120)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.transition")
     }
