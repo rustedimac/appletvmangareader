@@ -43,7 +43,8 @@ struct SettingsView: View {
                             ServerEditorView(editing: server)
                         } label: {
                             ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
-                                      credential: model.credential(for: server))
+                                      credential: model.credential(for: server),
+                                      pickedCount: model.selectedCategories(for: server)?.count)
                         }
                         .accessibilityIdentifier("settings.server.\(server.name)")
                     }
@@ -69,9 +70,21 @@ struct SettingsView: View {
 }
 
 private struct ServerRow: View {
+    private var subtitle: String {
+        var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
+        if let pickedCount {
+            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+                                        : server.kind.categoryNoun.lowercased()
+            parts.append("\(pickedCount) \(noun) picked")
+        }
+        return parts.joined(separator: " · ")
+    }
+
     let server: ServerConfig
     let syncs: Bool
     let credential: ServerCredential?
+    /// How many libraries/categories are imported, or nil for all.
+    let pickedCount: Int?
 
     var body: some View {
         HStack(spacing: 30) {
@@ -79,7 +92,7 @@ private struct ServerRow: View {
                 .frame(width: 50)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
-                Text("\(server.kind.displayName) · \(server.baseURL.host ?? server.baseURL.absoluteString)")
+                Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

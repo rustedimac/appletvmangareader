@@ -1,8 +1,9 @@
 import SwiftUI
 import MangaCore
 
-/// Add or edit a server, and the active profile's login and sync setting
-/// for it.
+/// Add or edit a server, and the active profile's login, sync setting and
+/// which libraries/categories to import from it. The checklist appears once
+/// a connection test succeeds (and right away when editing).
 struct ServerEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +15,7 @@ struct ServerEditorView: View {
     @State private var saving = false
     @State private var saveError: String?
     @State private var confirmingRemove = false
+    @State private var categories: CategoryLoad = .idle
 
     enum TestState: Equatable {
         case idle, running, success(String), failure(String)
@@ -98,6 +100,16 @@ struct ServerEditorView: View {
                 Text(syncFooter)
             }
 
+            if categories != .idle {
+                Section {
+                    CategoryChecklist(kind: draft.kind, load: $categories, retry: { loadCategories() })
+                } header: {
+                    Text("\(draft.kind.categoryNoun) to Import")
+                } footer: {
+                    if let footer = CategoryChecklist.footer(kind: draft.kind, load: categories) { Text(footer) }
+                }
+            }
+
             Section {
                 Button {
                     runTest()
@@ -119,7 +131,7 @@ struct ServerEditorView: View {
                         if saving { Spacer(); ProgressView() }
                     }
                 }
-                .disabled(!draft.isValid || saving)
+                .disabled(!draft.isValid || saving || categories.selection?.canSave == false)
                 .accessibilityIdentifier("serverEditor.save")
 
                 if editing != nil {
@@ -144,13 +156,13 @@ struct ServerEditorView: View {
         .onChange(of: draft.address) { _, _ in
             // A pasted OPDS URL (Continuity Keyboard) splits right away.
             if draft.kind == .kavita, KavitaOPDS.parse(draft.address) != nil { draft.absorbOPDS() }
-            test = .idle
+            connectionChanged()
         }
-        .onChange(of: draft.kind) { _, _ in resetStatus() }
-        .onChange(of: draft.apiKey) { _, _ in resetStatus() }
-        .onChange(of: draft.username) { _, _ in resetStatus() }
-        .onChange(of: draft.password) { _, _ in resetStatus() }
-        .onChange(of: draft.kavitaMethod) { _, _ in resetStatus() }
+        .onChange(of: draft.kind) { _, _ in connectionChanged() }
+        .onChange(of: draft.apiKey) { _, _ in connectionChanged() }
+        .onChange(of: draft.username) { _, _ in connectionChanged() }
+        .onChange(of: draft.password) { _, _ in connectionChanged() }
+        .onChange(of: draft.kavitaMethod) { _, _ in connectionChanged() }
         .confirmationDialog("Remove \(editing?.name ?? "server")?", isPresented: $confirmingRemove,
                             titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
@@ -209,12 +221,65 @@ struct ServerEditorView: View {
         if let editing {
             draft = ServerDraft(editing: editing, credential: model.credential(for: editing),
                                 syncProgress: model.syncsProgress(to: editing.id))
+            if draft.isValid { loadCategories() }
         }
     }
 
-    private func resetStatus() {
+    /// A different address or login may see different libraries: hide the
+    /// checklist until the next successful test. Ticks the user already
+    /// made are kept if the same ids come back.
+    private func connectionChanged() {
         test = .idle
         saveError = nil
+        resolvedCredential = nil
+        guard categoriesKey != connectionKey else { return }
+        categoryTask?.cancel()
+        if let selection = categories.selection { pendingSelection = .some(selection.storedValue) }
+        categories = .idle
+        categoriesKey = nil
+    }
+
+    /// The login a successful test signed in with (for a Kavita password,
+    /// the auth key it got), reused by the checklist and Save.
+    @State private var resolvedCredential: ServerCredential?
+    @State private var categoryTask: Task<Void, Never>?
+    /// The server and login the checklist was loaded for.
+    @State private var categoriesKey: String?
+    /// Ticks made before the address or login changed, applied when the
+    /// checklist loads again. `.none` until then.
+    @State private var pendingSelection: Set<String>??
+
+    private var connectionKey: String {
+        [draft.kind.rawValue, draft.resolvedURL?.absoluteString ?? "", draft.resolvedAPIKey,
+         draft.username, draft.password, draft.kavitaMethod.rawValue].joined(separator: "|")
+    }
+
+    private func loadCategories() {
+        guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+        // A Kavita password login has nothing to list with until a test signs in.
+        if draft.needsKavitaSignIn && resolvedCredential == nil { return }
+        let credential = resolvedCredential ?? draft.credential
+        let saved: Set<String>?
+        if let selection = categories.selection {
+            saved = selection.storedValue
+        } else if let pending = pendingSelection {
+            saved = pending
+        } else {
+            saved = editing.flatMap { model.selectedCategories(for: $0) }
+        }
+        categoriesKey = connectionKey
+        categories = .loading
+        categoryTask?.cancel()
+        categoryTask = Task {
+            do {
+                let available = try await model.availableCategories(config, credential: credential)
+                guard !Task.isCancelled else { return }
+                categories = .loaded(CategorySelection(available: available, saved: saved))
+            } catch {
+                guard !Task.isCancelled else { return }
+                categories = .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            }
+        }
     }
 
     private func runTest() {
@@ -228,7 +293,10 @@ struct ServerEditorView: View {
                 if let user = await model.suwayomiUser(config, credential: credential) {
                     message += ". Signed in as \(user), with progress of your own."
                 }
+                guard draft == self.draft else { return } // Edited meanwhile.
+                resolvedCredential = credential
                 test = .success(message)
+                loadCategories()
             } catch {
                 test = .failure(error.localizedDescription)
             }
@@ -238,12 +306,21 @@ struct ServerEditorView: View {
     private func save() {
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
         let draft = self.draft
+        // Without a loaded checklist, keep what was saved (all, for a new server).
+        let selected = categories.selection.map(\.storedValue)
+            ?? editing.flatMap { model.selectedCategories(for: $0) }
         saving = true
         saveError = nil
         Task {
             defer { saving = false }
             do {
-                let credential = try await model.resolveCredential(draft, for: config)
+                // Reuse what a test just signed in with, rather than signing in twice.
+                let credential: ServerCredential?
+                if draft == self.draft, let tested = resolvedCredential {
+                    credential = tested
+                } else {
+                    credential = try await model.resolveCredential(draft, for: config)
+                }
                 var sync = draft.syncProgress
                 // A Suwayomi server with user accounts keeps this login's
                 // progress apart from everyone else's, so it can sync.
@@ -251,7 +328,8 @@ struct ServerEditorView: View {
                     sync = true
                 }
                 model.saveServer(config, credential: credential)
-                model.setServerSettings(ProfileServerSettings(syncProgressToServer: sync), for: config)
+                model.setServerSettings(ProfileServerSettings(syncProgressToServer: sync,
+                                                              selectedCategoryIDs: selected), for: config)
                 dismiss()
             } catch {
                 saveError = error.localizedDescription

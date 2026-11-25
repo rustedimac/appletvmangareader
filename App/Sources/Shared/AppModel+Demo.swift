@@ -7,11 +7,11 @@ extension AppModel {
     /// `-uiTesting -demoServers`, so browsing screens have content.
     func installDemoServers() {
         var demos: [UUID: SampleLibraryServer] = [:]
-        makeClient = { config, _, _ in
-            if let existing = demos[config.id] { return existing }
-            let server = SampleLibraryServer(config: config)
-            demos[config.id] = server
-            return server
+        makeClient = { config, _, scope, _ in
+            // Scoped copies of one instance per server share its progress.
+            let base = demos[config.id] ?? SampleLibraryServer(config: config)
+            demos[config.id] = base
+            return base.scoped(to: scope)
         }
         // Kavita sign-in accepts reader / secret.
         kavitaSignIn = { _, username, password, _ in
