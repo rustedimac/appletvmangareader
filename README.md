@@ -77,4 +77,11 @@ libraries or categories. Give the profile a four-digit PIN so nobody else
 can change those settings, and optionally ask for the PIN to open the
 profile.
 
+## iCloud sync and backup
+
+Profiles, servers (without logins), favorites, progress and reader settings
+can sync through iCloud once the app is signed with iCloud turned on; until
+then Settings → iCloud Sync and Backup offers a Wi‑Fi backup page you open
+from a phone or computer. See [docs/ICLOUD.md](docs/ICLOUD.md).
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

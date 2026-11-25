@@ -9,12 +9,16 @@
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
+| `MangaCore/Komga` | `KomgaClient` (REST `api/v1`/`api/v2`, API key or basic auth). |
+| `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/ContentFilter` | `ContentFilter` (per-profile hidden genres/tags and age limit), `ContentFilteredServer` (wraps a client so every list leaves hidden series out), `ContentVisibility` (the same rule for local lists). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
+| `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
+| `App/Sources/Shared/Design` | Design tokens (`Space`, `Radius`, `Size`, `Grid`, `Layout`) and shared layout components (`SettingsPage`, `ActionRow`). Rules in `docs/DESIGN_GUIDE.md`. |
 | `App/Sources/<Tab>` | One folder per tab: Home, Library, Favorites, Search, Settings. |
 | `App/Sources/Reader` | `ReaderView` (entry point) and `ReaderSession` (shared reader state and progress saving). `Paged/`, `Webtoon/` and `Menu/` hold the paged reader, the vertical reader and the in-reader menu. |
 | `App/UITests` | XCUITest UI tests. Launch with `-uiTesting` for in-memory state. |
@@ -39,7 +43,9 @@
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
   persist. Caches may be purged at any time. Keep `AppState` compact.
-- **Profiles.** Favorites, local progress and reader settings belong to a
+- **Profiles.** On a multi-user Apple TV the Apple TV user *is* the
+  profile (see "Apple TV users" below); in-app profiles are the fallback.
+  Favorites, local progress and reader settings belong to a
   profile. Kavita progress syncs to that profile's Kavita user. Suwayomi has
   one progress per server, so by default only the profile that added the
   server syncs there and others keep progress locally
@@ -127,6 +133,17 @@ Suwayomi
 - Mark unread: `updateChapters(input: {ids, patch: {isRead: false, lastPageRead: 0}})`. A whole series looks up its chapter ids first.
 
 Kavita mark unread: `POST api/Reader/mark-multiple-unread` with `{seriesId, volumeIds: [], chapterIds}` for chapters, `POST api/Reader/mark-unread` with `{seriesId}` for a series.
+
+Komga (verified against 1.30.2)
+- Login: `X-API-Key` header, or basic auth with the email and password. Images need it too (`authorize`).
+- `POST api/v1/series/list` and `api/v1/books/list` take `{"condition": …, "fullTextSearch": …}`; `GET api/v1/series` is deprecated since 1.19.
+- Pages are one-based everywhere (`books/{id}/pages/{n}`, read progress `page`). `books/{id}/pages` gives every page's width/height.
+- `series/new` and `series/updated` take `library_id` as a comma-separated list. Genres come back lower-case.
+
+OPDS (verified against Komga 1.30.2 and Stump)
+- OPDS-PSE `{pageNumber}` is zero-based. `pse:lastRead` is one-based in Komga. Stump links are relative and its templates already carry a query (`?zero_based=true`).
+- `URL` percent-encodes `{}`, so templates are kept as strings (`OPDSLink.template`).
+- Series and chapter ids carry what's needed to reopen a book (`OPDSBook`, base64 JSON), so favorites and progress survive catalog changes. OPDS can't store progress; the editor hides the sync toggle and saves it off.
 
 ## Double-page spreads
 
@@ -303,6 +320,124 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Library browsing and Home layout
+
+Per-profile browsing preferences live in `ProfileData.browse`
+(`BrowsePreferences`, nil until something changes, and only non-default
+fields are encoded). `AppState+Browse.swift` and `AppModel+Browse.swift`
+hold the accessors.
+
+- **Sort & View** (`Library/LibraryOptionsView`, one per library or
+  category, keyed by `LibraryKey`): `LibrarySort` (title A–Z/Z–A, recently
+  added, updated, read), the library's `LibraryReadingStyle`, `GridOrder`,
+  and the profile-wide `GridDensity` (poster size for library grids and
+  Favorites; shelves keep 230 pt).
+- **Sorting.** `MangaServer.series(in:page:pageSize:sort:)` (the default
+  implementation ignores `sort`). Kavita sends FilterV2 `sortOptions`
+  (SortName 1, CreatedDate 2, LastChapterAdded 4, ReadProgress 7). Suwayomi
+  returns whole categories, so `SuwayomiClient+Sorting` asks for
+  `inLibraryAt`, `chapters { totalCount }`, `latestFetchedChapter` and
+  `lastReadChapter`, sorts on the client, and keeps page 1's answer for
+  five minutes so later pages don't download the category again. If the
+  server rejects those fields it falls back to the basic ones.
+- **A–Z jump.** `AlphabetIndex` maps titles to `#`/A–Z (accents and
+  full-width letters folded, CJK under `#`) and finds the first title at or
+  past a letter; `.needsMore` means the grid loads the next page and tries
+  again. `AlphabetJumpBar` sits beside title-sorted grids; picking a letter
+  scrolls to the poster and focuses it.
+- **Reading direction by library.** `AppState.readerSettings(for: SeriesSummary)`:
+  the series' own settings, else the profile default with the first of its
+  libraries/categories' styles applied. The reader menu's "Reset to Default"
+  goes back to that.
+- **Right-to-left grids.** `SeriesGrid(rightToLeft:)` flips the grid's layout
+  direction (posters keep left-to-right text). `GridOrder.automatic` is right
+  to left only when the library's style is Right to Left.
+- **Poster badges.** `PosterBadges(series:)`: Kavita gets a page progress
+  bar and "N pages" (its `unreadCount` is pages, too big for a badge);
+  Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
+  check when finished. Unread chapters in series detail show their page count.
+- **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
+  Customize Home, or the button at the bottom of Home). Server feeds get one
+  row per server ("Recently Updated · Server" with several servers).
+  Long-press a Continue Reading poster to remove it; it comes back once the
+  profile reads it again (`dismissedContinueReading` vs local progress).
+- **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series
+  with every chapter read joins the row (newest first, at most 30), and
+  leaves it when detail shows an unread chapter or a Home feed lists it with
+  unread chapters.
+- **Search** strips the period, question mark and quotes Siri dictation adds.
+- **Audio.** `AudioSessionSetup` sets the ambient category at launch so the
+  user's music keeps playing.
+
+UI tests: `LibraryBrowsingUITests` (`-uiTesting -demoServers`; add
+`-demoFinished 1` to mark Demo Kavita's series 1 read).
+
+## Books and PDFs
+
+See [BOOKS-AND-PDF.md](BOOKS-AND-PDF.md) for what each backend serves.
+
+- `ContentFormat` (`images`, `pdf`, `epub`, `text`) is on `SeriesSummary`
+  and `Chapter` (nil means images). Kavita maps its `MangaFormat`. Posters
+  and chapter rows show a `FormatBadge` for PDF/EPUB/TXT only.
+- PDFs read in the image readers: Kavita renders their pages
+  (`extractPdf=true`).
+- `ReaderView` hands chapters whose format `isText` to
+  `Reader/Book/BookReaderView`. The backend must conform to `BookProviding`
+  (`bookManifest(for:)`, `bookSection(_:of:)`); `KavitaClient` does, through
+  `api/Book/{chapterId}/book-info`, `/chapters` and `/book-page`.
+- `HTMLBookParser` / `PlainTextBookParser` (MangaCore/Book) turn a section
+  into `BookBlock`s. `BookLayoutEngine` builds attributed text and
+  paginates it with TextKit into one or two columns; `BookSectionLayout`
+  draws a page with the same layout manager. `BookCursor` (MangaCore, tested)
+  moves across pages and sections.
+- Settings (`BookSettings`) are per profile in `ProfileData.bookSettings`.
+  Progress: the section index goes to the server as the page; the place
+  inside the section is kept in `AppModel.bookPositions`.
+- UI tests: `BookReaderUITests` with `-uiTesting -readerDemo -readerBook`
+  (public-domain Alice in Wonderland, `Reader/Demo/DemoBook.swift`).
+  Identifiers: `book.page` (value `<section>.<page>`), `book.position`,
+  `book.edge`, `book.menu.<row>.<option>`, `book.toc.<n>`.
+
+## Apple TV users
+
+The app has the `com.apple.developer.user-management` entitlement with
+`runs-as-current-user-with-user-independent-keychain` (tvOS 16+). tvOS then
+gives every Apple TV user their own copy of the app's data (UserDefaults,
+the default keychain, containers), and the app is relaunched when the user
+changes.
+
+- **The Apple TV user is the profile.** Each user's `AppState` starts with
+  one profile of their own, which opens at launch with no "Who's reading?"
+  (`ProfileLaunch.decide`). Everything a profile owns (favorites, progress,
+  reader settings, library selection, logins, and later filters and PIN)
+  is therefore per Apple TV user with no extra keying: there is no user
+  identifier to store, because the data itself is per user. Settings shows
+  that profile for editing instead of Switch/Manage Profiles. State from
+  before user management with several profiles keeps them, opening the one
+  picked last (`AppState.rememberedProfileID`).
+- **Servers are added once.** `SharedServerDirectory` (servers, removed
+  server ids, and the login whoever added each server used) lives in the
+  user-independent keychain (`KeychainSharedServerStore`,
+  `kSecUseUserIndependentKeychain`). At launch `AppModel.adoptSharedServers`
+  merges it into this user's state (`AppState.adopt`), and every server
+  change is written back (`SharedServerDirectory.record`), so additions,
+  edits and removals reach every user. Adopted servers don't sync progress
+  for this user, because they'd be using someone else's login (and on
+  Suwayomi, its one shared progress). `SharedFallbackSecretStore` gives a
+  profile its own login when it has one, otherwise the shared one.
+- **Fallback.** In the simulator, without the entitlement, or on an Apple TV
+  with a single user, `TVUserManager.shouldStorePreferencesForCurrentUser`
+  is false and in-app profiles work as before: one set of profiles with
+  "Who's reading?" when there's more than one.
+- **Other platforms.** The only platform-specific piece is
+  `DeviceUserIdentity` (MangaCore). tvOS supplies `AppleTVUserIdentity`, the
+  one place `TVUserManager` is used. An iPhone or Mac app would pass
+  `SingleUserDevice` (in-app profiles) and reuse `AppState`, `SecretStore`
+  and the server clients unchanged. Profile data is plain Codable values, so
+  syncing it through iCloud/CloudKit later means syncing `ProfileData`.
+- UI tests: `-appleTVUserMode` (with `-uiTestingSharedServers` and
+  `-uiTestingRememberProfile <name>`), in `AppleTVUserUITests`.
+
 ## Bookmarks
 
 A `Bookmark` is one page of one chapter, stored per profile in
@@ -366,3 +501,48 @@ series. Series detail updates immediately (`SeriesDetail.markingUnread`)
 and reloads after the server answers; poster badges use
 `AppModel.unreadCount(for:)`. UI tests: `MarkUnreadUITests`, launched with
 `-demoProgress` so demo series start with progress.
+
+## Screen titles and scrolling headers
+
+tvOS keeps a `.navigationTitle` pinned while a Form or List scrolls, so the
+title ends up drawn over the rows. Settings screens use `.settingsPage(...)`
+(docs/DESIGN_GUIDE.md), which puts the title in a side column; any other
+screen puts its title inside its scrolling content. Panels with their own
+header (the in-reader menu) keep the header inside the same ScrollView as
+the rows. `.scrollClipDisabled()` is for horizontal shelves and tab bars: on
+a vertical scroll view it lets rows slide over whatever sits above it.
+`tools/check_pinned_headers.py` enforces both rules in CI (a reviewed
+exception ends its line with `// pinned-header-ok: <reason>`), and
+`ReaderMenuUITests.testHeaderScrollsWithOptions` scrolls the menu down and
+back up.
+
+## Top Shelf
+
+`MangaReaderTopShelf` (a `tv-app-extension` target, sources in `TopShelf/`)
+shows two sections for the active profile: Continue Reading (local progress,
+newest first) and Favorites (favorites with new chapters first, labelled
+"· N new"; series already in Continue Reading aren't repeated).
+
+- The app does all the work. `TopShelfPublisher` (App/Sources/TopShelf)
+  watches `AppModel.stateObservers`, rebuilds `TopShelfSnapshot.make(from:)`
+  a few seconds after a change (so after progress saves), writes
+  `snapshot.json` and JPEG covers (800×1200 px) to the App Group
+  `group.com.rustedimac.MangaReader` (`TopShelfStore`), and calls
+  `TVTopShelfContentProvider.topShelfContentDidChange()`.
+- The extension only decodes that file and points at the cover files, so it
+  stays well inside its memory limit and never talks to a server. Cover file
+  names are SHA-256 hashes of the URL without `apiKey`, so no keys reach disk.
+- Titles and covers for Continue Reading come from
+  `ProfileData.recentSeries`, noted when the reader opens a series.
+  Favorites' new-chapter counts are `Favorite.unreadChapters` (see Favorites
+  sorting), refreshed by `refreshStaleFavorites()` when the app becomes
+  active and when the Favorites tab opens.
+- Items link back with `DeepLink` (`mangareader://series?…` for select,
+  `mangareader://read?…&chapter=…&page=…` for Play). `RootView.onOpenURL`
+  switches to the link's profile, closes "Who's reading?", and presents
+  `DeepLinkView` over the tabs.
+- Without the App Group (unsigned CI simulator builds) and in UI tests the
+  publisher is off. Per Apple TV user, the App Group is per user too, so each
+  user's Top Shelf shows their own profile.
+- UI tests: `TopShelfLinkUITests` with
+  `-uiTestingOpenLink series:<server>:<id>` or `read:<server>:<id>:<chapter>`.

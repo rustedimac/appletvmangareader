@@ -83,7 +83,6 @@ struct ProfilePickerView: View {
     }
 
     private func open(_ profile: Profile) {
-        model.switchProfile(profile.id)
-        model.isPickingProfile = false
+        model.pickProfile(profile.id)
     }
 }

@@ -55,8 +55,24 @@ final class FavoritesSortUITests: XCTestCase {
         XCTAssertTrue(target.hasFocus, "Couldn't focus \(id). Focus: \(focusedDescription())", file: file, line: line)
         // Let the bar's scroll and focus animation finish, or the click can be dropped.
         Thread.sleep(forTimeInterval: 0.8)
-        remote.press(.select)
-        Thread.sleep(forTimeInterval: 0.3)
+        // A click either selects a new key or flips the direction. If neither
+        // shows up, the click was dropped: press again.
+        let before = sortState
+        for _ in 0..<3 {
+            remote.press(.select)
+            let deadline = Date().addingTimeInterval(3)
+            while sortState == before, Date() < deadline { Thread.sleep(forTimeInterval: 0.2) }
+            if sortState != before { break }
+        }
+        XCTAssertNotEqual(sortState, before, "Pressing \(id) changed nothing", file: file, line: line)
+    }
+
+    /// The selected sort key and direction, as the sort bar shows them.
+    private var sortState: String {
+        let keys = ["dateFavorited", "title", "latestChapter", "lastRead", "unread", "server"]
+        let selected = keys.first { app.buttons["favorites.sort.\($0)"].isSelected } ?? "?"
+        let direction = (app.buttons["favorites.sort.direction"].value as? String) ?? "?"
+        return "\(selected) \(direction)"
     }
 
     func testDefaultIsNewestFavoritedFirst() {

@@ -46,11 +46,7 @@ public struct CategorySelection: Equatable, Sendable {
     /// "All 4 libraries", "2 of 4 categories".
     public func summary(kind: ServerKind) -> String {
         let noun: String
-        switch kind {
-        case .kavita: noun = available.count == 1 ? "library" : "libraries"
-        case .suwayomi: noun = available.count == 1 ? "category" : "categories"
-        case .freeLibrary: noun = available.count == 1 ? "collection" : "collections"
-        }
+        noun = available.count == 1 ? kind.singularCategoryNoun : kind.categoryNoun.lowercased()
         if available.isEmpty { return "No \(kind.categoryNoun.lowercased())" }
         if allSelected { return available.count == 1 ? "1 \(noun)" : "All \(available.count) \(noun)" }
         return "\(selected.count) of \(available.count) \(noun)"
@@ -58,10 +54,12 @@ public struct CategorySelection: Equatable, Sendable {
 }
 
 public extension ServerKind {
-    /// "Libraries" for Kavita, "Categories" for Suwayomi.
+    /// "Libraries" for Kavita and Komga, "Sections" for OPDS catalogs,
+    /// "Categories" for Suwayomi, "Collections" for the Free Library.
     var categoryNoun: String {
         switch self {
-        case .kavita: return "Libraries"
+        case .kavita, .komga: return "Libraries"
+        case .opds: return "Sections"
         case .suwayomi: return "Categories"
         case .freeLibrary: return "Collections"
         }

@@ -95,7 +95,7 @@ final class ReaderSession {
         self.chapters = chapters.isEmpty ? [start] : chapters
         self.chapter = start
         self.initialPage = startPage
-        let settings = model.readerSettings(for: series.ref)
+        let settings = model.readerSettings(for: series)
         self.settings = settings
         self.navigator = ReaderNavigator(pageCount: 0, settings: settings)
         self.autoScrollLevel = model.autoScrollLevel
@@ -139,6 +139,7 @@ final class ReaderSession {
     func start() async {
         guard !started else { return }
         started = true
+        model.noteReading(series)
         await load(chapter: chapter, startPage: initialPage)
     }
 

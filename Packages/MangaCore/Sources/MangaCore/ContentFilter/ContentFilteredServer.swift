@@ -51,17 +51,31 @@ public final class ContentFilteredServer: MangaServer, @unchecked Sendable {
     public func categories() async throws -> [MangaCategory] { try await base.categories() }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
+        let base = self.base
+        return try await filteredPage(from: page) { try await base.series(in: category, page: $0, pageSize: pageSize) }
+    }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
+        let base = self.base
+        return try await filteredPage(from: page) {
+            try await base.series(in: category, page: $0, pageSize: pageSize, sort: sort)
+        }
+    }
+
+    /// One page with hidden series left out. An empty page would end
+    /// paging, so this keeps going until something shows. The pager skips
+    /// repeats if it asks for these pages again.
+    private func filteredPage(from page: Int,
+                              _ fetch: (Int) async throws -> Paged<SeriesSummary>) async throws -> Paged<SeriesSummary> {
         let hidden = try await hiddenIDs()
         var current = page
-        var result = try await base.series(in: category, page: current, pageSize: pageSize)
+        var result = try await fetch(current)
         var items = visible(result.items, hidden: hidden)
-        // An empty page would end paging, so keep going until something
-        // shows. The pager skips repeats if it asks for these pages again.
         var skipped = 0
         while items.isEmpty && result.hasMore && !result.items.isEmpty && skipped < Self.maxSkippedPages {
             skipped += 1
             current += 1
-            result = try await base.series(in: category, page: current, pageSize: pageSize)
+            result = try await fetch(current)
             items = visible(result.items, hidden: hidden)
         }
         return Paged(items: items, hasMore: result.hasMore && !items.isEmpty)
@@ -107,6 +121,16 @@ public final class ContentFilteredServer: MangaServer, @unchecked Sendable {
     public func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
         if filter == self.filter { return try await hiddenIDs() }
         return try await base.hiddenSeriesIDs(for: filter)
+    }
+}
+
+public extension MangaServer {
+    /// The client under a `ContentFilteredServer`, for optional
+    /// capabilities such as `BookProviding` and `BookmarkSyncing` that the
+    /// wrapper doesn't forward. Lists still go through the wrapper.
+    var unfiltered: MangaServer {
+        if let filtered = self as? ContentFilteredServer { return filtered.base.unfiltered }
+        return self
     }
 }
 

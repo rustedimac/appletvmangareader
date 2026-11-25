@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written in the shape of Calibre-Web's OPDS feeds (cps/templates/feed.xml): acquisition links only, no page streaming. Titles invented. -->
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:dcterms="http://purl.org/dc/terms/">
+  <icon>/static/favicon.ico</icon>
+  <id>urn:uuid:2853dacf-ed79-42f5-8e8a-a7bb3d1ae6a4</id>
+  <updated>2026-11-25T09:00:00+00:00</updated>
+  <link rel="self" href="/opds/new?" type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="start" title="Start" href="/opds" type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="up" href="/opds" type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="next" title="Next" href="/opds/new?offset=2" type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="search" href="/opds/osd" type="application/opensearchdescription+xml"/>
+  <title>Calibre-Web</title>
+  <author><name>Calibre-Web</name><uri>https://github.com/janeczku/calibre-web</uri></author>
+  <entry>
+    <title>Harbor Lights</title>
+    <id>urn:uuid:6f1f2f0e-5a0e-4c47-9a0b-3a1c2c7f5c11</id>
+    <updated>2026-11-20T10:00:00+00:00</updated>
+    <author><name>Aiko Example</name></author>
+    <dcterms:language>en</dcterms:language>
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html" term="Comics" label="Comics"/>
+    <summary type="html">&lt;p&gt;A lighthouse keeper &amp;amp; her cat.&lt;/p&gt;</summary>
+    <link type="image/jpeg" href="/opds/cover/12" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/12" rel="http://opds-spec.org/image/thumbnail"/>
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/12/epub/" length="20480" mtime="2026-11-20T10:00:00+00:00" type="application/epub+zip"/>
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/12/cbz/" length="204800" mtime="2026-11-20T10:00:00+00:00" type="application/x-cbz"/>
+  </entry>
+  <entry>
+    <title>Paper Moon Post, Vol. 1</title>
+    <id>urn:uuid:0a4d5e6f-7b8c-4d9e-8f10-111213141516</id>
+    <updated>2026-11-19T10:00:00+00:00</updated>
+    <author><name>Ren Sample</name></author>
+    <link type="image/jpeg" href="/opds/cover/7" rel="http://opds-spec.org/image"/>
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/7/pdf/" length="1048576" mtime="2026-11-19T10:00:00+00:00" type="application/pdf"/>
+  </entry>
+</feed>

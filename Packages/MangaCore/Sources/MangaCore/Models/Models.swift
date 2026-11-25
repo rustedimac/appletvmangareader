@@ -4,6 +4,8 @@ import Foundation
 public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case kavita
     case suwayomi
+    case komga
+    case opds
     /// The built-in Free Library (public-domain Internet Archive items and
     /// Pepper&Carrot). Always there; never typed in by the user.
     case freeLibrary
@@ -14,12 +16,14 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .kavita: return "Kavita"
         case .suwayomi: return "Suwayomi"
+        case .komga: return "Komga"
+        case .opds: return "OPDS"
         case .freeLibrary: return "Free Library"
         }
     }
 
-    /// The kinds offered in the Add Server picker.
-    public static var userAddable: [ServerKind] { [.kavita, .suwayomi] }
+    /// The kinds offered when adding a server, in picker order.
+    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi, .opds] }
 }
 
 /// A saved server connection, shared by every profile. Credentials are not
@@ -132,20 +136,33 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var unreadCount: Int?
     /// Kavita needs the library id when saving progress.
     public var libraryID: String?
+    /// File format, when the server says. Nil means page images.
+    public var format: ContentFormat?
     /// The Suwayomi categories the series is in ("0" is Default). Nil when
     /// unknown. Kavita uses `libraryID` instead.
     public var categoryIDs: [String]?
+    /// Total and read pages, when the server reports them (Kavita). Used
+    /// for poster progress badges.
+    public var pageCount: Int?
+    public var pagesRead: Int?
+    /// Number of chapters, when known (Suwayomi library grids).
+    public var chapterCount: Int?
 
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
-                categoryIDs: [String]? = nil) {
+                categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil,
+                format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
         self.unreadCount = unreadCount
         self.libraryID = libraryID
         self.categoryIDs = categoryIDs
+        self.pageCount = pageCount
+        self.pagesRead = pagesRead
+        self.chapterCount = chapterCount
+        self.format = format
     }
 
     /// The `MangaCategory` ids this series belongs to, or nil if unknown.
@@ -167,9 +184,14 @@ public struct Chapter: Codable, Hashable, Identifiable, Sendable {
     public var lastPageRead: Int
     public var isRead: Bool
     public var updatedAt: Date?
+    /// File format, when the server says. Nil means page images. For EPUB
+    /// and text, `pageCount` and `lastPageRead` count sections, not pages.
+    public var format: ContentFormat?
 
     public init(id: String, seriesRef: SeriesRef, volumeID: String? = nil, title: String, number: Double,
-                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil) {
+                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil,
+                format: ContentFormat? = nil) {
+        self.format = format
         self.id = id
         self.seriesRef = seriesRef
         self.volumeID = volumeID

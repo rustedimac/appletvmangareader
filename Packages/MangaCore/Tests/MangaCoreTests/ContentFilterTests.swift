@@ -170,6 +170,12 @@ private final class CountingServer: MangaServer, @unchecked Sendable {
     func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
         try await inner.series(in: category, page: page, pageSize: pageSize)
     }
+    private var _sorts: [LibrarySort] = []
+    var sorts: [LibrarySort] { lock.withLock { _sorts } }
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
+        lock.withLock { _sorts.append(sort) }
+        return try await inner.series(in: category, page: page, pageSize: pageSize, sort: sort)
+    }
     func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] { try await inner.feed(feed, limit: limit) }
     func search(_ query: String) async throws -> [SeriesSummary] { try await inner.search(query) }
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail { try await inner.seriesDetail(seriesID) }
@@ -224,6 +230,23 @@ final class ContentFilteredServerTests: XCTestCase {
         let p3 = try await some.series(in: MangaCategory(id: "all", name: "All"), page: 3, pageSize: 2)
         XCTAssertEqual(p3.items.map(\.ref.seriesID), ["6"])
         XCTAssertTrue(p3.hasMore)
+    }
+
+    func testSortedPagesKeepTheSortAndFilter() async throws {
+        let base = CountingServer(seriesCount: 12)
+        let server = ContentFilteredServer(base: base, filter: horror)
+        let page = try await server.series(in: MangaCategory(id: "all", name: "All"), page: 1, pageSize: 12,
+                                           sort: .recentlyAdded)
+        XCTAssertEqual(base.sorts, [.recentlyAdded], "the sort didn't reach the server")
+        XCTAssertEqual(page.items.count, 10)
+        XCTAssertFalse(page.items.contains { $0.ref.seriesID == "5" || $0.ref.seriesID == "10" })
+    }
+
+    func testUnfilteredReachesTheClientForCapabilities() {
+        let base = CountingServer()
+        let wrapped = ContentFilteredServer.wrapping(base, filter: horror)
+        XCTAssertTrue((wrapped.unfiltered as AnyObject) === base)
+        XCTAssertTrue((base.unfiltered as AnyObject) === base)
     }
 
     func testDetailOfHiddenSeriesIsNotFound() async throws {

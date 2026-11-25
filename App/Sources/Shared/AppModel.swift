@@ -31,18 +31,40 @@ final class AppModel {
     /// Builds server clients, limited to a set of library/category ids (nil
     /// for all). UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
+    /// Called after every saved change; iCloud sync listens here.
+    @ObservationIgnored var onStateChange: (@MainActor () -> Void)?
     @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, Set<String>?, HTTPTransport) -> MangaServer = {
         MangaServerFactory.make(config: $0, credential: $1, categoryScope: $2, transport: $3)
     }
 
+    /// The app runs as the current Apple TV user, so `state` belongs to that
+    /// user alone. See `AppleTVUsers/AppleTVUsers.swift`.
+    @ObservationIgnored let perAppleTVUser: Bool
+    /// Servers shared by every Apple TV user. Nil unless `perAppleTVUser`.
+    @ObservationIgnored let sharedServers: SharedServerStore?
+    /// Called after every saved change (Top Shelf refresh, shared servers).
+    @ObservationIgnored var stateObservers: [(_ old: AppState, _ new: AppState) -> Void] = []
+
     init(stateStore: StateStore, secrets: SecretStore, pins: PINStore = InMemoryPINStore(),
-         transport: HTTPTransport = URLSessionTransport()) {
+         transport: HTTPTransport = URLSessionTransport(),
+         identity: DeviceUserIdentity = SingleUserDevice(), sharedServers: SharedServerStore? = nil) {
         self.stateStore = stateStore
-        self.secrets = secrets
         self.pins = pins
+        let perAppleTVUser = identity.separatesAppDataPerUser
+        self.perAppleTVUser = perAppleTVUser
+        self.sharedServers = perAppleTVUser ? sharedServers : nil
+        if perAppleTVUser, let sharedServers {
+            self.secrets = SharedFallbackSecretStore(local: secrets, shared: sharedServers)
+        } else {
+            self.secrets = secrets
+        }
         self.transport = transport
         self.state = stateStore.load()
-        self.isPickingProfile = state.profiles.count > 1
+        let launch = ProfileLaunch.decide(state, perSystemUser: perAppleTVUser)
+        if let id = launch.profileID, id != state.activeProfileID { state.setActiveProfile(id) }
+        self.isPickingProfile = launch.showsPicker
+        adoptSharedServers()
+        // A profile that asks for its PIN never opens straight away.
         if needsPINToOpen(activeProfile.id) { isPickingProfile = true }
     }
 
@@ -52,15 +74,21 @@ final class AppModel {
             let pins = InMemoryPINStore()
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             UITestingSeed.seedPINs(store.load(), into: pins)
-            let model = AppModel(stateStore: store, secrets: InMemorySecretStore(), pins: pins)
+            let model = AppModel(stateStore: store, secrets: InMemorySecretStore(), pins: pins,
+                                 identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
+                                 sharedServers: InMemorySharedServerStore(UITestingSeed.sharedServers()))
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-mockKomga") { model.installMockKomga() }
+            if ProcessInfo.processInfo.arguments.contains("-mockOPDS") { model.installMockOPDS() }
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
-                             pins: KeychainPINStore())
+                             pins: KeychainPINStore(),
+                             identity: AppleTVUserIdentity(),
+                             sharedServers: KeychainSharedServerStore())
         model.installFreeLibraryIfNeeded()
         return model
     }
@@ -69,8 +97,16 @@ final class AppModel {
 
     /// The only way to change persisted state. Saves after every change.
     func update(_ change: (inout AppState) -> Void) {
+        let old = state
         change(&state)
         stateStore.save(state)
+        for observer in stateObservers { observer(old, state) }
+        onStateChange?()
+    }
+
+    /// Drops cached server clients, e.g. after sync changed servers or logins.
+    func resetClients() {
+        clientCache.removeAll()
     }
 
     var activeProfile: Profile { state.activeProfile ?? Profile(name: "Me") }

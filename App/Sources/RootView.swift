@@ -7,12 +7,25 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab = UITestingSeed.initialTab ?? "home"
+    /// A Top Shelf item the user opened.
+    @State private var link: DeepLinkRoute?
 
     var body: some View {
         content
-            // PINs are asked for again after the app has been away.
+            .fullScreenCover(item: $link) { route in
+                DeepLinkHost(route: route)
+            }
+            .onOpenURL { url in
+                if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
+            }
+            .task {
+                model.startTopShelf()
+                if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
+            }
             .onChange(of: scenePhase) { _, phase in
+                // PINs are asked for again after the app has been away.
                 if phase == .background { model.lockAll() }
+                if phase == .active { Task { await model.refreshStaleFavorites() } }
             }
     }
 
