@@ -16,6 +16,14 @@ import MangaCore
 /// - Menu: call `updateSettings(_:)`; it applies live and saves per series.
 /// - Progress is saved through `AppModel.recordProgress`, debounced, on
 ///   chapter change, and on `close()`.
+/// What the webtoon strip does for game controller input.
+@MainActor
+protocol WebtoonInputTarget: AnyObject {
+    func jumpPage(forward: Bool)
+    func toggleAutoScroll()
+    func stickMoved(y: Double)
+}
+
 @MainActor
 @Observable
 final class ReaderSession {
@@ -39,7 +47,14 @@ final class ReaderSession {
     private(set) var navigator: ReaderNavigator
     private(set) var loadState: LoadState = .loading
     /// The in-reader menu (workstream G) is showing.
-    var isMenuPresented = false
+    var isMenuPresented = false {
+        didSet { if isMenuPresented, isAutoScrolling { isAutoScrolling = false } }
+    }
+    /// Webtoon auto-scroll is running. The strip sets this; it stops when
+    /// the menu opens or a chapter loads.
+    var isAutoScrolling = false
+    /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
+    private(set) var autoScrollLevel: Int
     /// A short message shown over the page, such as "Bookmarked".
     var notice: ReaderNotice?
     /// Asks the webtoon strip to scroll to a page (opening a bookmark).
@@ -73,6 +88,7 @@ final class ReaderSession {
         let settings = model.readerSettings(for: series.ref)
         self.settings = settings
         self.navigator = ReaderNavigator(pageCount: 0, settings: settings)
+        self.autoScrollLevel = model.autoScrollLevel
     }
 
     // MARK: Derived state
@@ -122,6 +138,7 @@ final class ReaderSession {
         flushProgress()
         loadTask?.cancel()
         self.chapter = chapter
+        isAutoScrolling = false
         loadState = .loading
         pages = []
         sizes = [:]
@@ -193,6 +210,13 @@ final class ReaderSession {
         return true
     }
 
+    /// Opens the next or previous chapter at its first page (a game
+    /// controller's triggers). Does nothing past either end of the list.
+    func jumpChapter(forward: Bool) {
+        guard let target = forward ? nextChapterInList : previousChapterInList else { return }
+        Task { await load(chapter: target, startPage: 0) }
+    }
+
     // MARK: Navigation
 
     /// A remote press in the paged reader. Handles chapter transitions:
@@ -251,6 +275,46 @@ final class ReaderSession {
         settings = newSettings
         navigator.updateSettings(newSettings)
         model.setReaderSettings(newSettings, for: series.ref)
+    }
+
+    /// Sets the auto-scroll speed and saves it for the profile.
+    func setAutoScrollLevel(_ level: Int) {
+        let level = WebtoonAutoScroll.clamped(level)
+        guard level != autoScrollLevel else { return }
+        autoScrollLevel = level
+        model.setAutoScrollLevel(level)
+    }
+
+    // MARK: Game controller
+
+    /// The webtoon strip, while it's on screen, for controller input that
+    /// only it can carry out.
+    @ObservationIgnored weak var webtoonInput: WebtoonInputTarget?
+
+    /// A game controller button (see `GamepadMapping`).
+    func handleController(_ button: GamepadButton) {
+        guard let action = GamepadMapping.action(for: button, mode: settings.mode,
+                                                 menuOpen: isMenuPresented) else { return }
+        switch action {
+        case .toggleMenu:
+            isMenuPresented.toggle()
+        case .jumpChapter(let forward):
+            jumpChapter(forward: forward)
+        case .turnPage(let direction):
+            if settings.mode == .webtoon {
+                webtoonInput?.jumpPage(forward: direction == .right)
+            } else {
+                turn(direction)
+            }
+        case .toggleAutoScroll:
+            webtoonInput?.toggleAutoScroll()
+        }
+    }
+
+    /// A game controller stick moved (GameController axes, -1...1).
+    func handleControllerStick(x: Double, y: Double) {
+        let active = settings.mode == .webtoon && !isMenuPresented
+        webtoonInput?.stickMoved(y: active ? y : 0)
     }
 
     // MARK: Progress

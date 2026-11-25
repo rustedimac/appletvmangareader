@@ -36,6 +36,13 @@ xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
 
 CI runs both on every push and pull request (`.github/workflows/ci.yml`).
 
+## Game controllers
+
+Xbox, PlayStation and MFi controllers work everywhere the remote does
+(d-pad, A to select, B to go back). In the reader, the shoulder buttons
+turn pages, the triggers jump chapters, either stick scrolls the vertical
+reader, X starts or stops auto-scroll, and Y opens the reader menu.
+
 ## Connecting servers
 
 - **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.

@@ -57,6 +57,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var bookmarks: [Bookmark]
     /// How the Favorites tab is sorted.
     public var favoritesSort: FavoritesSort
+    /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
+    /// `autoScrollLevel`.
+    public var webtoonAutoScrollLevel: Int? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
@@ -75,7 +78,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookmarks, favoritesSort
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookmarks, favoritesSort, webtoonAutoScrollLevel
     }
 
     // State saved by older versions lacks the newer fields.
@@ -88,6 +91,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         readerOverrides = try c.decodeIfPresent([String: ReaderSettings].self, forKey: .readerOverrides) ?? [:]
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
+        webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -99,6 +103,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encode(readerOverrides, forKey: .readerOverrides)
         if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
         if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
+        try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
     }
 }
 
