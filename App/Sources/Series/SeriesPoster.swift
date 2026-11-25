@@ -22,6 +22,11 @@ struct SeriesPoster: View {
                 PosterImage(url: series.coverURL, server: model.client(for: series.ref), title: series.title)
                     .frame(width: PosterMetrics.width, height: PosterMetrics.height)
                     .clipped()
+                    .overlay(alignment: .bottomLeading) {
+                        if let badge = series.format?.badge {
+                            FormatBadge(text: badge).padding(10)
+                        }
+                    }
                     .overlay(alignment: .topTrailing) {
                         if let unread = model.unreadCount(for: series), unread > 0 {
                             Text("\(unread)")
@@ -155,5 +160,22 @@ extension View {
     /// NavigationStack.
     func seriesNavigation() -> some View {
         navigationDestination(for: SeriesSummary.self) { SeriesDetailView(series: $0) }
+    }
+}
+
+/// A small "PDF" / "EPUB" tag, so non-comic content stands out in a grid
+/// of manga. Image content has no badge.
+struct FormatBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.bold())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 6))
+            .foregroundStyle(.white)
+            .accessibilityIdentifier("format.badge")
+            .accessibilityLabel(text)
     }
 }
