@@ -138,6 +138,8 @@ private struct FailingServer: MangaServer {
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail { throw MangaError.notFound }
     func pages(for chapter: Chapter) async throws -> [PageDescriptor] { throw MangaError.notFound }
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
+    func markUnread(chapters: [Chapter]) async throws {}
+    func markSeriesUnread(_ seriesID: String) async throws {}
     func authorize(_ request: URLRequest) -> URLRequest { request }
 }
 

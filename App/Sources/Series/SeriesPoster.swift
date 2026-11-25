@@ -8,11 +8,13 @@ enum PosterMetrics {
 }
 
 /// A focusable poster that opens series detail. Lifts on focus (card
-/// button style) and shows the unread count.
+/// button style) and shows the unread count. Long-press offers Mark Series
+/// as Unread.
 struct SeriesPoster: View {
     @Environment(AppModel.self) private var model
     let series: SeriesSummary
     var showsServer = false
+    @State private var markError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -21,7 +23,7 @@ struct SeriesPoster: View {
                     .frame(width: PosterMetrics.width, height: PosterMetrics.height)
                     .clipped()
                     .overlay(alignment: .topTrailing) {
-                        if let unread = series.unreadCount, unread > 0 {
+                        if let unread = model.unreadCount(for: series), unread > 0 {
                             Text("\(unread)")
                                 .font(.caption2.bold())
                                 .monospacedDigit()
@@ -36,6 +38,25 @@ struct SeriesPoster: View {
             .buttonStyle(.card)
             .accessibilityLabel(series.title)
             .accessibilityIdentifier("poster.\(series.ref.seriesID)")
+            .contextMenu {
+                Button {
+                    Task {
+                        do {
+                            try await model.markSeriesUnread(series.ref)
+                        } catch {
+                            markError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        }
+                    }
+                } label: {
+                    Label("Mark Series as Unread", systemImage: "circle")
+                }
+                .accessibilityIdentifier("poster.menu.seriesUnread")
+            }
+            .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(markError ?? "")
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(series.title)
