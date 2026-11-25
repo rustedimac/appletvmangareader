@@ -92,6 +92,7 @@ Type and bold text keep working. tvOS sizes for reference:
 | Token | Value | Use for |
 | --- | --- | --- |
 | System | — | Buttons, list/form rows, text fields, pickers, toggles: keep the system shape |
+| `Radius.small` | 8 | Small highlights inside a control: focused jump-bar letter, poster badges |
 | `Radius.poster` | 12 | Cover art (`.buttonStyle(.card)` rounds it too) |
 | `Radius.card` | 20 | Custom tiles and grouped panels |
 | `Radius.panel` | 32 | Large floating panels, e.g. the reader menu drawer if it gets corners |
