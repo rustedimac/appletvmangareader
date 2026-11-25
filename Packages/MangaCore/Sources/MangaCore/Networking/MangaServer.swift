@@ -31,6 +31,13 @@ public protocol MangaServer: Sendable {
     /// Saves reading progress. `page` is zero-based.
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws
 
+    /// Marks chapters of one series as unread and clears their page
+    /// progress. Does nothing for an empty list.
+    func markUnread(chapters: [Chapter]) async throws
+
+    /// Marks every chapter of a series as unread.
+    func markSeriesUnread(_ seriesID: String) async throws
+
     /// Adds any auth headers the server needs to fetch an image URL it
     /// returned (covers and pages).
     func authorize(_ request: URLRequest) -> URLRequest

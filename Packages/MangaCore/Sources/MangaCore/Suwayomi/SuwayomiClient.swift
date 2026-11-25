@@ -198,6 +198,40 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         )
     }
 
+    public func markUnread(chapters: [Chapter]) async throws {
+        guard !chapters.isEmpty else { return }
+        let ids = try chapters.map { chapter -> JSONValue in
+            guard let id = Int(chapter.id) else { throw MangaError.notFound }
+            return .int(id)
+        }
+        try await updateChaptersUnread(ids)
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {
+        struct Response: Decodable {
+            struct Manga: Decodable { var chapters: Nodes<ChapterID> }
+            struct ChapterID: Decodable { var id: Int }
+            var manga: Manga
+        }
+        guard let id = Int(seriesID) else { throw MangaError.notFound }
+        let r: Response = try await graphQL("query($id: Int!) { manga(id: $id) { chapters { nodes { id } } } }",
+                                            variables: ["id": .int(id)])
+        let ids = r.manga.chapters.nodes.map { JSONValue.int($0.id) }
+        guard !ids.isEmpty else { return }
+        try await updateChaptersUnread(ids)
+    }
+
+    func updateChaptersUnread(_ ids: [JSONValue]) async throws {
+        struct Response: Decodable {
+            struct Payload: Decodable { var clientMutationId: String? }
+            var updateChapters: Payload
+        }
+        let _: Response = try await graphQL(
+            "mutation($ids: [Int!]!) { updateChapters(input: {ids: $ids, patch: {isRead: false, lastPageRead: 0}}) { clientMutationId } }",
+            variables: ["ids": .array(ids)]
+        )
+    }
+
     public func authorize(_ request: URLRequest) -> URLRequest {
         var r = request
         if let authHeader { r.setValue(authHeader, forHTTPHeaderField: "Authorization") }
@@ -287,6 +321,7 @@ public enum JSONValue: Encodable, Hashable, Sendable {
     case double(Double)
     case string(String)
     case bool(Bool)
+    case array([JSONValue])
     case null
 
     public func encode(to encoder: Encoder) throws {
@@ -296,6 +331,7 @@ public enum JSONValue: Encodable, Hashable, Sendable {
         case .double(let v): try c.encode(v)
         case .string(let v): try c.encode(v)
         case .bool(let v): try c.encode(v)
+        case .array(let v): try c.encode(v)
         case .null: try c.encodeNil()
         }
     }
