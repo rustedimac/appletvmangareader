@@ -30,6 +30,15 @@ struct ReaderView: View {
     @State private var session: ReaderSession?
 
     var body: some View {
+        if start.format?.isText == true {
+            // EPUB and plain text reflow, so they get the book reader.
+            BookReaderView(series: series, chapters: chapters, start: start, server: server)
+        } else {
+            imageReader
+        }
+    }
+
+    private var imageReader: some View {
         ZStack {
             (session?.settings.background.color ?? .black).ignoresSafeArea()
             if let session {

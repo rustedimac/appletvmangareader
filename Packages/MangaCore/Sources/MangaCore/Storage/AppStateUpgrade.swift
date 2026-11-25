@@ -140,6 +140,7 @@ struct SalvagedProfileData: Decodable {
         d.progress = c.lossyDictionary(SeriesProgress.self, "progress")
         d.defaultReaderSettings = c.lossy(ReaderSettings.self, "defaultReaderSettings") ?? .default
         d.readerOverrides = c.lossyDictionary(ReaderSettings.self, "readerOverrides")
+        d.bookSettings = c.lossy(BookSettings.self, "bookSettings")
         d.bookmarks = c.lossyArray(Bookmark.self, "bookmarks")
         d.favoritesSort = c.lossy(FavoritesSort.self, "favoritesSort") ?? .default
         d.webtoonAutoScrollLevel = c.lossy(Int.self, "webtoonAutoScrollLevel")

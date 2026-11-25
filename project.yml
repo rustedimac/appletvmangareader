@@ -38,6 +38,10 @@ targets:
         UILaunchScreen: {}
         UIRequiredDeviceCapabilities: [arm64]
         UIUserInterfaceStyle: Automatic
+        # iCloud sync turns on when this is an iCloud container id. Empty by
+        # default so builds without a paid Apple Developer membership work;
+        # see docs/ICLOUD.md.
+        MRCloudKitContainer: $(MR_ICLOUD_CONTAINER)
         GCSupportsControllerUserInteraction: true
         GCSupportedGameControllers:
           - ProfileName: ExtendedGamepad
@@ -55,6 +59,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReader
+        # Set to iCloud.com.rustedimac.MangaReader once the iCloud capability
+        # is enabled (docs/ICLOUD.md). Empty = sync off, nothing else changes.
+        MR_ICLOUD_CONTAINER: ""
         # App icon layers and Top Shelf images (tools/make_brand_assets.py).
         ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
         TARGETED_DEVICE_FAMILY: "3"
