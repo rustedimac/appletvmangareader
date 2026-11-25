@@ -64,8 +64,9 @@ final class BrowseUITests: XCTestCase {
 
     func testHomeShowsRowsForEachServer() {
         XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.newlyAdded"].exists)
-        XCTAssertTrue(app.staticTexts["home.server.Demo Kavita"].exists)
+        XCTAssertTrue(app.staticTexts["shelf.Demo Suwayomi.recentlyUpdated"].exists)
+        XCTAssertEqual(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].label, "Recently Updated · Demo Kavita",
+                       "with two servers each row names its server")
         XCTAssertFalse(app.staticTexts["shelf.favorites"].exists, "no favorites yet")
     }
 
@@ -116,7 +117,9 @@ final class BrowseUITests: XCTestCase {
         XCTAssertTrue(app.buttons["category.all"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["category.short"].exists)
         XCTAssertTrue(app.buttons["poster.1"].waitForExistence(timeout: 10))
-        let secondPage = app.buttons.matching(NSPredicate(format: "identifier IN %@", (49...90).map { "poster.\($0)" })).firstMatch
+        // The grid is sorted by title: every "Ember" series, then "Harbor", ...
+        let titleOrder = (0..<8).flatMap { w in Array(stride(from: w + 1, through: 90, by: 8)) }
+        let secondPage = app.buttons.matching(NSPredicate(format: "identifier IN %@", titleOrder[48...].map { "poster.\($0)" })).firstMatch
 
         // Scroll down through the grid; the second page (49 and up) loads on the way.
         for _ in 0..<14 {

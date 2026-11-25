@@ -159,17 +159,27 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     /// The Suwayomi categories the series is in ("0" is Default). Nil when
     /// unknown. Kavita uses `libraryID` instead.
     public var categoryIDs: [String]?
+    /// Total and read pages, when the server reports them (Kavita). Used
+    /// for poster progress badges.
+    public var pageCount: Int?
+    public var pagesRead: Int?
+    /// Number of chapters, when known (Suwayomi library grids).
+    public var chapterCount: Int?
 
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
-                categoryIDs: [String]? = nil, format: ContentFormat? = nil) {
+                categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil,
+                format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
         self.unreadCount = unreadCount
         self.libraryID = libraryID
         self.categoryIDs = categoryIDs
+        self.pageCount = pageCount
+        self.pagesRead = pagesRead
+        self.chapterCount = chapterCount
         self.format = format
     }
 

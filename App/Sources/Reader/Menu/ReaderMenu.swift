@@ -313,7 +313,7 @@ struct ReaderMenu: View {
     }
 
     private var defaultsSection: some View {
-        let profileDefault = model.menuDefaultReaderSettings
+        let profileDefault = model.libraryDefaultReaderSettings(for: session.series)
         return VStack(alignment: .leading, spacing: 18) {
             Text("Changes are saved for this series. Series you haven't changed use your default.")
                 .font(.footnote)

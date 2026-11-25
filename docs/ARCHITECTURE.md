@@ -307,6 +307,58 @@ Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
 - Tests: `ProgressSyncTests`, sign-in tests in `KavitaClientTests` and
   `SuwayomiClientTests`, UI tests in `ProgressSyncUITests`.
 
+## Library browsing and Home layout
+
+Per-profile browsing preferences live in `ProfileData.browse`
+(`BrowsePreferences`, nil until something changes, and only non-default
+fields are encoded). `AppState+Browse.swift` and `AppModel+Browse.swift`
+hold the accessors.
+
+- **Sort & View** (`Library/LibraryOptionsView`, one per library or
+  category, keyed by `LibraryKey`): `LibrarySort` (title A–Z/Z–A, recently
+  added, updated, read), the library's `LibraryReadingStyle`, `GridOrder`,
+  and the profile-wide `GridDensity` (poster size for library grids and
+  Favorites; shelves keep 230 pt).
+- **Sorting.** `MangaServer.series(in:page:pageSize:sort:)` (the default
+  implementation ignores `sort`). Kavita sends FilterV2 `sortOptions`
+  (SortName 1, CreatedDate 2, LastChapterAdded 4, ReadProgress 7). Suwayomi
+  returns whole categories, so `SuwayomiClient+Sorting` asks for
+  `inLibraryAt`, `chapters { totalCount }`, `latestFetchedChapter` and
+  `lastReadChapter`, sorts on the client, and keeps page 1's answer for
+  five minutes so later pages don't download the category again. If the
+  server rejects those fields it falls back to the basic ones.
+- **A–Z jump.** `AlphabetIndex` maps titles to `#`/A–Z (accents and
+  full-width letters folded, CJK under `#`) and finds the first title at or
+  past a letter; `.needsMore` means the grid loads the next page and tries
+  again. `AlphabetJumpBar` sits beside title-sorted grids; picking a letter
+  scrolls to the poster and focuses it.
+- **Reading direction by library.** `AppState.readerSettings(for: SeriesSummary)`:
+  the series' own settings, else the profile default with the first of its
+  libraries/categories' styles applied. The reader menu's "Reset to Default"
+  goes back to that.
+- **Right-to-left grids.** `SeriesGrid(rightToLeft:)` flips the grid's layout
+  direction (posters keep left-to-right text). `GridOrder.automatic` is right
+  to left only when the library's style is Right to Left.
+- **Poster badges.** `PosterBadges(series:)`: Kavita gets a page progress
+  bar and "N pages" (its `unreadCount` is pages, too big for a badge);
+  Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
+  check when finished. Unread chapters in series detail show their page count.
+- **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
+  Customize Home, or the button at the bottom of Home). Server feeds get one
+  row per server ("Recently Updated · Server" with several servers).
+  Long-press a Continue Reading poster to remove it; it comes back once the
+  profile reads it again (`dismissedContinueReading` vs local progress).
+- **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series
+  with every chapter read joins the row (newest first, at most 30), and
+  leaves it when detail shows an unread chapter or a Home feed lists it with
+  unread chapters.
+- **Search** strips the period, question mark and quotes Siri dictation adds.
+- **Audio.** `AudioSessionSetup` sets the ambient category at launch so the
+  user's music keeps playing.
+
+UI tests: `LibraryBrowsingUITests` (`-uiTesting -demoServers`; add
+`-demoFinished 1` to mark Demo Kavita's series 1 read).
+
 ## Books and PDFs
 
 See [BOOKS-AND-PDF.md](BOOKS-AND-PDF.md) for what each backend serves.

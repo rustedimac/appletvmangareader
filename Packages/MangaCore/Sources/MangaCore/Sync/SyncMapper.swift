@@ -7,7 +7,8 @@ import Foundation
 /// - profiles (name, symbol, color),
 /// - per profile: per-server settings (library selection, progress sync
 ///   toggle), favorites, reading progress, default reader settings and
-///   per-series reader settings.
+///   per-series reader settings, and browse preferences (Home rows, poster
+///   size, per-library sort and reading style).
 ///
 /// Secrets stay in the device's Keychain. New features add a `Domain` to
 /// `domains` with their own kind; nothing else in sync has to change.
@@ -202,6 +203,14 @@ public enum SyncMapper {
                apply: { state, id, value, _ in
                    guard let (profile, key) = split(id) else { return }
                    data(&state, profile) { $0.readerOverrides[key] = value }
+               }),
+        domain(.browse, order: 7, BrowsePreferences.self,
+               values: { state in
+                   state.profileData.compactMapValues { $0.browse }
+               },
+               apply: { state, id, value, _ in
+                   guard let profile = UUID(uuidString: id) else { return }
+                   data(&state, profile) { $0.browse = value }
                }),
     ]
 
