@@ -28,6 +28,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
     private var columnX = 0
     /// Page to put at the top once the strip has a size.
     private var pendingScroll: (segment: String, page: Int)?
+    private var handledJumpID: UUID?
     private var relayoutScheduled = false
 
     private var pageViews: [WebtoonItemKind: WebtoonPageView] = [:]
@@ -120,6 +121,15 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         case .loaded:
             if strip.isEmpty || session.chapter.id != currentChapterID || !strip.contains(session.chapter.id) {
                 rebuildFromSession()
+            }
+            // A bookmark opened from the menu: scroll to its page.
+            if let jump = session.pageJump, jump.id != handledJumpID {
+                handledJumpID = jump.id
+                if strip.contains(jump.chapterID) {
+                    driver.stop()
+                    pendingScroll = (jump.chapterID, jump.page)
+                    relayout(preserve: false)
+                }
             }
         }
     }

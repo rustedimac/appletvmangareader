@@ -156,7 +156,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             let metadata: KavitaSeriesMetadataDTO? = try? await client.get("api/Series/metadata", query: ["seriesId": seriesID])
             let series = try await seriesTask
             let volumes = try await volumesTask
-            return SeriesDetail(
+            var detail = SeriesDetail(
                 summary: summary(series),
                 synopsis: metadata?.summary,
                 authors: metadata?.writers?.map(\.name) ?? [],
@@ -165,6 +165,9 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                 chapters: Self.chapters(from: volumes, seriesRef: ref(id),
                                         seriesFormat: ContentFormat(kavitaFormat: series.format))
             )
+            // Kavita sends 0001-01-01 for "never".
+            detail.latestChapterAt = series.lastChapterAdded.flatMap { $0.timeIntervalSince1970 > 0 ? $0 : nil }
+            return detail
         }
     }
 

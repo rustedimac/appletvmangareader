@@ -198,6 +198,9 @@ public struct SeriesDetail: Codable, Hashable, Sendable {
     public var status: String?
     /// Chapters sorted in reading order (first to last).
     public var chapters: [Chapter]
+    /// When the server last added a chapter, if it tracks that (Kavita's
+    /// `lastChapterAdded`). See `latestChapterDate`.
+    public var latestChapterAt: Date? = nil
 
     public init(summary: SeriesSummary, synopsis: String?, authors: [String], genres: [String],
                 status: String?, chapters: [Chapter]) {
