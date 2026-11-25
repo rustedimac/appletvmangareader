@@ -28,6 +28,10 @@ targets:
         UILaunchScreen: {}
         UIRequiredDeviceCapabilities: [arm64]
         UIUserInterfaceStyle: Automatic
+        # iCloud sync turns on when this is an iCloud container id. Empty by
+        # default so builds without a paid Apple Developer membership work;
+        # see docs/ICLOUD.md.
+        MRCloudKitContainer: $(MR_ICLOUD_CONTAINER)
         NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
         # Servers are plain HTTP on home hostnames (e.g. kavita.home). Don't add
         # NSAllowsLocalNetworking: when present, ATS ignores NSAllowsArbitraryLoads
@@ -37,6 +41,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReader
+        # Set to iCloud.com.rustedimac.MangaReader once the iCloud capability
+        # is enabled (docs/ICLOUD.md). Empty = sync off, nothing else changes.
+        MR_ICLOUD_CONTAINER: ""
         TARGETED_DEVICE_FAMILY: "3"
         CODE_SIGN_STYLE: Automatic
   MangaReaderUITests:

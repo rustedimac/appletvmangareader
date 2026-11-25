@@ -19,6 +19,8 @@ final class AppModel {
     /// Builds server clients, limited to a set of library/category ids (nil
     /// for all). UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
+    /// Called after every saved change; iCloud sync listens here.
+    @ObservationIgnored var onStateChange: (@MainActor () -> Void)?
     @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, Set<String>?, HTTPTransport) -> MangaServer = {
         MangaServerFactory.make(config: $0, credential: $1, categoryScope: $2, transport: $3)
     }
@@ -49,6 +51,12 @@ final class AppModel {
     func update(_ change: (inout AppState) -> Void) {
         change(&state)
         stateStore.save(state)
+        onStateChange?()
+    }
+
+    /// Drops cached server clients, e.g. after sync changed servers or logins.
+    func resetClients() {
+        clientCache.removeAll()
     }
 
     var activeProfile: Profile { state.activeProfile ?? Profile(name: "Me") }
