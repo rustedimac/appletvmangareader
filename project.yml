@@ -20,6 +20,12 @@ targets:
       - App/Resources
     dependencies:
       - package: MangaCore
+    entitlements:
+      path: App/MangaReader.entitlements
+      properties:
+        # Each Apple TV user is their own profile; servers are shared
+        # through the user-independent keychain (see AppleTVUsers.swift).
+        com.apple.developer.user-management: [runs-as-current-user-with-user-independent-keychain]
     info:
       path: App/Info.plist
       properties:
