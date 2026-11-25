@@ -105,6 +105,8 @@ signed-in user. Only `UI_LOGIN` maps a login to a user.
 - Conflicts: latest wins, per chapter. A queued local change is pushed only
   if it is newer than the server's `lastReadAt` for that chapter;
   otherwise the server's state wins and the queued change is dropped.
+  Marking chapters or a series unread drops their queued changes, so an
+  old push can't mark them read again.
 - Resume point: the in-progress chapter read most recently, else the first
   unread chapter after the last one read (Kavita's continue-point rule),
   else the first chapter.

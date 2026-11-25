@@ -28,28 +28,39 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
     public var series: SeriesSummary?
     /// Changes not yet confirmed by the server, oldest first.
     public var pending: [PendingProgress]
+    /// Chapters this profile marked unread. They show as unread even when
+    /// the server (another profile's progress) says they're read.
+    public var unreadChapterIDs: Set<String>
+    /// Set when this profile marked the whole series unread: from then on
+    /// only local progress counts and the server's read state is ignored.
+    public var ignoresServerProgress: Bool
 
     public init(chapterID: String, page: Int, updatedAt: Date = Date(), readChapterIDs: Set<String> = [],
+                unreadChapterIDs: Set<String> = [], ignoresServerProgress: Bool = false,
                 series: SeriesSummary? = nil, pending: [PendingProgress] = []) {
         self.chapterID = chapterID
         self.page = page
         self.updatedAt = updatedAt
         self.readChapterIDs = readChapterIDs
+        self.unreadChapterIDs = unreadChapterIDs
+        self.ignoresServerProgress = ignoresServerProgress
         self.series = series
         self.pending = pending
     }
 
     private enum CodingKeys: String, CodingKey {
-        case chapterID, page, updatedAt, readChapterIDs, series, pending
+        case chapterID, page, updatedAt, readChapterIDs, unreadChapterIDs, ignoresServerProgress, series, pending
     }
 
-    // Older saved state has no series or pending fields.
+    // Older saved state has no unread, series or pending fields.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         chapterID = try c.decode(String.self, forKey: .chapterID)
         page = try c.decode(Int.self, forKey: .page)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
         readChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .readChapterIDs) ?? []
+        unreadChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .unreadChapterIDs) ?? []
+        ignoresServerProgress = try c.decodeIfPresent(Bool.self, forKey: .ignoresServerProgress) ?? false
         series = try c.decodeIfPresent(SeriesSummary.self, forKey: .series)
         pending = try c.decodeIfPresent([PendingProgress].self, forKey: .pending) ?? []
     }
@@ -61,6 +72,8 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
         try c.encode(page, forKey: .page)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.encode(readChapterIDs, forKey: .readChapterIDs)
+        if !unreadChapterIDs.isEmpty { try c.encode(unreadChapterIDs, forKey: .unreadChapterIDs) }
+        if ignoresServerProgress { try c.encode(true, forKey: .ignoresServerProgress) }
         try c.encodeIfPresent(series, forKey: .series)
         if !pending.isEmpty { try c.encode(pending, forKey: .pending) }
     }
@@ -261,7 +274,32 @@ public struct AppState: Codable, Hashable, Sendable {
             p.updatedAt = now
             if let series { p.series = series.withoutSecrets }
             if completed { p.readChapterIDs.insert(chapterID) }
+            // Reading a chapter again means its progress is real, not a reset.
+            p.unreadChapterIDs.remove(chapterID)
             data.progress[ref.storageKey] = p
+        }
+    }
+
+    /// Marks chapters of one series unread for this profile: drops them
+    /// from the read set and resets the page if one was the open chapter.
+    public mutating func markUnread(_ ref: SeriesRef, chapterIDs: Set<String>, profile: UUID, now: Date = Date()) {
+        guard !chapterIDs.isEmpty else { return }
+        mutateData(profile) { data in
+            var p = data.progress[ref.storageKey] ?? SeriesProgress(chapterID: "", page: 0, updatedAt: now)
+            p.readChapterIDs.subtract(chapterIDs)
+            if !p.ignoresServerProgress { p.unreadChapterIDs.formUnion(chapterIDs) }
+            if chapterIDs.contains(p.chapterID) { p.page = 0 }
+            p.updatedAt = now
+            data.progress[ref.storageKey] = p
+        }
+    }
+
+    /// Marks a whole series unread for this profile. Server read state is
+    /// ignored from now on, so profiles that don't sync see it unread too.
+    public mutating func markSeriesUnread(_ ref: SeriesRef, profile: UUID, now: Date = Date()) {
+        mutateData(profile) { data in
+            data.progress[ref.storageKey] = SeriesProgress(chapterID: "", page: 0, updatedAt: now,
+                                                           ignoresServerProgress: true)
         }
     }
 
@@ -271,8 +309,13 @@ public struct AppState: Codable, Hashable, Sendable {
         guard let p = progress(detail.summary.ref, profile: profile) else { return detail }
         var d = detail
         for i in d.chapters.indices {
-            if p.readChapterIDs.contains(d.chapters[i].id) { d.chapters[i].isRead = true }
-            if d.chapters[i].id == p.chapterID { d.chapters[i].lastPageRead = p.page }
+            let id = d.chapters[i].id
+            if p.ignoresServerProgress || p.unreadChapterIDs.contains(id) {
+                d.chapters[i].isRead = false
+                d.chapters[i].lastPageRead = 0
+            }
+            if p.readChapterIDs.contains(id) { d.chapters[i].isRead = true }
+            if id == p.chapterID { d.chapters[i].lastPageRead = p.page }
         }
         return d
     }
