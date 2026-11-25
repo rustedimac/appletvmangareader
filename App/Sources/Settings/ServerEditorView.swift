@@ -197,6 +197,8 @@ struct ServerEditorView: View {
                 : "Each profile can sign in as its own Kavita user."
         case .suwayomi:
             return "Only needed if the server asks for a login."
+        case .freeLibrary:
+            return ""
         }
     }
 

@@ -169,6 +169,8 @@ final class AppModel {
                 credential.suwayomiLogin = await SuwayomiClient.detectLoginMode(
                     config: server, username: user, password: credential.password ?? "", transport: transport)
             }
+        case .freeLibrary:
+            break
         }
         return credential
     }
