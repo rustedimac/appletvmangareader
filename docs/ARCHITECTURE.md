@@ -26,6 +26,14 @@
 - **All persisted changes go through `AppModel.update { }`**, which mutates
   `AppState` and saves it. Add new persisted fields to `AppState` /
   `ProfileData` with tests in `AppStateTests`.
+- **An update must never reset saved state.** New stored fields decode with
+  a default when missing (`decodeIfPresent`, or an optional). Every shape a
+  merged build has written is a fixture in `AppStateUpgradeTests`; when you
+  change what `AppState` stores, add the JSON the build before your change
+  writes. Renames or moves bump `AppState.currentVersion` with an
+  `AppStateUpgrade.step`. If the normal decode still fails, `StateStore`
+  salvages what it can entry by entry and keeps the original bytes under
+  `StateStore.backupKey`.
 - **Secrets never go in `AppState`.** Credentials are per profile, per server,
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
@@ -103,8 +111,16 @@ page on screen. See `SpreadLayoutTests` for the exact rules.
 - Webtoon reader: `session.reportVisiblePage(_:)` as it scrolls.
 - Both: `session.reportSize(_:forPage:)` when an image's pixel size is known.
 - Menu: `session.updateSettings(_:)` applies live and saves for the series.
-- Progress goes through `AppModel.recordProgress`, two seconds after the
-  last page turn, on chapter change, and on close.
+- Progress is saved locally on every page change
+  (`AppModel.recordLocalProgress`), so a crash or force quit never loses
+  the page. The server push (`AppModel.recordProgress`) waits two seconds
+  after the last page turn, and also runs on chapter change, on close and
+  when the app leaves the foreground.
+- A chapter opened without a page resumes exactly where it was left
+  (`ResumePosition`: this session's position, then local progress unless
+  the server's is newer, then the server's). The previous chapter, reached
+  from the start of the next one, opens on its last page; the next chapter
+  opens on its first.
 
 ## Images
 
