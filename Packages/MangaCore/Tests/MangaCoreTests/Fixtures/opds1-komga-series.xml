@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>0SB719FFDC3VJ</id>
+  <title>Lantern Courier</title>
+  <updated>2026-11-25T08:56:54Z</updated>
+  <author>
+    <name>Komga</name>
+    <uri>https://github.com/gotson/komga</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="http://komga.local:25600/opds/v1.2/series/0SB719FFDC3VJ"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="http://komga.local:25600/opds/v1.2/catalog"/>
+  <entry>
+    <title>The First Delivery</title>
+    <updated>2026-11-25T08:56:56.844Z</updated>
+    <id>0SB719FFDC3VK</id>
+    <content>cbz - 201.6 KiB</content>
+    <author>
+      <name>Aiko Example</name>
+    </author>
+    <author>
+      <name>Ren Sample</name>
+    </author>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VK/thumbnail/small"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VK/thumbnail"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VK/file/Test%20Pattern%20Alpha%20v01.cbz"/>
+    <link xmlns:pse="http://vaemendis.net/opds-pse/ns" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VK/pages/{pageNumber}" pse:count="6" pse:lastRead="3" pse:lastReadDate="2026-11-25T08:57:56Z" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream"/>
+  </entry>
+  <entry>
+    <title>Lantern Courier v02</title>
+    <updated>2026-11-25T08:56:56.851Z</updated>
+    <id>0SB719FFDC3VM</id>
+    <content>cbz - 151.2 KiB</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VM/thumbnail/small"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VM/thumbnail"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VM/file/Test%20Pattern%20Alpha%20v02.cbz"/>
+    <link xmlns:pse="http://vaemendis.net/opds-pse/ns" href="http://komga.local:25600/opds/v1.2/books/0SB719FFDC3VM/pages/{pageNumber}" pse:count="5" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream"/>
+  </entry>
+</feed>

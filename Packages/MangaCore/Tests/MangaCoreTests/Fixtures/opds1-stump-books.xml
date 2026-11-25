@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>allBooks</id>
+  <title>All Books</title>
+  <updated>2026-11-25T09:17:44.847938146+00:00</updated>
+  <author>
+    <name>Stump</name>
+    <uri>https://github.com/stumpapp/stump</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="/opds/v1.2/books?page=1"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="/opds/v1.2/catalog"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="previous" href="/opds/v1.2/books?page=0"/>
+  <entry>
+    <title>Lantern Courier v01</title>
+    <id>8d29a722-28da-4c0d-abb3-30f5511f3167</id>
+    <updated>2026-11-25T09:17:44.847903318+00:00</updated>
+    <content type="html">0.2 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/file/Test%20Pattern%20Alpha%20v01.cbz"/>
+    <link href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="6"/>
+  </entry>
+  <entry>
+    <title>Lantern Courier v02</title>
+    <id>ca1e7ac5-595e-4a0c-a855-358d079e3942</id>
+    <updated>2026-11-25T09:17:44.847909597+00:00</updated>
+    <content type="html">0.1 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/file/Test%20Pattern%20Alpha%20v02.cbz"/>
+    <link href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="5"/>
+  </entry>
+  <entry>
+    <title>Paper Moon Post v01</title>
+    <id>877a7c51-9a17-4758-b5ee-2f1287c0f75c</id>
+    <updated>2026-11-25T09:17:44.847913553+00:00</updated>
+    <content type="html">0.1 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/file/Test%20Pattern%20Beta%20v01.cbz"/>
+    <link href="/opds/v1.2/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="4"/>
+  </entry>
+  <entry>
+    <title>Harbor Lights 001</title>
+    <id>abc8e094-4897-4e91-831d-ff27ab7dc25a</id>
+    <updated>2026-11-25T09:17:44.847917236+00:00</updated>
+    <content type="html">0.1 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/file/Test%20Pattern%20Gamma%20001.cbz"/>
+    <link href="/opds/v1.2/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="4"/>
+  </entry>
+</feed>
