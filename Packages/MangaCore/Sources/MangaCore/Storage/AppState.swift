@@ -100,6 +100,10 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
     /// `autoScrollLevel`.
     public var webtoonAutoScrollLevel: Int? = nil
+    /// Title and cover of series this profile has read, keyed by
+    /// `SeriesRef.storageKey`, so Continue Reading on the Top Shelf can draw
+    /// them without the server. Optional so older saved state decodes.
+    public var recentSeries: [String: SeriesSummary]?
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
@@ -109,6 +113,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 bookSettings: BookSettings? = nil,
                 bookmarks: [Bookmark] = [],
                 favoritesSort: FavoritesSort = .default,
+                recentSeries: [String: SeriesSummary]? = nil,
                 browse: BrowsePreferences? = nil) {
         self.bookSettings = bookSettings
         self.serverSettings = serverSettings
@@ -118,11 +123,12 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.readerOverrides = readerOverrides
         self.bookmarks = bookmarks
         self.favoritesSort = favoritesSort
+        self.recentSeries = recentSeries
         self.browse = browse
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, browse
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse
     }
 
     // State saved by older versions lacks the newer fields.
@@ -138,6 +144,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
         webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        // A damaged list only loses Top Shelf titles, never the profile.
+        recentSeries = try? c.decodeIfPresent([String: SeriesSummary].self, forKey: .recentSeries)
         // A browse shape this build can't read falls back to defaults.
         browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
     }
@@ -153,6 +161,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
         if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
+        try c.encodeIfPresent(recentSeries, forKey: .recentSeries)
         try c.encodeIfPresent(browse, forKey: .browse)
     }
 }
@@ -276,6 +285,7 @@ public struct AppState: Codable, Hashable, Sendable {
             data.bookmarks.removeAll { $0.series.ref.serverID == id }
             data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
             data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
+            data.recentSeries = data.recentSeries?.filter { !$0.key.hasPrefix(prefix) }
             data.browse?.removeServer(id)
             profileData[key] = data
         }
