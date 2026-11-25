@@ -149,11 +149,14 @@ the server editor and category picker) uses the tvOS Settings layout:
   with `role: .destructive` and a confirmation dialog.
 
 ```swift
-SettingsPage(systemImage: "book") {
-    Form { … }
-}
-.navigationTitle("Default Reader Settings")
+Form { … }
+    .settingsPage(systemImage: "book")
+    .navigationTitle("Default Reader Settings")
 ```
+
+`.settingsPage(hero:)` takes any view for the hero column (the profile
+screens show the avatar). `SettingsPage { } content: { }` is the same thing
+as a container.
 
 ### Buttons
 

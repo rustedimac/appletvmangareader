@@ -52,3 +52,16 @@ struct SettingsHeroSymbol: View {
             .foregroundStyle(.secondary)
     }
 }
+
+extension View {
+    /// Puts this form in a `SettingsPage` with a large symbol beside it.
+    /// A modifier rather than a wrapper so screens don't need re-indenting.
+    func settingsPage(systemImage: String) -> some View {
+        SettingsPage(systemImage: systemImage) { self }
+    }
+
+    /// Puts this form in a `SettingsPage` with a custom hero, e.g. an avatar.
+    func settingsPage<Hero: View>(@ViewBuilder hero: () -> Hero) -> some View {
+        SettingsPage(hero: hero) { self }
+    }
+}
