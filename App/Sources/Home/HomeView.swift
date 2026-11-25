@@ -68,7 +68,7 @@ struct HomeView: View {
     }
 
     private var reloadKey: String {
-        ([model.activeProfile.id.uuidString] + model.servers.map { "\($0.id)|\($0.baseURL)|\($0.name)" })
+        ([model.activeProfile.id.uuidString] + model.servers.map { "\($0.id)|\($0.baseURL)|\($0.name)|\(model.scopeKey(for: $0))" })
             .joined(separator: ",")
     }
 

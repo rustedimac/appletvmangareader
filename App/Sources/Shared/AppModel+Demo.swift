@@ -10,12 +10,15 @@ extension AppModel {
     func installDemoServers() {
         var demos: [UUID: SampleLibraryServer] = [:]
         let seedsProgress = ProcessInfo.processInfo.arguments.contains("-demoProgress")
-        makeClient = { config, _, _ in
-            if let existing = demos[config.id] { return existing }
-            let server = SampleLibraryServer(config: config)
-            if seedsProgress { server.seedProgress(read: 2, inProgressPage: 5) }
-            demos[config.id] = server
-            return server
+        makeClient = { config, _, scope, _ in
+            // Scoped copies of one instance per server share its progress.
+            let base = demos[config.id] ?? {
+                let server = SampleLibraryServer(config: config)
+                if seedsProgress { server.seedProgress(read: 2, inProgressPage: 5) }
+                return server
+            }()
+            demos[config.id] = base
+            return base.scoped(to: scope)
         }
         let base = URL(string: "https://demo.invalid")!
         for (kind, name) in [(ServerKind.kavita, "Demo Kavita"), (.suwayomi, "Demo Suwayomi")]

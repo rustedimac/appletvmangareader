@@ -35,6 +35,36 @@
   server syncs there and others keep progress locally
   (`ProfileServerSettings.syncProgressToServer`).
 
+## Choosing libraries to import
+
+Each profile picks which Kavita libraries or Suwayomi categories it imports
+from each server (`ProfileServerSettings.selectedCategoryIDs`, nil = all,
+which is also what servers saved before this setting get). The server
+editor shows the checklist once a connection test succeeds, and right away
+when editing; the Library tab's "Choose Libraries/Categories" button opens
+the same list (`CategorySelectionView`). `CategorySelection` holds the
+rules: everything ticked is stored as nil so libraries added to the server
+later show up too, and at least one must be ticked.
+
+`AppModel.client(for:)` builds clients limited to the selection
+(`MangaServerFactory.make(categoryScope:)`), so Home, Library, Search and
+the server's categories all follow it. Favorites are filtered with
+`AppState.visibleFavorites`, using the library/categories stored on each
+`SeriesSummary` (favorites saved without them always show).
+
+- Kavita: newly added sends a FilterV2 `Libraries contains 1,2` statement;
+  On Deck passes `libraryId` when one library is picked and otherwise
+  over-fetches and filters; recently updated and search have no library
+  filter, so results are filtered by `libraryId`.
+- Suwayomi: manga queries add `filter: {categoryId: {in: [...]}}`, and
+  Default (id 0) is matched with `{categoryId: {isNull: true}}`. Chapter
+  feeds first fetch the ids of manga in the picked categories and pass
+  `mangaId: {in: $ids}`. Every manga query also fetches
+  `categories { nodes { id } }`, and an empty list means Default.
+
+Every client also drops anything outside the selection after the server
+answers, as a safety net.
+
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 
 Kavita

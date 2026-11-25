@@ -12,7 +12,9 @@ public protocol MangaServer: Sendable {
     /// of the server (e.g. version) for the "Test connection" button.
     func validate() async throws -> String
 
-    /// Kavita libraries or Suwayomi categories.
+    /// The Kavita libraries or Suwayomi categories this client imports
+    /// (see `MangaServerFactory.make(categoryScope:)`). Feeds and search
+    /// only return series from these.
     func categories() async throws -> [MangaCategory]
 
     /// Series in a category, `page` starting at 1.
@@ -53,12 +55,26 @@ public extension MangaServer {
 
 /// Creates the right client for a saved server.
 public enum MangaServerFactory {
-    public static func make(config: ServerConfig, credential: ServerCredential?, transport: HTTPTransport = URLSessionTransport()) -> MangaServer {
+    /// `categoryScope` limits the client to these library/category ids
+    /// (`ProfileServerSettings.selectedCategoryIDs`); nil means everything.
+    public static func make(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>? = nil,
+                            transport: HTTPTransport = URLSessionTransport()) -> MangaServer {
         switch config.kind {
         case .kavita:
-            return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", transport: transport)
+            return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", categoryScope: categoryScope,
+                                transport: transport)
         case .suwayomi:
-            return SuwayomiClient(config: config, username: credential?.username, password: credential?.password, transport: transport)
+            return SuwayomiClient(config: config, username: credential?.username, password: credential?.password,
+                                  categoryScope: categoryScope, transport: transport)
         }
+    }
+}
+
+extension Sequence where Element == SeriesSummary {
+    /// Drops series outside `scope` (nil keeps everything) and repeats.
+    func scoped(to scope: Set<String>?) -> [SeriesSummary] {
+        let settings = ProfileServerSettings(selectedCategoryIDs: scope)
+        var seen = Set<SeriesRef>()
+        return filter { settings.includes($0) && seen.insert($0.ref).inserted }
     }
 }
