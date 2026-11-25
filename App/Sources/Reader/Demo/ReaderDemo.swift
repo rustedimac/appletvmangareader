@@ -11,8 +11,17 @@ import MangaCore
 /// - `-readerLayout single|double`
 /// - `-readerMode paged|webtoon` and `-readerWebtoonWidth <0.3...1.0>`
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
+/// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
+///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
 enum ReaderDemo {
     static var isEnabled: Bool { ProcessInfo.processInfo.arguments.contains("-readerDemo") }
+
+    /// Short timeouts and pauses so UI tests of failing pages stay quick:
+    /// two attempts per load, 1.5 s each by default.
+    static let retryPolicy: RetryPolicy = {
+        let timeout = Double(UserDefaults.standard.string(forKey: "readerAttemptTimeout") ?? "") ?? 1.5
+        return RetryPolicy(maxAttempts: 2, attemptTimeout: timeout, initialDelay: 0.2, maxDelay: 0.2)
+    }()
 
     static let server = DemoMangaServer()
 
@@ -139,6 +148,55 @@ enum DemoPageRenderer {
             ]
             let t = text.size(withAttributes: attrs)
             text.draw(at: CGPoint(x: (size.width - t.width) / 2, y: (size.height - t.height) / 2), withAttributes: attrs)
+        }
+    }
+}
+
+/// Makes demo pages fail, for testing the reader's retries.
+///
+/// `-readerPageFaults` is a comma-separated list of
+/// `<chapter>.<page>=<mode><count>`: chapter 1-based, page 0-based, mode
+/// `fail` (HTTP 503) or `hang` (never answers, so the attempt times out),
+/// applied to that page's first `count` requests. `1.2=fail3` fails
+/// chapter 1's third page three times, then serves it. A page listed with
+/// `fail999` never loads.
+final class DemoPageFaults: @unchecked Sendable {
+    enum Mode { case fail, hang }
+
+    static let shared = DemoPageFaults(spec: UserDefaults.standard.string(forKey: "readerPageFaults") ?? "")
+
+    private let lock = NSLock()
+    private var rules: [String: (mode: Mode, count: Int)] = [:]
+    private var requests: [String: Int] = [:]
+
+    init(spec: String) {
+        for entry in spec.split(separator: ",") {
+            let parts = entry.split(separator: "=")
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            let rule = parts[1].trimmingCharacters(in: .whitespaces)
+            let mode: Mode = rule.hasPrefix("hang") ? .hang : .fail
+            let count = Int(rule.drop(while: { $0.isLetter })) ?? 1
+            rules[key] = (mode, count)
+        }
+    }
+
+    /// Throws or hangs if this request should fail; returns otherwise.
+    func apply(to url: URL) async throws {
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func value(_ name: String) -> String { items.first { $0.name == name }?.value ?? "" }
+        let key = "\(value("chapter")).\(value("page"))"
+        lock.lock()
+        let n = requests[key, default: 0]
+        requests[key] = n + 1
+        let rule = rules[key]
+        lock.unlock()
+        guard let rule, n < rule.count else { return }
+        switch rule.mode {
+        case .fail:
+            throw MangaError.http(status: 503, body: "demo fault")
+        case .hang:
+            try await Task.sleep(nanoseconds: 600_000_000_000)
         }
     }
 }

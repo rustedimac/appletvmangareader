@@ -92,6 +92,10 @@ final class WebtoonPageView: UIView {
     private var image: WebtoonPageImage?
     private var tileLayers: [CALayer] = []
     private let spinner = UIActivityIndicatorView(style: .large)
+    private let failureView = WebtoonPageFailureView()
+    /// The page didn't load; it shows why and how to retry.
+    private(set) var isShowingFailure = false
+    private var pageLabel = ""
     static let placeholderColor = UIColor(white: 0.5, alpha: 0.12)
 
     override init(frame: CGRect) {
@@ -100,6 +104,8 @@ final class WebtoonPageView: UIView {
         isAccessibilityElement = true
         spinner.hidesWhenStopped = true
         addSubview(spinner)
+        failureView.isHidden = true
+        addSubview(failureView)
         showPlaceholder()
     }
 
@@ -113,7 +119,8 @@ final class WebtoonPageView: UIView {
         }
         self.kind = kind
         self.url = url
-        accessibilityLabel = label
+        pageLabel = label
+        accessibilityLabel = isShowingFailure ? "\(label) didn't load" : label
         accessibilityIdentifier = identifier
     }
 
@@ -135,12 +142,34 @@ final class WebtoonPageView: UIView {
         shownWidth = nil
         backgroundColor = Self.placeholderColor
         accessibilityValue = "loading"
+        accessibilityLabel = pageLabel
+        accessibilityHint = nil
+        isShowingFailure = false
+        failureView.isHidden = true
         spinner.startAnimating()
+    }
+
+    /// The page couldn't be loaded even after automatic retries. The strip
+    /// keeps its place; Select retries the failed pages on screen.
+    func showFailure(_ message: String, pageNumber: Int) {
+        if !isShowingFailure { showPlaceholder() }
+        isShowingFailure = true
+        spinner.stopAnimating()
+        failureView.configure(title: "Page \(pageNumber) didn't load", message: message)
+        failureView.isHidden = false
+        accessibilityValue = "failed"
+        accessibilityLabel = "\(pageLabel) didn't load"
+        accessibilityHint = "Press Select to retry"
+        setNeedsLayout()
     }
 
     func show(_ image: WebtoonPageImage) {
         self.image = image
         shownWidth = image.displayWidth
+        isShowingFailure = false
+        failureView.isHidden = true
+        accessibilityLabel = pageLabel
+        accessibilityHint = nil
         spinner.stopAnimating()
         backgroundColor = .clear
         accessibilityValue = "loaded"
@@ -164,6 +193,9 @@ final class WebtoonPageView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         spinner.center = CGPoint(x: bounds.midX, y: min(bounds.midY, 300))
+        let size = failureView.sizeThatFits(CGSize(width: min(bounds.width - 40, 760), height: bounds.height))
+        failureView.frame = CGRect(x: (bounds.width - size.width) / 2, y: max(0, min(bounds.midY, 360) - size.height / 2),
+                                   width: size.width, height: size.height)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layoutTiles()
@@ -182,6 +214,78 @@ final class WebtoonPageView: UIView {
             let maxY = (bounds.height * CGFloat(tile.displayY + tile.displayHeight) / total * scale).rounded() / scale
             layer.frame = CGRect(x: 0, y: y, width: bounds.width, height: maxY - y)
         }
+    }
+}
+
+/// "Page 4 didn't load", the reason, and a Retry pill drawn as the
+/// focused control: the strip holds focus, and Select retries.
+final class WebtoonPageFailureView: UIView {
+    private let icon = UIImageView(image: UIImage(systemName: "exclamationmark.triangle"))
+    private let titleLabel = UILabel()
+    private let messageLabel = UILabel()
+    private let retryLabel = PaddedLabel()
+    private let stack = UIStackView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        icon.tintColor = .secondaryLabel
+        icon.contentMode = .scaleAspectFit
+        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .title2)
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        titleLabel.textColor = .label
+        messageLabel.font = .preferredFont(forTextStyle: .callout)
+        messageLabel.textColor = .secondaryLabel
+        messageLabel.numberOfLines = 2
+        for label in [titleLabel, messageLabel] { label.textAlignment = .center }
+        retryLabel.text = "Retry"
+        retryLabel.font = .preferredFont(forTextStyle: .headline)
+        retryLabel.textColor = .black
+        retryLabel.backgroundColor = .white
+        retryLabel.layer.cornerRadius = 12
+        retryLabel.layer.masksToBounds = true
+        retryLabel.textAlignment = .center
+        let hint = UILabel()
+        hint.text = "Press Select to retry"
+        hint.font = .preferredFont(forTextStyle: .caption1)
+        hint.textColor = .secondaryLabel
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 14
+        [icon, titleLabel, messageLabel, retryLabel, hint].forEach(stack.addArrangedSubview)
+        addSubview(stack)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    func configure(title: String, message: String) {
+        titleLabel.text = title
+        messageLabel.text = message
+        setNeedsLayout()
+    }
+
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        let fitted = stack.systemLayoutSizeFitting(CGSize(width: size.width, height: UIView.layoutFittingCompressedSize.height),
+                                                   withHorizontalFittingPriority: .fittingSizeLevel,
+                                                   verticalFittingPriority: .fittingSizeLevel)
+        return CGSize(width: min(size.width, max(fitted.width, 300)), height: fitted.height)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        stack.frame = bounds
+    }
+}
+
+/// A label with room around its text, for the Retry pill.
+final class PaddedLabel: UILabel {
+    var insets = UIEdgeInsets(top: 10, left: 36, bottom: 10, right: 36)
+
+    override func drawText(in rect: CGRect) { super.drawText(in: rect.inset(by: insets)) }
+
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        return CGSize(width: size.width + insets.left + insets.right, height: size.height + insets.top + insets.bottom)
     }
 }
 
