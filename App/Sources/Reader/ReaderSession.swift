@@ -2,6 +2,14 @@ import Foundation
 import Observation
 import MangaCore
 
+/// What the webtoon strip does for game controller input.
+@MainActor
+protocol WebtoonInputTarget: AnyObject {
+    func jumpPage(forward: Bool)
+    func toggleAutoScroll()
+    func stickMoved(y: Double)
+}
+
 /// State shared by every reader mode for one reading session: the series,
 /// its chapters, the open chapter's pages and their sizes, where the reader
 /// is, and the reader settings. The paged reader, the webtoon reader and
@@ -14,16 +22,14 @@ import MangaCore
 /// - Call `reportSize(_:forPage:)` when an image arrives and its pixel size
 ///   is known. Spreads re-lay out and the current page stays on screen.
 /// - Menu: call `updateSettings(_:)`; it applies live and saves per series.
-/// - Progress is saved through `AppModel.recordProgress`, debounced, on
-///   chapter change, and on `close()`.
-/// What the webtoon strip does for game controller input.
-@MainActor
-protocol WebtoonInputTarget: AnyObject {
-    func jumpPage(forward: Bool)
-    func toggleAutoScroll()
-    func stickMoved(y: Double)
-}
-
+/// - Progress is written to this profile's saved state on every page
+///   change (`AppModel.recordLocalProgress`), so nothing is lost if the app
+///   is killed. The server push (`AppModel.recordProgress`) is debounced and
+///   also happens on chapter change, `close()` and when the app leaves the
+///   foreground (`flushProgress()`).
+/// - A chapter opened without a page resumes exactly where it was left
+///   (`ResumePosition`); the previous chapter, reached from the start of
+///   the next one, opens on its last page.
 @MainActor
 @Observable
 final class ReaderSession {
@@ -61,6 +67,10 @@ final class ReaderSession {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var lastSaved: SavedProgress?
+    /// Last position written to local state.
+    @ObservationIgnored private var lastLocal: SavedProgress?
+    /// Where each chapter was left during this session, by chapter id.
+    @ObservationIgnored private var visitedPages: [String: Int] = [:]
     @ObservationIgnored private var started = false
     /// How long page turns settle before progress is written.
     @ObservationIgnored var saveDelay: Duration = .seconds(2)
@@ -140,6 +150,7 @@ final class ReaderSession {
         sizes = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
+        lastLocal = nil
         let task = Task { [server] in
             do {
                 let loaded = try await server.pages(for: chapter)
@@ -166,7 +177,7 @@ final class ReaderSession {
         var known: [Int: PageSize] = [:]
         for (i, page) in ordered.enumerated() { if let size = page.size { known[i] = size } }
         sizes = known
-        let resume = startPage ?? (chapter.isRead ? 0 : chapter.lastPageRead)
+        let resume = startPage ?? model.resumePage(for: chapter, sessionPage: visitedPages[chapter.id])
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: resume)
         loadState = .loaded
@@ -186,8 +197,9 @@ final class ReaderSession {
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
         lastSaved = nil
+        lastLocal = nil
         loadState = .loaded
-        scheduleSave()
+        progressChanged()
     }
 
     /// Moves to the next chapter in reading order. Returns false at the end.
@@ -232,7 +244,7 @@ final class ReaderSession {
     private func handle(_ result: PageTurnResult) {
         switch result {
         case .moved, .showTransition:
-            scheduleSave()
+            progressChanged()
         case .leaveChapter(let edge):
             guard chapter(across: edge) != nil else { return }
             Task {
@@ -247,13 +259,13 @@ final class ReaderSession {
     func reportVisiblePage(_ page: Int) {
         guard loadState == .loaded, page != navigator.currentPage || navigator.edge != nil else { return }
         navigator.go(toPage: page)
-        scheduleSave()
+        progressChanged()
     }
 
     /// Jumps the paged reader to a page.
     func go(toPage page: Int) {
         navigator.go(toPage: page)
-        scheduleSave()
+        progressChanged()
     }
 
     /// Records a page's pixel size once its image is known.
@@ -322,6 +334,22 @@ final class ReaderSession {
                              completed: navigator.isChapterComplete)
     }
 
+    /// Saves the position locally right away and schedules the server push.
+    private func progressChanged() {
+        writeLocalProgress()
+        scheduleSave()
+    }
+
+    /// Writes the position to this profile's saved state if it moved. Cheap
+    /// enough for every page turn; survives the app being killed.
+    private func writeLocalProgress() {
+        guard let progress = pendingProgress else { return }
+        visitedPages[progress.chapterID] = progress.page
+        guard progress != lastLocal else { return }
+        lastLocal = progress
+        model.recordLocalProgress(chapter: chapter, page: progress.page, completed: progress.completed)
+    }
+
     private func scheduleSave() {
         saveTask?.cancel()
         let delay = saveDelay
@@ -336,6 +364,7 @@ final class ReaderSession {
     func flushProgress() {
         saveTask?.cancel()
         saveTask = nil
+        writeLocalProgress()
         guard let progress = pendingProgress, progress != lastSaved else { return }
         // Never move a finished chapter back to unread.
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
