@@ -96,6 +96,7 @@ struct CategorySelectionView: View {
 
     var body: some View {
         Form {
+            ScreenTitle("\(server.name) \(server.kind.categoryNoun)")
             Section {
                 CategoryChecklist(kind: server.kind, load: $load, retry: { Task { await fetch() } })
             } header: {
@@ -114,7 +115,6 @@ struct CategorySelectionView: View {
                 .accessibilityIdentifier("categories.save")
             }
         }
-        .navigationTitle("\(server.name) \(server.kind.categoryNoun)")
         .task { if load == .idle { await fetch() } }
     }
 

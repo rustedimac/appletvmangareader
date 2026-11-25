@@ -16,6 +16,10 @@ enum ReaderDemo {
 
     static let server = DemoMangaServer()
 
+    /// The shared pipeline's code with a transport that draws demo pages,
+    /// and no disk cache, so the demo exercises the real image path.
+    static let pipeline = ImagePipeline(transport: DemoImageTransport(), diskDirectory: nil)
+
     struct RootView: View {
         @Environment(AppModel.self) private var model
         @State private var ready = false
@@ -33,6 +37,7 @@ enum ReaderDemo {
                         ?? Int(defaults.string(forKey: "readerStartPage") ?? "")
                     ReaderView(series: DemoMangaServer.series, chapters: chapters, start: chapters[n - 1],
                                startPage: startPage ?? 0, server: ReaderDemo.server)
+                        .environment(\.imagePipeline, ReaderDemo.pipeline)
                 }
             }
             .onAppear {
@@ -113,6 +118,15 @@ struct DemoMangaServer: MangaServer {
 
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
     func authorize(_ request: URLRequest) -> URLRequest { request }
+}
+
+/// Answers `demo://` image requests with drawn pages.
+struct DemoImageTransport: HTTPTransport {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard let url = request.url, url.scheme == DemoPageRenderer.scheme else { throw MangaError.notFound }
+        let data = DemoPageRenderer.pngData(for: url)
+        return (data, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
 }
 
 /// Draws demo pages: a colored page with its number in the middle.
