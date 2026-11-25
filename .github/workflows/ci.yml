@@ -28,6 +28,8 @@ jobs:
       # Literal radii, fixed font sizes, off-table text styles, Section("…")
       # headers and "Retry" labels (see tools/check_design_tokens.py).
       - run: python3 tools/check_design_tokens.py
+      # Every per-series reader setting has a global default.
+      - run: python3 tools/check_setting_scopes.py
 
   core-tests:
     name: MangaCore unit tests

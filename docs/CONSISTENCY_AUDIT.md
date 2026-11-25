@@ -24,6 +24,7 @@ to-do list for after those merge.
 | --- | --- | --- |
 | `tools/check_design_tokens.py` | CI `ui-lint` job (seconds, Linux) | Literal corner radii, fixed font sizes on text, `.footnote`/`.subheadline`/`.title`, `Section("…")` headers, "Retry" buttons. Existing cases in files open PRs are changing sit in a shrinking `BASELINE`; new files start at zero. |
 | `SyncCoverageTests` (MangaCore) | `swift test` | A new `AppState` or `ProfileData` field that nobody classified as synced, device-only, or a known sync gap. |
+| `tools/check_setting_scopes.py` | CI `ui-lint` | A `ReaderSettings` field (settable per series from the reader menu) with no row in Default Reader Settings. Book-specific fixes are exempt with a reason. |
 | `tools/check_pinned_headers.py` (existing) | CI `ui-lint` | `.navigationTitle`, and `.scrollClipDisabled()` on vertical scroll views. |
 
 ## 1. Reader controls
@@ -81,7 +82,25 @@ to-do list for after those merge.
 | C4 | Focus hops | `DispatchQueue.main.async { focus = … }` in `ReaderMenu`, `BookReaderMenu`, plus `asyncAfter` retries (0.1/0.4/1.0 s) in `WebtoonReaderView`. | One `.focusOnAppear(_:)` helper with the run-loop hop documented once. | Low | Open |
 | C5 | Tests | Consistent: MangaCore tests are XCTest `FooTests`, UI tests `FooUITests` with `testDoesSomething` names and `-uiTesting` launch flags. | Keep. | — | OK |
 
-## 6. Sync coverage
+## 6. Per-series settings and global defaults
+
+Rule (John, 2026-11-25): every per-series (or per-library) setting also has
+a global default, the narrower value only overrides it, and it can be reset
+to the default. Added to DESIGN_GUIDE §7 "Setting scopes".
+
+| # | Setting | Narrow scope | Global default today | Status |
+| --- | --- | --- | --- | --- |
+| G1 | Reading mode, direction, page layout, first page alone, background, column width, scroll per click | Per series (reader menu) | Default Reader Settings; menu has Set as Default / Reset to Default | OK, guarded |
+| G2 | Crop borders, page fit, click-to-zoom (#17) | Per series | Rows added to Default Reader Settings in #17 | OK (checked against #17's head), guarded |
+| G3 | Split wide pages, brightness, contrast, color, sharpen, upscaling (#35) | Per series | Rows added in #35 | OK (checked against #35's head), guarded |
+| G4 | Shift page pairing | Per series | None | Exempt: it fixes one book's pairing; a global shift would mis-pair every other book. |
+| G5 | Library sort (`LibraryOptions.sort`) | Per library (Sort & View) | None: falls back to the built-in Title A–Z | Open: add "Default sort" to Customize Home, plus Reset to Default on Sort & View. |
+| G6 | Grid order (`LibraryOptions.gridOrder`) | Per library | None: built-in "Match Reading Direction" | Open: same as G5. |
+| G7 | Library reading style (`LibraryOptions.readingStyle`) | Per library | Default Reader Settings direction | OK; Sort & View needs Reset to Default (G5). |
+| G8 | Auto-scroll speed, book text settings, poster size, poster caption (#41) | Profile only | They are the global value | OK (no per-series override exists). |
+| G9 | Wording | Default Reader Settings and the reader menu name the same settings differently (W1). | | Open (W1) |
+
+## 7. Sync coverage
 
 `SyncMapper` syncs servers, profiles, per-server settings, favorites,
 progress, default and per-series reader settings, and browse preferences.
@@ -101,7 +120,7 @@ doesn't say so:
 its domain lands. `SyncMapper.swift` is being changed by #43, so the domains
 should follow that merge.
 
-## 7. Docs
+## 8. Docs
 
 | # | Where | What's stale | Status |
 | --- | --- | --- | --- |
