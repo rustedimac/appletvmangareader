@@ -1,0 +1,228 @@
+import Foundation
+
+/// The kind of backend a server connection talks to.
+public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
+    case kavita
+    case suwayomi
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .kavita: return "Kavita"
+        case .suwayomi: return "Suwayomi"
+        }
+    }
+}
+
+/// A saved server connection, shared by every profile. Credentials are not
+/// stored here; each profile has its own `ServerCredential` in a `SecretStore`.
+public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
+    public var id: UUID
+    public var kind: ServerKind
+    public var name: String
+    public var baseURL: URL
+
+    public init(id: UUID = UUID(), kind: ServerKind, name: String, baseURL: URL) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.baseURL = baseURL
+    }
+}
+
+/// Credentials one profile uses for one server. Kavita uses an API key
+/// (each Kavita user has their own); Suwayomi uses optional basic auth.
+public struct ServerCredential: Codable, Hashable, Sendable {
+    public var apiKey: String?
+    public var username: String?
+    public var password: String?
+
+    public init(apiKey: String? = nil, username: String? = nil, password: String? = nil) {
+        self.apiKey = apiKey
+        self.username = username
+        self.password = password
+    }
+}
+
+/// A person using the Apple TV. Favorites, local progress and server
+/// credentials are kept separately for each profile.
+public struct Profile: Codable, Hashable, Identifiable, Sendable {
+    public var id: UUID
+    public var name: String
+    /// SF Symbol name shown on the profile picker.
+    public var symbol: String
+    /// Index into the app's avatar color palette.
+    public var colorIndex: Int
+
+    public init(id: UUID = UUID(), name: String, symbol: String = "person.fill", colorIndex: Int = 0) {
+        self.id = id
+        self.name = name
+        self.symbol = symbol
+        self.colorIndex = colorIndex
+    }
+}
+
+/// How a profile uses a particular server.
+public struct ProfileServerSettings: Codable, Hashable, Sendable {
+    /// Whether reading progress is written back to the server. Kavita
+    /// progress belongs to the signed-in Kavita user, so this is normally on.
+    /// Suwayomi has a single progress per server, so only one profile should
+    /// sync; the others keep progress locally.
+    public var syncProgressToServer: Bool
+
+    public init(syncProgressToServer: Bool = true) {
+        self.syncProgressToServer = syncProgressToServer
+    }
+}
+
+/// A grouping of series on a server: a Kavita library or a Suwayomi category.
+public struct MangaCategory: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var name: String
+    public var order: Int
+
+    public init(id: String, name: String, order: Int = 0) {
+        self.id = id
+        self.name = name
+        self.order = order
+    }
+}
+
+/// Globally unique reference to a series: which server, and the id on it.
+public struct SeriesRef: Codable, Hashable, Sendable {
+    public var serverID: UUID
+    public var seriesID: String
+
+    public init(serverID: UUID, seriesID: String) {
+        self.serverID = serverID
+        self.seriesID = seriesID
+    }
+}
+
+public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
+    public var ref: SeriesRef
+    public var title: String
+    public var coverURL: URL?
+    public var unreadCount: Int?
+    /// Kavita needs the library id when saving progress.
+    public var libraryID: String?
+
+    public var id: SeriesRef { ref }
+
+    public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil) {
+        self.ref = ref
+        self.title = title
+        self.coverURL = coverURL
+        self.unreadCount = unreadCount
+        self.libraryID = libraryID
+    }
+}
+
+public struct Chapter: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var seriesRef: SeriesRef
+    /// Kavita volume id, needed for progress updates. Nil for Suwayomi.
+    public var volumeID: String?
+    public var title: String
+    /// Sort key, ascending = reading order.
+    public var number: Double
+    public var pageCount: Int
+    /// Zero-based index of the last page read.
+    public var lastPageRead: Int
+    public var isRead: Bool
+    public var updatedAt: Date?
+
+    public init(id: String, seriesRef: SeriesRef, volumeID: String? = nil, title: String, number: Double,
+                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil) {
+        self.id = id
+        self.seriesRef = seriesRef
+        self.volumeID = volumeID
+        self.title = title
+        self.number = number
+        self.pageCount = pageCount
+        self.lastPageRead = lastPageRead
+        self.isRead = isRead
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct SeriesDetail: Codable, Hashable, Sendable {
+    public var summary: SeriesSummary
+    public var synopsis: String?
+    public var authors: [String]
+    public var genres: [String]
+    public var status: String?
+    /// Chapters sorted in reading order (first to last).
+    public var chapters: [Chapter]
+
+    public init(summary: SeriesSummary, synopsis: String?, authors: [String], genres: [String],
+                status: String?, chapters: [Chapter]) {
+        self.summary = summary
+        self.synopsis = synopsis
+        self.authors = authors
+        self.genres = genres
+        self.status = status
+        self.chapters = chapters
+    }
+
+    /// The chapter to open when the user presses "Continue": the first
+    /// unread chapter, or the first chapter if all are read.
+    public var continueChapter: Chapter? {
+        chapters.first(where: { !$0.isRead }) ?? chapters.first
+    }
+}
+
+/// One page of a chapter. `size` is known up front for Kavita (from
+/// file-dimensions) and discovered after download for Suwayomi.
+public struct PageDescriptor: Hashable, Sendable {
+    public var index: Int
+    public var url: URL
+    public var size: PageSize?
+
+    public init(index: Int, url: URL, size: PageSize? = nil) {
+        self.index = index
+        self.url = url
+        self.size = size
+    }
+}
+
+public struct PageSize: Codable, Hashable, Sendable {
+    public var width: Double
+    public var height: Double
+
+    public init(width: Double, height: Double) {
+        self.width = width
+        self.height = height
+    }
+
+    /// A page wider than it is tall is treated as a two-page spread.
+    public var isWide: Bool { height > 0 && width / height > 1.0 }
+}
+
+/// Rows on a server's home screen.
+public enum HomeFeed: String, CaseIterable, Sendable, Identifiable {
+    case continueReading
+    case recentlyUpdated
+    case newlyAdded
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .continueReading: return "Continue Reading"
+        case .recentlyUpdated: return "Recently Updated"
+        case .newlyAdded: return "Newly Added"
+        }
+    }
+}
+
+public struct Paged<Item: Sendable>: Sendable {
+    public var items: [Item]
+    public var hasMore: Bool
+
+    public init(items: [Item], hasMore: Bool) {
+        self.items = items
+        self.hasMore = hasMore
+    }
+}
