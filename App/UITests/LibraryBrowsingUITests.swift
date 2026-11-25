@@ -127,6 +127,23 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertTrue(element.exists, "\(element) never appeared. Focus: \(focusedDescription())")
     }
 
+    private var focusedPoster: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true")).firstMatch
+    }
+
+    /// Presses `direction` until focus stops moving (the end of a row).
+    private func pressUntilFocusStops(_ direction: XCUIRemote.Button, maxPresses: Int = 60) {
+        var last = ""
+        for _ in 0..<maxPresses {
+            remote.press(direction)
+            Thread.sleep(forTimeInterval: 0.4)
+            let current = focused
+            let now = "\(current.identifier)|\(current.frame)"
+            if now == last { return }
+            last = now
+        }
+    }
+
     /// Settings → Customize Home.
     private func openCustomizeHome() {
         selectTab("Settings")
@@ -301,6 +318,29 @@ final class LibraryBrowsingUITests: XCTestCase {
         selectTab("Home")
         // Caught Up is the last row by default.
         scrollDown(until: app.staticTexts["shelf.caughtUp"])
+    }
+
+    func testDownFromAnyPosterInLastRowReachesCustomizeHome() {
+        launch()
+        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        let customize = app.buttons["home.customize"]
+        scrollDown(until: customize, maxPresses: 20)
+        moveFocus(to: customize)
+
+        // Up lands in the last row. Its first poster sits far left of the
+        // centered button, its last one far right: Down must work from both.
+        for edge in [XCUIRemote.Button.left, .right] {
+            remote.press(.up)
+            wait(focusedPoster, "exists == true")
+            pressUntilFocusStops(edge)
+            let poster = focusedPoster
+            XCTAssertTrue(poster.exists, "focus left the row. Focus: \(focusedDescription())")
+            let frame = poster.frame
+            XCTAssertTrue(frame.maxX < customize.frame.minX || frame.minX > customize.frame.maxX,
+                          "\(edge == .left ? "first" : "last") poster \(frame) should not sit above the button \(customize.frame)")
+            remote.press(.down)
+            wait(customize, "hasFocus == true")
+        }
     }
 
     // MARK: Search
