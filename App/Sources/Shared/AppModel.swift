@@ -43,6 +43,8 @@ final class AppModel {
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-mockKomga") { model.installMockKomga() }
+            if ProcessInfo.processInfo.arguments.contains("-mockOPDS") { model.installMockOPDS() }
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
@@ -170,7 +172,7 @@ final class AppModel {
                 credential.suwayomiLogin = await SuwayomiClient.detectLoginMode(
                     config: server, username: user, password: credential.password ?? "", transport: transport)
             }
-        case .freeLibrary:
+        case .komga, .opds, .freeLibrary:
             break
         }
         return credential

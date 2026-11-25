@@ -1,0 +1,97 @@
+{
+    "content": [
+        {
+            "id": "0SB719FFDC3VK",
+            "seriesId": "0SB719FFDC3VJ",
+            "seriesTitle": "Lantern Courier",
+            "libraryId": "0SB719FAHCE3H",
+            "name": "Lantern Courier v01",
+            "url": "/data/Manga/Lantern Courier/Lantern Courier v01.cbz",
+            "number": 1,
+            "created": "2026-11-25T08:56:54Z",
+            "lastModified": "2026-11-25T08:56:56Z",
+            "fileLastModified": "2026-11-25T08:56:08Z",
+            "sizeBytes": 206489,
+            "size": "201.6 KiB",
+            "media": {
+                "status": "READY",
+                "mediaType": "application/zip",
+                "pagesCount": 6,
+                "comment": "",
+                "epubDivinaCompatible": false,
+                "epubIsKepub": false,
+                "mediaProfile": "DIVINA"
+            },
+            "metadata": {
+                "title": "The First Delivery",
+                "titleLock": false,
+                "summary": "",
+                "summaryLock": false,
+                "number": "1",
+                "numberLock": false,
+                "numberSort": 1.0,
+                "numberSortLock": false,
+                "releaseDate": null,
+                "releaseDateLock": false,
+                "authors": [
+                    {
+                        "name": "Aiko Example",
+                        "role": "writer"
+                    },
+                    {
+                        "name": "Ren Sample",
+                        "role": "penciller"
+                    }
+                ],
+                "authorsLock": false,
+                "notableEntities": [],
+                "notableEntitiesLock": false,
+                "tags": [],
+                "tagsLock": false,
+                "isbn": "",
+                "isbnLock": false,
+                "links": [],
+                "linksLock": false,
+                "created": "2026-11-25T08:56:54Z",
+                "lastModified": "2026-11-25T08:58:57Z"
+            },
+            "readProgress": {
+                "page": 3,
+                "completed": false,
+                "readDate": "2026-11-25T08:57:56Z",
+                "created": "2026-11-25T08:57:56Z",
+                "lastModified": "2026-11-25T08:57:56Z",
+                "deviceId": "",
+                "deviceName": ""
+            },
+            "deleted": false,
+            "fileHash": "00f4421d12d77906614484c6ac42f1fb",
+            "oneshot": false
+        }
+    ],
+    "pageable": {
+        "pageNumber": 0,
+        "pageSize": 20,
+        "sort": {
+            "empty": false,
+            "sorted": true,
+            "unsorted": false
+        },
+        "offset": 0,
+        "paged": true,
+        "unpaged": false
+    },
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true,
+    "size": 20,
+    "number": 0,
+    "numberOfElements": 1,
+    "sort": {
+        "empty": false,
+        "sorted": true,
+        "unsorted": false
+    },
+    "first": true,
+    "empty": false
+}

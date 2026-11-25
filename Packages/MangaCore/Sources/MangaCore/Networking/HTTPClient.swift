@@ -45,6 +45,13 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        // Pages unpacked from a downloaded archive (`LocalArchiveCache`).
+        if let url = request.url, url.isFileURL {
+            guard let data = FileManager.default.contents(atPath: url.path) else {
+                return (Data(), HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+            }
+            return (data, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw MangaError.http(status: -1, body: "Not an HTTP response")

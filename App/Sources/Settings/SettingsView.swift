@@ -86,7 +86,7 @@ private struct ServerRow: View {
         if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
-            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+            let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()
             parts.append("\(pickedCount) \(noun) picked")
         }
@@ -111,8 +111,8 @@ private struct ServerRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
-                if server.kind == .kavita && credential == nil {
-                    Text("Not signed in").font(.caption).foregroundStyle(.orange)
+                if server.kind.requiresLogin && credential == nil {
+                    Text(server.kind == .kavita ? "Not signed in" : "No login").font(.caption).foregroundStyle(.orange)
                 } else if let user = credential?.username {
                     Text(user).font(.caption).foregroundStyle(.secondary)
                 }

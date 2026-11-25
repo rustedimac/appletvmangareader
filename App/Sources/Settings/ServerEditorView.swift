@@ -38,7 +38,7 @@ struct ServerEditorView: View {
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("serverEditor.name")
                     .settingsTextFieldRow()
-                TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.local:4567",
+                TextField(addressPrompt,
                           text: $draft.address)
                     .keyboardType(.URL)
                     .textContentType(.URL)
@@ -81,7 +81,24 @@ struct ServerEditorView: View {
                             .accessibilityIdentifier("serverEditor.apiKey")
                             .settingsTextFieldRow()
                     }
-                case .suwayomi:
+                case .komga:
+                    TextField("API key (recommended)", text: $draft.apiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.apiKey")
+                        .settingsTextFieldRow()
+                    TextField("Email", text: $draft.username)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.username")
+                        .settingsTextFieldRow()
+                    SecureField("Password", text: $draft.password)
+                        .textContentType(.password)
+                        .accessibilityIdentifier("serverEditor.password")
+                        .settingsTextFieldRow()
+                case .suwayomi, .opds:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
@@ -102,11 +119,13 @@ struct ServerEditorView: View {
                     .accessibilityIdentifier("serverEditor.loginFooter")
             }
 
-            Section {
-                Toggle("Sync reading progress to this server", isOn: $draft.syncProgress)
-                    .accessibilityIdentifier("serverEditor.sync")
-            } footer: {
-                Text(syncFooter)
+            if draft.kind.canSyncProgress {
+                Section {
+                    Toggle("Sync reading progress to this server", isOn: $draft.syncProgress)
+                        .accessibilityIdentifier("serverEditor.sync")
+                } footer: {
+                    Text(syncFooter)
+                }
             }
 
             if categories != .idle {
@@ -202,10 +221,14 @@ struct ServerEditorView: View {
             return draft.kavitaMethod == .password
                 ? "Sign in as an existing Kavita user. Progress, read state and Continue Reading follow that user. The password isn't saved; the app keeps an \"\(KavitaClient.authKeyName)\" auth key, which you can revoke in Kavita."
                 : "Each profile can sign in as its own Kavita user."
+        case .komga:
+            return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
         case .suwayomi:
             return "Only needed if the server asks for a login."
+        case .opds:
+            return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
         case .freeLibrary:
-            return ""
+            return "The Free Library needs no login."
         }
     }
 
@@ -213,6 +236,10 @@ struct ServerEditorView: View {
         switch draft.kind {
         case .kavita:
             return "Kavita keeps progress per user, so this is normally on."
+        case .komga:
+            return "Komga keeps progress per user, so this is normally on."
+        case .opds:
+            return "OPDS catalogs can't store reading progress, so it's kept on this Apple TV."
         case .suwayomi:
             let others = otherSyncingProfiles
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
@@ -220,6 +247,16 @@ struct ServerEditorView: View {
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
         case .freeLibrary:
             return "The Free Library keeps progress on this Apple TV."
+        }
+    }
+
+    private var addressPrompt: String {
+        switch draft.kind {
+        case .kavita: return "OPDS URL or address"
+        case .komga: return "Address, e.g. komga.local:25600"
+        case .suwayomi: return "Address, e.g. suwayomi.local:4567"
+        case .opds: return "Catalog URL or address, e.g. books.local:8083/opds"
+        case .freeLibrary: return ""
         }
     }
 
@@ -341,7 +378,7 @@ struct ServerEditorView: View {
                     sync = true
                 }
                 model.saveServer(config, credential: credential)
-                model.setServerSettings(ProfileServerSettings(syncProgressToServer: sync,
+                model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && sync,
                                                               selectedCategoryIDs: selected), for: config)
                 dismiss()
             } catch {
