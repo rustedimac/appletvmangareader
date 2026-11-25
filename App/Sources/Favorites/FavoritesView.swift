@@ -23,6 +23,9 @@ struct FavoritesView: View {
                         SeriesGrid(series: favorites, showsServer: model.servers.count > 1)
                             .accessibilityElement(children: .contain)
                             .accessibilityIdentifier("favorites.grid")
+                            // Rebuild on a new order: LazyVGrid can keep stale cell
+                            // positions when every item moves at once (a reversal).
+                            .id(model.favoritesSort)
                     }
                 }
             }
