@@ -14,7 +14,7 @@ Status: **Fixed** (in the PR that added this file), **Guarded** (a CI check
 now stops new cases), **Open** (left, usually because an open PR is changing
 the same file; the note says when to do it).
 
-Open PRs at the time (#7, #15, #17, #19, #23, #34–#43) touch most screens, so
+Open PRs at the time (#7, #15, #17, #19, #23, #34–#43, #45) touch most screens, so
 fixes here are limited to files no open PR changes. The open items are the
 to-do list for after those merge.
 
@@ -30,7 +30,7 @@ to-do list for after those merge.
 
 | # | Where | What differs | Standard | Severity | Status |
 | --- | --- | --- | --- | --- | --- |
-| R1 | `PagedReaderView`, `BookReaderView` vs `WebtoonStripController.handlePress` | Clicking the center (Select) opens the menu in the vertical reader but does nothing in the paged and book readers, which open it with swipe down or Play/Pause. | Select opens the menu in every reader (Play/Pause stays as a second way in paged and book). Coordinate with #17, which uses click for zoom in the paged reader: if click zooms there, document that and keep Down/Play/Pause as the menu. | High | Open (after #17) |
+| R1 | `PagedReaderView`, `BookReaderView` vs `WebtoonStripController.handlePress` | Clicking the center (Select) opens the menu in the vertical reader but does nothing in the paged and book readers, which open it with swipe down or Play/Pause. | Select opens the menu in every reader (Play/Pause stays as a second way in paged and book). Coordinate with #17, which uses click for zoom in the paged reader: if click zooms there, document that and keep Down/Play/Pause as the menu. | High | In progress in #45 (click or hold Select opens options in every reader; check against #17's click-to-zoom) |
 | R2 | `BookReaderView` vs `ReaderView` | The book reader never registers with `GameControllerHub`, so shoulder buttons, triggers and Y do nothing in EPUB/text books, while README says controllers work "in the reader". | Book reader pushes a handler: L1/R1 turn pages, L2/R2 change chapter, Y toggles the drawer, like the paged reader. | High | Open (BookReaderView in #19) |
 | R3 | `BookReaderContent.handleMove` vs `PagedReaderView.handleMove` | Up bookmarks the page in the image readers; in the book reader Up does nothing and there are no bookmarks. | Either add book bookmarks or keep Up unused there and say so in the help text. | Medium | Open |
 | R4 | `ReaderMenu` vs `BookReaderMenu` | Two drawer shells with the same 900 pt width, `.thickMaterial`, Play/Pause-to-close and focus timing copied. Padding is 60 pt on both sides; DESIGN_GUIDE §7 says `Layout.safeTop` top and `Layout.safeSide` (80) trailing. | One `ReaderDrawer` view in `Shared/Design` that owns width, material, padding (tokens), Play/Pause and the first-focus hop. | Medium | Open (ReaderMenu in #17, #35) |
