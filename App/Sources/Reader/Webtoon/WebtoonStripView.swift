@@ -166,26 +166,26 @@ final class WebtoonPageView: UIView {
 
 /// Divider between two chapters, Mihon style: what you finished and what's next.
 final class WebtoonBreakView: UIView {
-    private let finished = UILabel()
-    private let next = UILabel()
+    private let finishedLabel = UILabel()
+    private let nextLabel = UILabel()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
-        finished.font = .preferredFont(forTextStyle: .callout)
-        finished.textColor = .secondaryLabel
-        next.font = .preferredFont(forTextStyle: .title3)
-        next.textColor = .label
-        for label in [finished, next] {
+        finishedLabel.font = .preferredFont(forTextStyle: .callout)
+        finishedLabel.textColor = .secondaryLabel
+        nextLabel.font = .preferredFont(forTextStyle: .title3)
+        nextLabel.textColor = .label
+        for label in [finishedLabel, nextLabel] {
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
         NSLayoutConstraint.activate([
-            finished.centerXAnchor.constraint(equalTo: centerXAnchor),
-            finished.bottomAnchor.constraint(equalTo: centerYAnchor, constant: -6),
-            next.centerXAnchor.constraint(equalTo: centerXAnchor),
-            next.topAnchor.constraint(equalTo: centerYAnchor, constant: 6),
+            finishedLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            finishedLabel.bottomAnchor.constraint(equalTo: centerYAnchor, constant: -6),
+            nextLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            nextLabel.topAnchor.constraint(equalTo: centerYAnchor, constant: 6),
         ])
         isAccessibilityElement = true
         accessibilityIdentifier = "reader.webtoon.break"
@@ -194,8 +194,8 @@ final class WebtoonBreakView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
     func configure(finished finishedTitle: String?, next nextTitle: String) {
-        finished.text = finishedTitle.map { "Finished \($0)" }
-        next.text = "Next: \(nextTitle)"
+        finishedLabel.text = finishedTitle.map { "Finished \($0)" }
+        nextLabel.text = "Next: \(nextTitle)"
         accessibilityLabel = nextTitle
     }
 }
