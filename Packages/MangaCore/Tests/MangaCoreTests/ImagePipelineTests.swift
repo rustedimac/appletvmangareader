@@ -20,7 +20,7 @@ final class ImageDecoderTests: XCTestCase {
         XCTAssertEqual(ImageDecoder.maxPixelSize(original: page, target: nil, scaling: .fit), 1200)
         // Webtoon: width-constrained only.
         XCTAssertEqual(ImageDecoder.maxPixelSize(original: page, target: CGSize(width: 400, height: 0), scaling: .fit), 600)
-        XCTAssertEqual(ImageDecoder.maxPixelSize(original: page, target: CGSize(width: 400, height: .infinity), scaling: .fit), 600)
+        XCTAssertEqual(ImageDecoder.maxPixelSize(original: page, target: CGSize(width: 400, height: CGFloat.infinity), scaling: .fit), 600)
     }
 
     func testMaxPixelSizeCapsAtTextureLimit() {
