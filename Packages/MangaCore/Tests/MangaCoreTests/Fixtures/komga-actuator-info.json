@@ -1,0 +1,36 @@
+{
+    "git": {
+        "branch": "master",
+        "commit": {
+            "id": "a5f3492",
+            "time": "2026-11-24T02:11:25Z"
+        }
+    },
+    "build": {
+        "artifact": "komga",
+        "name": "komga",
+        "version": "1.30.2",
+        "group": "komga"
+    },
+    "java": {
+        "version": "25.0.5.1",
+        "vendor": {
+            "name": "Eclipse Adoptium",
+            "version": "Temurin-25.0.5.1+2"
+        },
+        "runtime": {
+            "name": "OpenJDK Runtime Environment",
+            "version": "25.0.5.1+2-LTS"
+        },
+        "jvm": {
+            "name": "OpenJDK 64-Bit Server VM",
+            "vendor": "Eclipse Adoptium",
+            "version": "25.0.5.1+2-LTS"
+        }
+    },
+    "os": {
+        "name": "Linux",
+        "version": "6.18.44-fc-v880",
+        "arch": "amd64"
+    }
+}
