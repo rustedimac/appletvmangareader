@@ -12,9 +12,9 @@ struct SettingsView: View {
                     Button {
                         model.isPickingProfile = true
                     } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: model.activeProfile, size: 64)
-                            VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: Space.m) {
+                            ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
+                            VStack(alignment: .leading, spacing: Space.xxs) {
                                 Text(model.activeProfile.name)
                                 Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
                             }
@@ -87,9 +87,9 @@ private struct ServerRow: View {
     let pickedCount: Int?
 
     var body: some View {
-        HStack(spacing: 30) {
+        HStack(spacing: Space.m) {
             Image(systemName: server.kind == .kavita ? "books.vertical.fill" : "square.stack.3d.up.fill")
-                .frame(width: 50)
+                .frame(width: Size.avatarRow)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
                 Text(subtitle)

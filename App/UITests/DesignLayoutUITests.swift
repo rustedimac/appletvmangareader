@@ -157,14 +157,14 @@ final class DesignLayoutUITests: XCTestCase {
 
         // Rows and buttons must not overlap each other. The system tab bar
         // floats over scrolled content, so leave its items out.
-        let targets = targets.filter { $0.frame.minY >= 140 * scale }
-        for i in targets.indices {
-            for j in targets.indices where j > i {
-                let a = targets[i].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
-                let b = targets[j].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
+        let inContent = targets.filter { $0.frame.minY >= 140 * scale }
+        for i in inContent.indices {
+            for j in inContent.indices where j > i {
+                let a = inContent[i].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
+                let b = inContent[j].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
                 // A button inside a row reports its own frame within the row's.
                 if a.contains(b) || b.contains(a) { continue }
-                XCTAssertFalse(a.intersects(b), "[\(name)] \(targets[i].label) overlaps \(targets[j].label)",
+                XCTAssertFalse(a.intersects(b), "[\(name)] \(inContent[i].label) overlaps \(inContent[j].label)",
                                file: file, line: line)
             }
         }

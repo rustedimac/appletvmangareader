@@ -28,6 +28,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
         HStack(alignment: .center, spacing: Space.xxl) {
             VStack(spacing: Space.l) {
                 hero
+                    .frame(width: Size.heroSymbol, height: Size.heroSymbol)
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.title3.weight(.semibold))
@@ -40,7 +41,23 @@ struct SettingsPage<Hero: View, Content: View>: View {
             .frame(maxHeight: .infinity)
 
             content
+                // The form row is already the field's platter; the default
+                // style would draw a second rounded box inside it.
+                .textFieldStyle(.plain)
+                .labelStyle(.settingsRow)
                 .frame(maxWidth: Size.formColumn, maxHeight: .infinity)
+                // Rows scrolled up fade out above the form instead of
+                // sliding under the tab bar. The mask reaches past the
+                // sides and bottom so focused rows can still grow.
+                .mask {
+                    VStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                            .frame(height: Space.l)
+                        Rectangle()
+                    }
+                    .padding(.horizontal, -Space.xl)
+                    .padding(.bottom, -Space.xxl)
+                }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("settingsPage.form")
         }
@@ -79,4 +96,21 @@ extension View {
     func settingsPage<Hero: View>(_ title: String, @ViewBuilder hero: () -> Hero) -> some View {
         SettingsPage(title, hero: hero) { self }
     }
+}
+
+/// Settings rows: the icon in a fixed `Size.avatarRow` column with `Space.m`
+/// before the title, so icons never touch their labels and every row's text
+/// starts at the same x as rows that show an avatar.
+struct SettingsRowLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: Space.m) {
+            configuration.icon
+                .frame(width: Size.avatarRow)
+            configuration.title
+        }
+    }
+}
+
+extension LabelStyle where Self == SettingsRowLabelStyle {
+    static var settingsRow: SettingsRowLabelStyle { SettingsRowLabelStyle() }
 }

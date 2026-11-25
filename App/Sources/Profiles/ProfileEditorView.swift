@@ -24,8 +24,9 @@ struct ProfileEditorView: View {
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("profileEditor.name")
 
+                VStack(alignment: .leading, spacing: Space.m) {
                 header("Avatar")
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(110), spacing: Space.l), count: 6),
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.l), count: 6),
                           alignment: .leading, spacing: Space.l) {
                     ForEach(ProfileAvatars.symbols, id: \.self) { s in
                         Button { symbol = s } label: {
@@ -36,7 +37,9 @@ struct ProfileEditorView: View {
                         .accessibilityLabel(s)
                     }
                 }
+                }
 
+                VStack(alignment: .leading, spacing: Space.m) {
                 header("Color")
                 HStack(spacing: Space.l) {
                     ForEach(0..<ProfileAvatars.colorCount, id: \.self) { i in
@@ -56,6 +59,7 @@ struct ProfileEditorView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .focusSection()
+                }
 
                 // ActionRow is a focus section, so focus moves down into the
                 // buttons from anywhere in the rows above.

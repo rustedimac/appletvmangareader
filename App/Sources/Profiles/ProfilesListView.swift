@@ -12,8 +12,8 @@ struct ProfilesListView: View {
                     NavigationLink {
                         ProfileEditorView(editing: profile)
                     } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: profile, size: 64)
+                        HStack(spacing: Space.m) {
+                            ProfileAvatarView(profile: profile, size: Size.avatarRow)
                             Text(profile.name)
                             Spacer()
                             if profile.id == model.activeProfile.id {
