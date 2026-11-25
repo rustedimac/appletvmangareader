@@ -30,7 +30,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 // Bottom-aligned so the gap to the title is the same whatever
                 // the symbol's shape.
                 hero
-                    .frame(maxWidth: Size.heroColumn, maxHeight: Size.heroSymbol, alignment: .bottom)
+                    .frame(width: Size.heroColumn, height: Size.heroSymbol * 0.75, alignment: .bottom)
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.title3.weight(.semibold))
