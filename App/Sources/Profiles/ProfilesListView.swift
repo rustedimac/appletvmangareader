@@ -36,6 +36,7 @@ struct ProfilesListView: View {
                 .accessibilityIdentifier("profiles.add")
             }
         }
+        .settingsPage(systemImage: "person.2")
         .navigationTitle("Profiles")
     }
 }

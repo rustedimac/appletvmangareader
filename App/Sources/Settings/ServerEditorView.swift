@@ -124,6 +124,7 @@ struct ServerEditorView: View {
                 }
             }
         }
+        .settingsPage(systemImage: "server.rack")
         .navigationTitle(editing?.name ?? "Add Server")
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in

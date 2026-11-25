@@ -18,19 +18,19 @@ struct ProfileEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 50) {
-                HStack(spacing: 40) {
+            VStack(alignment: .leading, spacing: Space.xl) {
+                HStack(spacing: Space.l) {
                     ProfileAvatarView(symbol: symbol, colorIndex: colorIndex, size: 160)
                     TextField("Name", text: $name)
                         .textContentType(.name)
                         .autocorrectionDisabled()
-                        .frame(maxWidth: 700)
+                        .frame(maxWidth: Size.textField)
                         .accessibilityIdentifier("profileEditor.name")
                 }
 
                 header("Avatar")
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(110), spacing: 30), count: 9),
-                          alignment: .leading, spacing: 30) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(110), spacing: Space.l), count: 9),
+                          alignment: .leading, spacing: Space.l) {
                     ForEach(ProfileAvatars.symbols, id: \.self) { s in
                         Button { symbol = s } label: {
                             ProfileAvatarView(symbol: s, colorIndex: colorIndex, size: 96)
@@ -42,7 +42,7 @@ struct ProfileEditorView: View {
                 }
 
                 header("Color")
-                HStack(spacing: 30) {
+                HStack(spacing: Space.l) {
                     ForEach(0..<ProfileAvatars.colorCount, id: \.self) { i in
                         Button { colorIndex = i } label: {
                             Circle()
@@ -61,23 +61,25 @@ struct ProfileEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .focusSection()
 
-                HStack(spacing: 40) {
-                    Button(editing == nil ? "Add Profile" : "Save") { save() }
-                        .disabled(trimmedName.isEmpty)
-                        .accessibilityIdentifier("profileEditor.save")
+                // ActionRow is a focus section, so focus moves down into the
+                // buttons from anywhere in the rows above.
+                ActionRow {
+                    Button { save() } label: {
+                        Text(editing == nil ? "Add Profile" : "Save").actionButtonSizing()
+                    }
+                    .disabled(trimmedName.isEmpty)
+                    .accessibilityIdentifier("profileEditor.save")
                     if canDelete {
-                        Button("Delete Profile", role: .destructive) { confirmingDelete = true }
-                            .accessibilityIdentifier("profileEditor.delete")
+                        Button(role: .destructive) { confirmingDelete = true } label: {
+                            Text("Delete Profile").actionButtonSizing()
+                        }
+                        .accessibilityIdentifier("profileEditor.delete")
                     }
                 }
-                .padding(.top, 20)
-                // Let focus move down into the buttons from anywhere in the
-                // rows above, even when nothing sits directly above them.
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
             }
-            .padding(.horizontal, 90)
-            .padding(.vertical, 40)
+            // The safe area already gives 80 pt at the sides; only leave
+            // room for focused tiles to grow.
+            .padding(.vertical, Space.l)
         }
         .navigationTitle(editing == nil ? "New Profile" : "Edit Profile")
         .onAppear(perform: load)
@@ -93,7 +95,7 @@ struct ProfileEditorView: View {
     }
 
     private func header(_ title: String) -> some View {
-        Text(title).font(.headline).foregroundStyle(.secondary)
+        Text(title).sectionLabelStyle()
     }
 
     private func load() {

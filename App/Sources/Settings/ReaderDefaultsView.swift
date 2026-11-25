@@ -61,6 +61,7 @@ struct ReaderDefaultsView: View {
                 Text("Changes made while reading are saved for that series and win over these defaults.")
             }
         }
+        .settingsPage(systemImage: "book")
         .navigationTitle("Default Reader Settings")
     }
 

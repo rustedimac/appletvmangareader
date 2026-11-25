@@ -114,6 +114,7 @@ struct CategorySelectionView: View {
                 .accessibilityIdentifier("categories.save")
             }
         }
+        .settingsPage(systemImage: "checklist")
         .navigationTitle("\(server.name) \(server.kind.categoryNoun)")
         .task { if load == .idle { await fetch() } }
     }

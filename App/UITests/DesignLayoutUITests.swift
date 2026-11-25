@@ -97,7 +97,8 @@ final class DesignLayoutUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.8)
         audit(app, "reader-menu-settings")
         let chapters = app.element("reader.menu.tab.chapters")
-        if focus(chapters, .up) {
+        focus(app.element("reader.menu.tab.settings"), .up)
+        if focus(chapters, .right) {
             remote.press(.select)
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "reader-menu-chapters")
@@ -126,6 +127,9 @@ final class DesignLayoutUITests: XCTestCase {
         for (label, frame) in targets {
             // Tab bar items are drawn by the system.
             if frame.minY < 140 * scale { continue }
+            // A button inside a form row reports only its label's frame;
+            // the row around it is what gets focus and what we measure.
+            if targets.contains(where: { $0.frame != frame && $0.frame.contains(frame) }) { continue }
             XCTAssertGreaterThanOrEqual(frame.height, minTarget * scale,
                                         "[\(name)] \(label) is \(Int(frame.height / scale)) pt tall (min \(Int(minTarget)))",
                                         file: file, line: line)
@@ -197,6 +201,8 @@ final class DesignLayoutUITests: XCTestCase {
         let shot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = name
+        // Keep screenshots of passing tests too, for review in the .xcresult.
+        attachment.lifetime = .keepAlways
         add(attachment)
         guard let dir = ProcessInfo.processInfo.environment["DESIGN_AUDIT_DIR"], !dir.isEmpty else { return }
         let url = URL(fileURLWithPath: dir, isDirectory: true)
