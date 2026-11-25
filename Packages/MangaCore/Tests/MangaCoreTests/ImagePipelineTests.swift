@@ -51,11 +51,7 @@ final class ImagePipelineTests: XCTestCase {
         let transport = ImageTransport()
         let url = "http://stub/api/v1/manga/1/chapter/1/page/0"
         transport.serve(url, data: makePNG(width: 300, height: 450))
-<<<<<<< HEAD
         let pipeline = ImagePipeline(transport: transport, diskDirectory: nil)
-=======
-        let pipeline = ImagePipeline(transport: transport)
->>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
 
         let first = try await pipeline.load(URL(string: url)!, server: server, targetSize: CGSize(width: 1920, height: 1080))
         XCTAssertEqual(first.pixelSize, PageSize(width: 300, height: 450))
@@ -70,11 +66,7 @@ final class ImagePipelineTests: XCTestCase {
     func testHTTPErrorsMapToMangaError() async {
         let transport = ImageTransport()
         transport.serve("http://stub/denied", status: 401, data: Data())
-<<<<<<< HEAD
         let pipeline = ImagePipeline(transport: transport, diskDirectory: nil)
-=======
-        let pipeline = ImagePipeline(transport: transport)
->>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
         do { _ = try await pipeline.load(URL(string: "http://stub/missing")!, server: server, targetSize: nil); XCTFail() } catch {
             XCTAssertEqual(error as? MangaError, .notFound)
         }
@@ -95,11 +87,7 @@ final class ImagePipelineTests: XCTestCase {
         let transport = ImageTransport()
         let urls = (0..<3).map { "http://stub/page/\($0)" }
         for (i, u) in urls.enumerated() { transport.serve(u, data: makePNG(width: 100 + i, height: 200)) }
-<<<<<<< HEAD
         let pipeline = ImagePipeline(transport: transport, diskDirectory: nil)
-=======
-        let pipeline = ImagePipeline(transport: transport)
->>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
 
         let got = expectation(description: "sizes")
         got.expectedFulfillmentCount = 3
