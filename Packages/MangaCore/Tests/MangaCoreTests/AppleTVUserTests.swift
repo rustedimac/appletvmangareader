@@ -116,6 +116,19 @@ final class SharedServerTests: XCTestCase {
         XCTAssertTrue(a.servers.isEmpty)
     }
 
+    func testFreeLibraryStaysPerUser() {
+        var s = AppState.initial()
+        _ = s.installFreeLibraryIfNeeded()
+        XCTAssertNotNil(s.server(FreeLibrary.serverID))
+        var dir = SharedServerDirectory()
+        dir.upsert(s.servers)
+        XCTAssertTrue(dir.servers.isEmpty)
+        let before = s.servers
+        s.removeServer(FreeLibrary.serverID)
+        dir.record(before: before, after: s.servers)
+        XCTAssertTrue(dir.removedServerIDs.isEmpty)
+    }
+
     func testCredentialFallback() {
         let shared = InMemorySharedServerStore(SharedServerDirectory(servers: [kavita]))
         let store = SharedFallbackSecretStore(local: InMemorySecretStore(), shared: shared)

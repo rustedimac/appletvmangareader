@@ -32,7 +32,7 @@ public struct SharedServerDirectory: Codable, Hashable, Sendable {
     /// `after` is added or updated.
     public mutating func record(before: [ServerConfig], after: [ServerConfig]) {
         let afterIDs = Set(after.map(\.id))
-        for gone in before where !afterIDs.contains(gone.id) {
+        for gone in before where !afterIDs.contains(gone.id) && gone.kind != .freeLibrary {
             servers.removeAll { $0.id == gone.id }
             credentials[gone.id.uuidString] = nil
             removedServerIDs.insert(gone.id)
@@ -40,9 +40,10 @@ public struct SharedServerDirectory: Codable, Hashable, Sendable {
         upsert(after)
     }
 
-    /// Adds or updates servers without removing any.
+    /// Adds or updates servers without removing any. The built-in Free
+    /// Library isn't shared: every user has it unless they remove it.
     public mutating func upsert(_ list: [ServerConfig]) {
-        for server in list where !removedServerIDs.contains(server.id) {
+        for server in list where !removedServerIDs.contains(server.id) && server.kind != .freeLibrary {
             if let i = servers.firstIndex(where: { $0.id == server.id }) {
                 servers[i] = server
             } else {

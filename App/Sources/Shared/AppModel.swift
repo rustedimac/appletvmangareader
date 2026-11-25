@@ -58,12 +58,15 @@ final class AppModel {
                                  identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
                                  sharedServers: InMemorySharedServerStore(UITestingSeed.sharedServers()))
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
         }
-        return AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
-                        identity: AppleTVUserIdentity(),
-                        sharedServers: KeychainSharedServerStore())
+        let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
+                             identity: AppleTVUserIdentity(),
+                             sharedServers: KeychainSharedServerStore())
+        model.installFreeLibraryIfNeeded()
+        return model
     }
 
     // MARK: State
@@ -178,7 +181,11 @@ final class AppModel {
 
     func removeServer(_ server: ServerConfig) {
         secrets.removeCredentials(server: server.id, profiles: state.profiles.map(\.id))
-        update { $0.removeServer(server.id) }
+        if server.kind == .freeLibrary {
+            update { $0.removeFreeLibrary() }
+        } else {
+            update { $0.removeServer(server.id) }
+        }
         clientCache.removeAll()
     }
 
@@ -196,7 +203,9 @@ final class AppModel {
     // MARK: Progress
 
     func syncsProgress(to serverID: UUID) -> Bool {
-        state.serverSettings(profile: activeProfile.id, server: serverID).syncProgressToServer
+        // The Free Library has no server progress; it's always kept here.
+        if serverID == FreeLibrary.serverID { return false }
+        return state.serverSettings(profile: activeProfile.id, server: serverID).syncProgressToServer
     }
 
     /// Records progress locally, and on the server if this profile syncs there.
@@ -259,7 +268,11 @@ final class AppModel {
     // MARK: Reader settings
 
     func readerSettings(for ref: SeriesRef) -> ReaderSettings {
-        state.readerSettings(for: ref, profile: activeProfile.id)
+        let settings = state.readerSettings(for: ref, profile: activeProfile.id)
+        if ref.serverID == FreeLibrary.serverID, !state.hasReaderOverride(for: ref, profile: activeProfile.id) {
+            return FreeLibrary.readerSettings(from: settings)
+        }
+        return settings
     }
 
     func setReaderSettings(_ settings: ReaderSettings, for ref: SeriesRef) {

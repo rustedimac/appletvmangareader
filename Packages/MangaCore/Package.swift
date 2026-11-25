@@ -8,7 +8,9 @@ let package = Package(
         .library(name: "MangaCore", targets: ["MangaCore"]),
     ],
     targets: [
-        .target(name: "MangaCore"),
-        .testTarget(name: "MangaCoreTests", dependencies: ["MangaCore"]),
+        .target(name: "MangaCore",
+                resources: [.copy("FreeLibrary/catalog.json")]),
+        .testTarget(name: "MangaCoreTests", dependencies: ["MangaCore"],
+                    resources: [.copy("Fixtures")]),
     ]
 )
