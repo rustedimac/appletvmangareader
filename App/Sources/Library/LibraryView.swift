@@ -255,8 +255,13 @@ private struct CategoryGridView: View {
         }
         guard let target, pager.items.indices.contains(target) else { return }
         let ref = pager.items[target].ref
+        // Posters from a page that just arrived aren't laid out yet; give
+        // the grid a moment, then scroll again once they are.
+        try? await Task.sleep(for: .milliseconds(150))
         withAnimation { proxy.scrollTo(ref, anchor: .top) }
-        try? await Task.sleep(for: .milliseconds(300))
+        try? await Task.sleep(for: .milliseconds(350))
+        proxy.scrollTo(ref, anchor: .top)
+        try? await Task.sleep(for: .milliseconds(150))
         focused = ref
     }
 }

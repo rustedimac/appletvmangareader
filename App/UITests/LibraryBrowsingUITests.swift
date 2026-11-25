@@ -45,7 +45,10 @@ final class LibraryBrowsingUITests: XCTestCase {
             let current = focused
             guard current.exists else { continue }
             let a = current.frame, b = element.frame
-            if b.midY > a.maxY { remote.press(.down) }
+            // A List row that isn't on screen yet reports an empty frame;
+            // keep scrolling down to it.
+            if b.width == 0 || b.height == 0 { remote.press(.down) }
+            else if b.midY > a.maxY { remote.press(.down) }
             else if b.midY < a.minY { remote.press(.up) }
             else if b.midX > a.midX { remote.press(.right) }
             else { remote.press(.left) }
@@ -144,7 +147,9 @@ final class LibraryBrowsingUITests: XCTestCase {
         // "Willow" starts at item 68, on the second page of 48.
         jump(to: "W")
         let willow = app.buttons["poster.7"]
-        XCTAssertTrue(willow.waitForExistence(timeout: 15), "Willow Chronicles 7 never loaded")
+        let posters = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.'"))
+        XCTAssertTrue(willow.waitForExistence(timeout: 15),
+                      "Willow Chronicles 7 never loaded. Posters: \(posters.allElementsBoundByIndex.map(\.identifier)). Focus: \(focusedDescription())")
         wait(willow, "hasFocus == true", timeout: 15)
 
         // Back to the top with "#" (no titles start with a digit, so the first).
@@ -270,10 +275,12 @@ final class LibraryBrowsingUITests: XCTestCase {
         }
         XCTAssertEqual(focusedPoster.identifier, "poster.1")
         remote.press(.select, forDuration: 1.5)
-        let byID = app.buttons["poster.menu.removeFromContinueReading"]
-        let remove = byID.waitForExistence(timeout: 5) ? byID : app.buttons["Remove from Continue Reading"]
-        XCTAssertTrue(remove.waitForExistence(timeout: 5), "no long-press menu. Focus: \(focusedDescription())")
-        if !remove.hasFocus { moveFocus(to: remove, maxPresses: 6) }
+        // The menu item may come through as a button, a cell or a menu item.
+        let remove = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == 'poster.menu.removeFromContinueReading' OR label == 'Remove from Continue Reading'")).firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 5),
+                      "no long-press menu. Focus: \(focusedDescription()). Tree: \(app.debugDescription.prefix(3000))")
+        // It's the only item, so it has focus.
         remote.press(.select)
         wait(row, "exists == false")
     }
