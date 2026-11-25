@@ -9,6 +9,7 @@
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
+| `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
@@ -26,6 +27,14 @@
 - **All persisted changes go through `AppModel.update { }`**, which mutates
   `AppState` and saves it. Add new persisted fields to `AppState` /
   `ProfileData` with tests in `AppStateTests`.
+- **An update must never reset saved state.** New stored fields decode with
+  a default when missing (`decodeIfPresent`, or an optional). Every shape a
+  merged build has written is a fixture in `AppStateUpgradeTests`; when you
+  change what `AppState` stores, add the JSON the build before your change
+  writes. Renames or moves bump `AppState.currentVersion` with an
+  `AppStateUpgrade.step`. If the normal decode still fails, `StateStore`
+  salvages what it can entry by entry and keeps the original bytes under
+  `StateStore.backupKey`.
 - **Secrets never go in `AppState`.** Credentials are per profile, per server,
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
@@ -103,8 +112,16 @@ page on screen. See `SpreadLayoutTests` for the exact rules.
 - Webtoon reader: `session.reportVisiblePage(_:)` as it scrolls.
 - Both: `session.reportSize(_:forPage:)` when an image's pixel size is known.
 - Menu: `session.updateSettings(_:)` applies live and saves for the series.
-- Progress goes through `AppModel.recordProgress`, two seconds after the
-  last page turn, on chapter change, and on close.
+- Progress is saved locally on every page change
+  (`AppModel.recordLocalProgress`), so a crash or force quit never loses
+  the page. The server push (`AppModel.recordProgress`) waits two seconds
+  after the last page turn, and also runs on chapter change, on close and
+  when the app leaves the foreground.
+- A chapter opened without a page resumes exactly where it was left
+  (`ResumePosition`: this session's position, then local progress unless
+  the server's is newer, then the server's). The previous chapter, reached
+  from the start of the next one, opens on its last page; the next chapter
+  opens on its first.
 
 ## Images
 
