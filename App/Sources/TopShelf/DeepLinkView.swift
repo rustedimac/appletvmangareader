@@ -44,10 +44,12 @@ struct DeepLinkView: View {
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("deepLink.loading")
                     .onExitCommand { dismiss() }
             }
         }
-        .accessibilityIdentifier("deepLink")
+        // No accessibilityIdentifier on this Group: it would land on each
+        // child and replace theirs (the reader's "reader.paged").
         .task { await load() }
     }
 
