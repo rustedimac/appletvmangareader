@@ -175,6 +175,8 @@ private final class CountingServer: MangaServer, @unchecked Sendable {
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail { try await inner.seriesDetail(seriesID) }
     func pages(for chapter: Chapter) async throws -> [PageDescriptor] { try await inner.pages(for: chapter) }
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
+    func markUnread(chapters: [Chapter]) async throws {}
+    func markSeriesUnread(_ seriesID: String) async throws {}
     func authorize(_ request: URLRequest) -> URLRequest { request }
     func contentFacets() async throws -> ContentFacets { try await inner.contentFacets() }
     func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
@@ -280,6 +282,8 @@ final class ContentFilteredServerTests: XCTestCase {
             func seriesDetail(_ seriesID: String) async throws -> SeriesDetail { throw MangaError.notFound }
             func pages(for chapter: Chapter) async throws -> [PageDescriptor] { [] }
             func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
+            func markUnread(chapters: [Chapter]) async throws {}
+            func markSeriesUnread(_ seriesID: String) async throws {}
             func authorize(_ request: URLRequest) -> URLRequest { request }
         }
         let none = try await Bare().hiddenSeriesIDs(for: .none)

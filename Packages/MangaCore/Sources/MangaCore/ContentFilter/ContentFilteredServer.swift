@@ -92,6 +92,14 @@ public final class ContentFilteredServer: MangaServer, @unchecked Sendable {
         try await base.saveProgress(chapter: chapter, libraryID: libraryID, page: page, completed: completed)
     }
 
+    public func markUnread(chapters: [Chapter]) async throws {
+        try await base.markUnread(chapters: chapters)
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {
+        try await base.markSeriesUnread(seriesID)
+    }
+
     public func authorize(_ request: URLRequest) -> URLRequest { base.authorize(request) }
 
     public func contentFacets() async throws -> ContentFacets { try await base.contentFacets() }
