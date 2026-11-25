@@ -3,8 +3,8 @@ import XCTest
 
 final class ServerDraftTests: XCTestCase {
     func testNormalizesTypedAddresses() {
-        XCTAssertEqual(ServerDraft.normalizedURL("kavita.home")?.absoluteString, "http://kavita.home")
-        XCTAssertEqual(ServerDraft.normalizedURL(" suwayomi.home:4567/ ")?.absoluteString, "http://suwayomi.home:4567")
+        XCTAssertEqual(ServerDraft.normalizedURL("kavita.local")?.absoluteString, "http://kavita.local")
+        XCTAssertEqual(ServerDraft.normalizedURL(" suwayomi.local:4567/ ")?.absoluteString, "http://suwayomi.local:4567")
         XCTAssertEqual(ServerDraft.normalizedURL("HTTPS://example.com/kavita/")?.absoluteString, "https://example.com/kavita")
         XCTAssertEqual(ServerDraft.normalizedURL("192.168.1.20:5000")?.absoluteString, "http://192.168.1.20:5000")
         XCTAssertNil(ServerDraft.normalizedURL(""))
@@ -13,19 +13,19 @@ final class ServerDraftTests: XCTestCase {
     }
 
     func testKavitaOPDSPasteFillsAddressAndKey() {
-        var d = ServerDraft(kind: .kavita, address: "http://kavita.home/api/opds/abc-123")
+        var d = ServerDraft(kind: .kavita, address: "http://kavita.local/api/opds/abc-123")
         XCTAssertTrue(d.isValid)
-        XCTAssertEqual(d.resolvedURL?.absoluteString, "http://kavita.home")
+        XCTAssertEqual(d.resolvedURL?.absoluteString, "http://kavita.local")
         XCTAssertEqual(d.resolvedAPIKey, "abc-123")
         XCTAssertTrue(d.absorbOPDS())
-        XCTAssertEqual(d.address, "http://kavita.home")
+        XCTAssertEqual(d.address, "http://kavita.local")
         XCTAssertEqual(d.apiKey, "abc-123")
         XCTAssertFalse(d.absorbOPDS())
         XCTAssertEqual(d.credential, ServerCredential(apiKey: "abc-123"))
     }
 
     func testKavitaNeedsAKey() {
-        var d = ServerDraft(kind: .kavita, address: "kavita.home")
+        var d = ServerDraft(kind: .kavita, address: "kavita.local")
         XCTAssertFalse(d.isValid)
         XCTAssertNotNil(d.validationMessage)
         d.apiKey = "  key  "
@@ -34,7 +34,7 @@ final class ServerDraftTests: XCTestCase {
     }
 
     func testSuwayomiAuthIsOptionalButPaired() {
-        var d = ServerDraft(kind: .suwayomi, address: "suwayomi.home")
+        var d = ServerDraft(kind: .suwayomi, address: "suwayomi.local")
         XCTAssertTrue(d.isValid)
         XCTAssertNil(d.credential)
         d.username = "john"
@@ -48,15 +48,15 @@ final class ServerDraftTests: XCTestCase {
     }
 
     func testNameDefaultsToHost() {
-        var d = ServerDraft(kind: .suwayomi, address: "suwayomi.home:4567")
-        XCTAssertEqual(d.resolvedName, "suwayomi.home")
+        var d = ServerDraft(kind: .suwayomi, address: "suwayomi.local:4567")
+        XCTAssertEqual(d.resolvedName, "suwayomi.local")
         d.name = " Home "
         XCTAssertEqual(d.resolvedName, "Home")
         XCTAssertNil(ServerDraft(kind: .suwayomi).config())
     }
 
     func testEditRoundTripKeepsID() {
-        let config = ServerConfig(kind: .kavita, name: "K", baseURL: URL(string: "http://kavita.home")!)
+        let config = ServerConfig(kind: .kavita, name: "K", baseURL: URL(string: "http://kavita.local")!)
         let d = ServerDraft(editing: config, credential: ServerCredential(apiKey: "k"), syncProgress: false)
         XCTAssertEqual(d.config(id: config.id), config)
         XCTAssertEqual(d.apiKey, "k")

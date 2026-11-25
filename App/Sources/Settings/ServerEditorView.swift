@@ -33,7 +33,7 @@ struct ServerEditorView: View {
                 TextField("Name (optional)", text: $draft.name)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("serverEditor.name")
-                TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.home:4567",
+                TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.local:4567",
                           text: $draft.address)
                     .keyboardType(.URL)
                     .textContentType(.URL)
