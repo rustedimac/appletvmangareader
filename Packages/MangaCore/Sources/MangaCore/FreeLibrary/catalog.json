@@ -1,0 +1,1099 @@
+{
+  "schema": 1,
+  "version": 1,
+  "updated": "2026-11-25",
+  "collections": [
+    {
+      "id": "comics",
+      "name": "Classic Comics"
+    },
+    {
+      "id": "books",
+      "name": "Illustrated Books"
+    },
+    {
+      "id": "pulps",
+      "name": "Pulp Magazines"
+    },
+    {
+      "id": "webcomics",
+      "name": "Webcomics"
+    }
+  ],
+  "series": [
+    {
+      "id": "pepper-and-carrot",
+      "title": "Pepper&Carrot",
+      "creators": [
+        "David Revoy"
+      ],
+      "published": "2014–",
+      "collection": "webcomics",
+      "synopsis": "Pepper, a young witch of the Chaosah school, and her cat Carrot get into magical trouble in the world of Hereva. A free and open webcomic, made with free software and funded by its readers.",
+      "genres": [
+        "Fantasy",
+        "Comedy",
+        "All ages"
+      ],
+      "license": "ccBy4",
+      "rights": "Licensed under Creative Commons Attribution 4.0 by David Revoy.",
+      "source": "pepperCarrot",
+      "added": "2026-11-25"
+    },
+    {
+      "id": "dreams-of-the-rarebit-fiend",
+      "title": "Dreams of the Rarebit Fiend",
+      "creators": [
+        "Winsor McCay"
+      ],
+      "published": "1905",
+      "collection": "comics",
+      "synopsis": "Winsor McCay's newspaper strip, collected in book form in 1905: each night someone eats Welsh rarebit before bed and suffers a wild, surreal nightmare.",
+      "genres": [
+        "Humor",
+        "Fantasy"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published in the US in 1905, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "dreamsrarebitfi00mccagoog",
+          "title": "Dreams of the Rarebit Fiend (1905)",
+          "pages": 79
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "buster-brown",
+      "title": "Buster Brown",
+      "creators": [
+        "R. F. Outcault"
+      ],
+      "published": "1904–1910",
+      "collection": "comics",
+      "synopsis": "Richard F. Outcault's mischievous boy and his dog Tige, from two original book collections of the Sunday strip.",
+      "genres": [
+        "Humor"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Both books were published in the US in 1904 and 1910, so they are in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "BusterBrownhisd00Outc",
+          "title": "Buster Brown, His Dog Tige and Their Troubles (1904)",
+          "pages": 72
+        },
+        {
+          "identifier": "myresolutionsbus00outc",
+          "title": "My Resolutions, Buster Brown (1910)",
+          "pages": 104
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "foxy-grandpa",
+      "title": "Foxy Grandpa",
+      "creators": [
+        "Carl E. Schultze (\"Bunny\")"
+      ],
+      "published": "1905–1908",
+      "collection": "comics",
+      "synopsis": "A grandfather who always outwits the two boys trying to prank him. Two original collections of Carl Schultze's strip.",
+      "genres": [
+        "Humor"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Both books were published in the US in 1905 and 1908, so they are in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "foxy-grandpa-flip-flaps",
+          "title": "Foxy Grandpa Flip Flaps (1905)",
+          "pages": 26
+        },
+        {
+          "identifier": "foxy-grandpa-shows-the-boys-up-to-date-sports",
+          "title": "Foxy Grandpa Shows the Boys Up-to-Date Sports (1908)",
+          "pages": 28
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "bringing-up-father",
+      "title": "Bringing Up Father",
+      "creators": [
+        "George McManus"
+      ],
+      "published": "1919–1930",
+      "collection": "comics",
+      "synopsis": "Jiggs, a bricklayer who came into money, keeps sneaking out for corned beef and cabbage while his wife Maggie tries to make him respectable.",
+      "genres": [
+        "Humor"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Both collections were published in the US in 1919 and 1930, so they are in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "BringingUpFatherSeries1",
+          "title": "Series 1 (1919)",
+          "pages": 52
+        },
+        {
+          "identifier": "McGillLibrary-132334-5275",
+          "title": "Bringing Up Father (1930)",
+          "pages": 52
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "alices-adventures-in-wonderland",
+      "title": "Alice's Adventures in Wonderland",
+      "creators": [
+        "Lewis Carroll",
+        "John Tenniel"
+      ],
+      "published": "1867",
+      "collection": "books",
+      "synopsis": "Alice follows a White Rabbit down a rabbit hole. An 1867 printing with John Tenniel's original illustrations.",
+      "genres": [
+        "Fantasy",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "First published in 1865; this printing is from 1867. It is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "alicesadventu00carr",
+          "title": "Alice's Adventures in Wonderland (1867)",
+          "pages": 212
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "through-the-looking-glass",
+      "title": "Through the Looking-Glass",
+      "creators": [
+        "Lewis Carroll",
+        "John Tenniel"
+      ],
+      "published": "1872",
+      "collection": "books",
+      "synopsis": "Alice climbs through a mirror into a world laid out like a chessboard. With John Tenniel's illustrations.",
+      "genres": [
+        "Fantasy",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published in 1872, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "throughlookinggl01carr",
+          "title": "Through the Looking-Glass, and What Alice Found There (1872)",
+          "pages": 248
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "wonderful-wizard-of-oz",
+      "title": "The Wonderful Wizard of Oz",
+      "creators": [
+        "L. Frank Baum",
+        "W. W. Denslow"
+      ],
+      "published": "1900",
+      "collection": "books",
+      "synopsis": "Dorothy is carried by a cyclone to the Land of Oz. The original edition with W. W. Denslow's color illustrations.",
+      "genres": [
+        "Fantasy",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published in the US in 1900, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "wonderfulwizardo00baumiala",
+          "title": "The Wonderful Wizard of Oz (1900)",
+          "pages": 312
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "peter-pan-in-kensington-gardens",
+      "title": "Peter Pan in Kensington Gardens",
+      "creators": [
+        "J. M. Barrie",
+        "Arthur Rackham"
+      ],
+      "published": "c. 1912",
+      "collection": "books",
+      "synopsis": "The first Peter Pan story, about a baby who flies away to live among the birds and fairies of Kensington Gardens, with Arthur Rackham's illustrations.",
+      "genres": [
+        "Fantasy",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published around 1912, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "peterpaninkensin00barr2",
+          "title": "Peter Pan in Kensington Gardens",
+          "pages": 246
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "wind-in-the-willows",
+      "title": "The Wind in the Willows",
+      "creators": [
+        "Kenneth Grahame",
+        "Paul Bransom"
+      ],
+      "published": "1913",
+      "collection": "books",
+      "synopsis": "Mole, Rat, Badger and the reckless Mr. Toad along the river bank. A 1913 edition with Paul Bransom's color plates.",
+      "genres": [
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published in the US in 1913, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "windinwillows00grah",
+          "title": "The Wind in the Willows (1913)",
+          "pages": 390
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "red-fairy-book",
+      "title": "The Red Fairy Book",
+      "creators": [
+        "Andrew Lang",
+        "H. J. Ford"
+      ],
+      "published": "1890",
+      "collection": "books",
+      "synopsis": "Andrew Lang's collection of fairy tales from around the world, illustrated by H. J. Ford and Lancelot Speed.",
+      "genres": [
+        "Fairy tales",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Published in 1890, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "redfairybook00langiala",
+          "title": "The Red Fairy Book (1890)",
+          "pages": 414
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "arabian-nights",
+      "title": "The Arabian Nights Entertainments",
+      "creators": [
+        "Andrew Lang",
+        "H. J. Ford"
+      ],
+      "published": "1898",
+      "collection": "books",
+      "synopsis": "Scheherazade's tales of Aladdin, Ali Baba and Sindbad, retold by Andrew Lang with H. J. Ford's illustrations.",
+      "genres": [
+        "Fairy tales",
+        "Classic"
+      ],
+      "license": "publicDomainUS",
+      "rights": "First published in 1898 (this printing 1929), so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "arabiannightsent00lang",
+          "title": "The Arabian Nights Entertainments",
+          "pages": 458
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "weird-tales",
+      "title": "Weird Tales",
+      "creators": [
+        "Various"
+      ],
+      "published": "1923–1930",
+      "collection": "pulps",
+      "synopsis": "The pulp magazine of horror and the uncanny, from its first issue in March 1923 to the end of 1930. Early stories by H. P. Lovecraft, Robert E. Howard, Clark Ashton Smith and many others. Some fan scans are missing an inside cover.",
+      "genres": [
+        "Horror",
+        "Fantasy",
+        "Magazine"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Every issue here was published in the US in 1930 or earlier, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "WeirdTalesV01n01192303",
+          "title": "March 1923",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV01n02192304",
+          "title": "April 1923",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV01n03192305",
+          "title": "May 1923",
+          "pages": 122
+        },
+        {
+          "identifier": "WeirdTalesV01n04192306_201904",
+          "title": "June 1923",
+          "pages": 122
+        },
+        {
+          "identifier": "WeirdTalesV02N0119230708",
+          "title": "July–August 1923",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV02N02192309",
+          "title": "September 1923",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV02N03192310",
+          "title": "October 1923",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV02N04192311",
+          "title": "November 1923",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV03N01192401",
+          "title": "January 1924",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV03N02192402",
+          "title": "February 1924",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV03n03192403",
+          "title": "March 1924",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTalesV03n04192404",
+          "title": "April 1924",
+          "pages": 98
+        },
+        {
+          "identifier": "WeirdTales1924050607ATLPM",
+          "title": "May–June–July 1924",
+          "pages": 196
+        },
+        {
+          "identifier": "WeirdTalesV04N03192411",
+          "title": "November 1924",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV04N04192412",
+          "title": "December 1924",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV05N01192501",
+          "title": "January 1925",
+          "pages": 195
+        },
+        {
+          "identifier": "WeirdTalesV05N02192502",
+          "title": "February 1925",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV05N03192503",
+          "title": "March 1925",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV05N04192504",
+          "title": "April 1925",
+          "pages": 194
+        },
+        {
+          "identifier": "WeirdTalesV05N05192505",
+          "title": "May 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV05N06192506",
+          "title": "June 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV06N01192507",
+          "title": "July 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV06N02192508",
+          "title": "August 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV06N03192509",
+          "title": "September 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV06N04192510",
+          "title": "October 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV06N05192511",
+          "title": "November 1925",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV06N06192512",
+          "title": "December 1925",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV07N01192601",
+          "title": "January 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV07N02192602",
+          "title": "February 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV07N03192603",
+          "title": "March 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV07N04192604",
+          "title": "April 1926",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV07N05192605",
+          "title": "May 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV07N06192606",
+          "title": "June 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV08N01192607",
+          "title": "July 1926",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV08N02192608",
+          "title": "August 1926",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV08N03192609",
+          "title": "September 1926",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV08N04192610",
+          "title": "October 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV08N05192611",
+          "title": "November 1926",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV08N06192612",
+          "title": "December 1926",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV09N01192701",
+          "title": "January 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v09n02_1927-02_ATLPM-Urf",
+          "title": "February 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV09N03192703",
+          "title": "March 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV09N04192704",
+          "title": "April 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV09N05192705",
+          "title": "May 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV09N06192706",
+          "title": "June 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v10n01_1927-07_sas",
+          "title": "July 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV10N02192708",
+          "title": "August 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV10N03192709",
+          "title": "September 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV10N04192710",
+          "title": "October 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV10N05192711",
+          "title": "November 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV10N06192712",
+          "title": "December 1927",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV11N01192801sasIfcIbc",
+          "title": "January 1928",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV11N02192802",
+          "title": "February 1928",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV11N03192803",
+          "title": "March 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV11N04192804sasIfcIbc",
+          "title": "April 1928",
+          "pages": 146
+        },
+        {
+          "identifier": "WeirdTalesV11N05192805",
+          "title": "May 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV11N06192806",
+          "title": "June 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV12N01192807",
+          "title": "July 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV12N02192808sasIfcIbc",
+          "title": "August 1928",
+          "pages": 146
+        },
+        {
+          "identifier": "Weird_Tales_v12n03_1928-09_ATLPM-Urf",
+          "title": "September 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV12N04192810",
+          "title": "October 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v12n05_1928-11_sas",
+          "title": "November 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v12n06_1928-12",
+          "title": "December 1928",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV13N01192901sasIbc",
+          "title": "January 1929",
+          "pages": 147
+        },
+        {
+          "identifier": "Weird_Tales_v13n02_1929-02_AT-sas",
+          "title": "February 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v13n03_1929-03_sas",
+          "title": "March 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v13n04_1929-04",
+          "title": "April 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV13N05192905",
+          "title": "May 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v13n06_1929-06_AT-sas",
+          "title": "June 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v14n01_1929-07_sas",
+          "title": "July 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v14n02_1929-08_sas",
+          "title": "August 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v14n03_1929-09_sas",
+          "title": "September 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV14N04192910",
+          "title": "October 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "weird-tales-v-14-n-05-1929-11-sas",
+          "title": "November 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v14n06_1929-12_sas",
+          "title": "December 1929",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v15n01_1930-01_-ibc_LPM-URF-AT-SAS",
+          "title": "January 1930",
+          "pages": 147
+        },
+        {
+          "identifier": "Weird_Tales_v15n02_1930-02_sas",
+          "title": "February 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v15n03_1930-03_sas",
+          "title": "March 1930",
+          "pages": 149
+        },
+        {
+          "identifier": "WeirdTalesV15N04193004jvhSas",
+          "title": "April 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v15n05_1930-05_sas",
+          "title": "May 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "WeirdTalesV15N06193006",
+          "title": "June 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n01_1930-07",
+          "title": "July 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n02_1930-08_sas",
+          "title": "August 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n03_1930-09_sas",
+          "title": "September 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n04_1930-10_sas",
+          "title": "October 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n05_1930-11_sas",
+          "title": "November 1930",
+          "pages": 148
+        },
+        {
+          "identifier": "Weird_Tales_v16n06_1930-12_AT-sas",
+          "title": "December 1930",
+          "pages": 148
+        }
+      ],
+      "added": "2026-11-25"
+    },
+    {
+      "id": "amazing-stories",
+      "title": "Amazing Stories",
+      "creators": [
+        "Hugo Gernsback (editor)",
+        "Various"
+      ],
+      "published": "1926–1930",
+      "collection": "pulps",
+      "synopsis": "The first science fiction magazine, from its first issue in April 1926 to the end of 1930, with stories by H. G. Wells, Jules Verne, E. E. Smith and many others. Some fan scans are missing an inside cover or a page.",
+      "genres": [
+        "Science fiction",
+        "Magazine"
+      ],
+      "license": "publicDomainUS",
+      "rights": "Every issue here was published in the US in 1930 or earlier, so it is in the public domain in the US.",
+      "source": "internetArchive",
+      "chapters": [
+        {
+          "identifier": "amazing_stories_april_1926",
+          "title": "April 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "amazing_stories_may_1926",
+          "title": "May 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "amazing_stories_june_1926",
+          "title": "June 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "amazing_stories_july_1926",
+          "title": "July 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v01n05_1926-08_ufikus-DPP",
+          "title": "August 1926",
+          "pages": 102
+        },
+        {
+          "identifier": "Amazing_Stories_v01n06_1926-09_Gorgon776-Ufikus_c2c",
+          "title": "September 1926",
+          "pages": 101
+        },
+        {
+          "identifier": "amazing_stories_october_1926",
+          "title": "October 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "amazing_stories_november_1926",
+          "title": "November 1926",
+          "pages": 100
+        },
+        {
+          "identifier": "AmazingStoriesVolume01Number09",
+          "title": "December 1926",
+          "pages": 107
+        },
+        {
+          "identifier": "AmazingStoriesVolume01Number10",
+          "title": "January 1927",
+          "pages": 107
+        },
+        {
+          "identifier": "Amazing_Stories_v01n11_1927-02_krissburg_Missing_ibc",
+          "title": "February 1927",
+          "pages": 107
+        },
+        {
+          "identifier": "Amazing_Stories_v01n12_1927-03_AK",
+          "title": "March 1927",
+          "pages": 108
+        },
+        {
+          "identifier": "Amazing_Stories_v02n01_1927-04_Missing_ifc_Saskia-Bogof",
+          "title": "April 1927",
+          "pages": 107
+        },
+        {
+          "identifier": "Amazing_Stories_v02n02_1927-05_Missing_ifc105ibcbc",
+          "title": "May 1927",
+          "pages": 104
+        },
+        {
+          "identifier": "amazing-stories-v-02-n-03-1927-06",
+          "title": "June 1927",
+          "pages": 108
+        },
+        {
+          "identifier": "AmazingStoriesV02N04192707",
+          "title": "July 1927",
+          "pages": 106
+        },
+        {
+          "identifier": "AmazingStoriesVolume02Number05",
+          "title": "August 1927",
+          "pages": 107
+        },
+        {
+          "identifier": "Amazing_Stories_v02n06_1927-09",
+          "title": "September 1927",
+          "pages": 103
+        },
+        {
+          "identifier": "AmazingStoriesV02N07192710",
+          "title": "October 1927",
+          "pages": 104
+        },
+        {
+          "identifier": "AmazingStoriesVolume02Number08",
+          "title": "November 1927",
+          "pages": 102
+        },
+        {
+          "identifier": "Amazing_Stories_v02n09_1927-12_021",
+          "title": "December 1927",
+          "pages": 104
+        },
+        {
+          "identifier": "Amazing_Stories_v02n10_1928-01_Missing_ibcbc_AK",
+          "title": "January 1928",
+          "pages": 102
+        },
+        {
+          "identifier": "AmazingStoriesVolume02Number11",
+          "title": "February 1928",
+          "pages": 103
+        },
+        {
+          "identifier": "Amazing_Stories_v02n12_1928-03_sas",
+          "title": "March 1928",
+          "pages": 104
+        },
+        {
+          "identifier": "Amazing_Stories_v03n01_1928-04_AK",
+          "title": "April 1928",
+          "pages": 101
+        },
+        {
+          "identifier": "AmazingStoriesVolume03Number02",
+          "title": "May 1928",
+          "pages": 99
+        },
+        {
+          "identifier": "Amazing_Stories_v03n03_1928-06_-ifcibc_cape1736",
+          "title": "June 1928",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v03n04_1928-07",
+          "title": "July 1928",
+          "pages": 96
+        },
+        {
+          "identifier": "Amazing_Stories_v03n05_1928-08_ATLPM-Urf",
+          "title": "August 1928",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v03n06_1928-09",
+          "title": "September 1928",
+          "pages": 99
+        },
+        {
+          "identifier": "Amazing_Stories_v03n07_1928-10_missing_ifc_ibc_bc",
+          "title": "October 1928",
+          "pages": 97
+        },
+        {
+          "identifier": "Amazing_Stories_v03n08_1928-11_bd-sas",
+          "title": "November 1928",
+          "pages": 98
+        },
+        {
+          "identifier": "Amazing_Stories_v03n09_1928-12_Missing_ibcbc_AK",
+          "title": "December 1928",
+          "pages": 99
+        },
+        {
+          "identifier": "Amazing_Stories_v03n10_1929-01_Missing_ifc959-bc_ufikus-DPP",
+          "title": "January 1929",
+          "pages": 99
+        },
+        {
+          "identifier": "Amazing_Stories_v03n11_1929-02_cape1736-David_V",
+          "title": "February 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v03n12_1929-03_ATLPM-Urf",
+          "title": "March 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v04n01_1929-04_cape1736",
+          "title": "April 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "amazing-stories-v-04-n-02-1929-05-fixed-sas",
+          "title": "May 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "AmazingStoriesV04N03192906",
+          "title": "June 1929",
+          "pages": 102
+        },
+        {
+          "identifier": "AmazingStoriesVolume04Number04",
+          "title": "July 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "AmazingStoriesVolume04Number05",
+          "title": "August 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v04n06_1929-09_jvh-sas",
+          "title": "September 1929",
+          "pages": 103
+        },
+        {
+          "identifier": "Amazing_Stories_v04n07_1929-10_-ifc",
+          "title": "October 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v04n08_1929-11_Missing_ifc-674ibcbc_AK",
+          "title": "November 1929",
+          "pages": 95
+        },
+        {
+          "identifier": "amazing-stories-v-04-n-09-1929-12-sas",
+          "title": "December 1929",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v04n10_1930-01_sas",
+          "title": "January 1930",
+          "pages": 116
+        },
+        {
+          "identifier": "Amazing_Stories_v04n11_1930-02_Missing_ifcibcbc_Gorgon776",
+          "title": "February 1930",
+          "pages": 114
+        },
+        {
+          "identifier": "Amazing_Stories_v04n12_1930-03_Missing_1199-bc_cape1736",
+          "title": "March 1930",
+          "pages": 97
+        },
+        {
+          "identifier": "AmazingStoriesVolume05Number01_901",
+          "title": "April 1930",
+          "pages": 99
+        },
+        {
+          "identifier": "AmazingStoriesVolume05Number02",
+          "title": "May 1930",
+          "pages": 99
+        },
+        {
+          "identifier": "AmazingStoriesVolume05Number03",
+          "title": "June 1930",
+          "pages": 98
+        },
+        {
+          "identifier": "AmazingStoriesVolume05Number04",
+          "title": "July 1930",
+          "pages": 99
+        },
+        {
+          "identifier": "AmazingStoriesVolume05Number05",
+          "title": "August 1930",
+          "pages": 99
+        },
+        {
+          "identifier": "amazing-stories-v-05-n-06-1930-09-sas",
+          "title": "September 1930",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v05n07_1930-10",
+          "title": "October 1930",
+          "pages": 100
+        },
+        {
+          "identifier": "Amazing_Stories_v05n08_1930-11",
+          "title": "November 1930",
+          "pages": 101
+        },
+        {
+          "identifier": "Amazing_Stories_v05n09_1930-12",
+          "title": "December 1930",
+          "pages": 100
+        }
+      ],
+      "added": "2026-11-25"
+    }
+  ]
+}

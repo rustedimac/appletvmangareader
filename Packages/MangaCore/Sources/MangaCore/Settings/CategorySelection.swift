@@ -49,8 +49,9 @@ public struct CategorySelection: Equatable, Sendable {
         switch kind {
         case .kavita: noun = available.count == 1 ? "library" : "libraries"
         case .suwayomi: noun = available.count == 1 ? "category" : "categories"
+        case .freeLibrary: noun = available.count == 1 ? "collection" : "collections"
         }
-        if available.isEmpty { return "No \(kind == .kavita ? "libraries" : "categories")" }
+        if available.isEmpty { return "No \(kind.categoryNoun.lowercased())" }
         if allSelected { return available.count == 1 ? "1 \(noun)" : "All \(available.count) \(noun)" }
         return "\(selected.count) of \(available.count) \(noun)"
     }
@@ -62,6 +63,7 @@ public extension ServerKind {
         switch self {
         case .kavita: return "Libraries"
         case .suwayomi: return "Categories"
+        case .freeLibrary: return "Collections"
         }
     }
 }

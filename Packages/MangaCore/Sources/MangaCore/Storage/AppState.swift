@@ -113,6 +113,9 @@ public struct AppState: Codable, Hashable, Sendable {
     public var servers: [ServerConfig]
     /// Keyed by profile id (uuidString).
     public var profileData: [String: ProfileData]
+    /// True once the user removed the built-in Free Library, so it isn't
+    /// added back on the next launch. Nil in state saved before it existed.
+    public var freeLibraryRemoved: Bool?
 
     public init(version: Int = AppState.currentVersion, profiles: [Profile] = [], activeProfileID: UUID? = nil,
                 servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:]) {
@@ -143,7 +146,7 @@ public struct AppState: Codable, Hashable, Sendable {
         var data = ProfileData()
         // Suwayomi keeps a single progress per server, owned by the first
         // profile. New profiles read locally there unless they opt in.
-        for server in servers where server.kind == .suwayomi {
+        for server in servers where server.kind == .suwayomi || server.kind == .freeLibrary {
             data.serverSettings[server.id.uuidString] = ProfileServerSettings(syncProgressToServer: false)
         }
         profileData[profile.id.uuidString] = data
@@ -175,11 +178,17 @@ public struct AppState: Codable, Hashable, Sendable {
     // MARK: Servers
 
     public mutating func addServer(_ server: ServerConfig) {
-        servers.append(server)
+        // The built-in Free Library stays after the user's own servers.
+        if server.kind != .freeLibrary, let i = servers.firstIndex(where: { $0.kind == .freeLibrary }) {
+            servers.insert(server, at: i)
+        } else {
+            servers.append(server)
+        }
         // Default sync rule: Kavita always syncs (progress is per Kavita user);
-        // Suwayomi syncs only for the active profile that added it.
+        // Suwayomi syncs only for the active profile that added it. The Free
+        // Library has no server progress, so it never syncs.
         for profile in profiles {
-            let syncs = server.kind == .kavita || profile.id == activeProfile?.id
+            let syncs = server.kind != .freeLibrary && (server.kind == .kavita || profile.id == activeProfile?.id)
             mutateData(profile.id) { $0.serverSettings[server.id.uuidString] = ProfileServerSettings(syncProgressToServer: syncs) }
         }
     }
