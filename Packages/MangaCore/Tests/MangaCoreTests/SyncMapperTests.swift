@@ -113,4 +113,31 @@ final class SyncMapperTests: XCTestCase {
         XCTAssertEqual(local.favorites(profile: remoteProfile.id).first?.series.ref.serverID, remoteServer.id)
         XCTAssertNotNil(local.profileData[remoteProfile.id.uuidString]?.serverSettings[remoteServer.id.uuidString])
     }
+
+    func testBrowsePreferencesSyncAndFollowARemappedServer() {
+        var source = SyncFixtures.populated()
+        let p = source.activeProfile!.id
+        let server = source.servers[0].id
+        source.updateBrowse(profile: p) {
+            $0.gridDensity = .compact
+            $0.home.setHidden(.newlyAdded, true)
+            $0.setOptions(LibraryOptions(sort: .recentlyAdded, readingStyle: .rightToLeft),
+                          for: LibraryKey(serverID: server, categoryID: "2"))
+            $0.dismissFromContinueReading(SeriesRef(serverID: server, seriesID: "5"), at: Date())
+        }
+
+        let records = SyncMapper.payloads(from: source).map { key, item in
+            SyncRecord(key: key, kind: item.kind, payload: item.payload, modifiedAt: Date(), deviceID: "t")
+        }
+        XCTAssertTrue(records.contains { $0.kind == .browse })
+        var target = AppState()
+        SyncMapper.apply(SyncPatch(records: records), to: &target)
+        XCTAssertEqual(target.browse(profile: p), source.browse(profile: p))
+
+        let newServer = UUID()
+        SyncRemap(servers: [server: newServer]).apply(to: &source)
+        let moved = source.browse(profile: p)
+        XCTAssertEqual(moved.options(for: LibraryKey(serverID: newServer, categoryID: "2")).sort, .recentlyAdded)
+        XCTAssertNotNil(moved.dismissedContinueReading[SeriesRef(serverID: newServer, seriesID: "5").storageKey])
+    }
 }

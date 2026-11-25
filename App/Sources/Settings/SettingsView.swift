@@ -41,6 +41,13 @@ struct SettingsView: View {
                         Label("Default Reader Settings", systemImage: "book")
                     }
                     .accessibilityIdentifier("settings.readerDefaults")
+
+                    NavigationLink {
+                        BrowseSettingsView()
+                    } label: {
+                        Label("Customize Home", systemImage: "rectangle.grid.1x2")
+                    }
+                    .accessibilityIdentifier("settings.customizeHome")
                 }
 
                 Section {

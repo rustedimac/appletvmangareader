@@ -104,8 +104,12 @@ public struct ServerSearchResults: Identifiable, Sendable {
 
 public enum CrossServerSearch {
     /// The query to send, or nil when there is nothing worth searching.
+    /// Siri dictation ends sentences with a period or question mark and
+    /// may wrap words in quotes, which would make the servers find nothing,
+    /// so those are dropped from the ends.
     public static func normalize(_ query: String) -> String? {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let edges = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ".。!！?？\"“”'‘’「」"))
+        let trimmed = query.trimmingCharacters(in: edges)
         return trimmed.isEmpty ? nil : trimmed
     }
 
