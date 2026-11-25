@@ -48,7 +48,7 @@ final class ContentRefreshUITests: XCTestCase {
     }
 
     /// Opens a text field's keyboard, types, and goes back to the form.
-    private func type(_ text: String, into id: String) {
+    private func enter(_ text: String, into id: String) {
         select(app.element(id))
         usleep(800_000)
         app.typeText(text)
@@ -126,9 +126,9 @@ final class ContentRefreshUITests: XCTestCase {
         selectTab("Settings")
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.element("serverEditor.address").waitForExistence(timeout: 10))
-        type("Harbor Shelf", into: "serverEditor.name")
-        type("https://harbor.invalid", into: "serverEditor.address")
-        type("demo-key", into: "serverEditor.apiKey")
+        enter("Harbor Shelf", into: "serverEditor.name")
+        enter("https://harbor.invalid", into: "serverEditor.address")
+        enter("demo-key", into: "serverEditor.apiKey")
         let save = app.element("serverEditor.save")
         XCTAssertTrue(waitUntil(save, "isEnabled == true"), "address and key typed")
         select(save)
