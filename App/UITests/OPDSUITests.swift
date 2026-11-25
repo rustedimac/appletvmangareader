@@ -14,18 +14,17 @@ final class OPDSUITests: XCTestCase {
         return app
     }
 
-    func testHomeShowsLatestSeriesAndOpensOne() {
+    func testHomeShowsLatestSeriesAndOpensOne() throws {
         let app = launch()
         XCTAssertTrue(app.staticTexts["shelf.Test OPDS.newlyAdded"].waitForExistence(timeout: 20))
-        let poster = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.f:'")).firstMatch
-        XCTAssertTrue(poster.waitForExistence(timeout: 10))
-        select(poster)
-        let title = app.staticTexts["series.title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 10))
-        XCTAssertEqual(title.label, "Lantern Courier")
+        let id = openFocusedPoster(app)
+        let expected: [String: (String, Int)] = ["lantern": ("Lantern Courier", 2), "paper": ("Paper Moon Post", 1)]
+        let key = String(id.split(separator: "/").last ?? "")
+        let (name, count) = try XCTUnwrap(expected[key], "unexpected poster \(id)")
+        XCTAssertEqual(app.staticTexts["series.title"].label, name)
         let chapters = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'chapter.c:'"))
         XCTAssertTrue(chapters.firstMatch.waitForExistence(timeout: 10))
-        XCTAssertEqual(chapters.count, 2)
+        XCTAssertEqual(chapters.count, count)
     }
 
     func testEditorFindsTheCatalogAndHasNoSyncToggle() {

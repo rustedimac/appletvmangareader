@@ -14,18 +14,23 @@ final class KomgaUITests: XCTestCase {
         return app
     }
 
-    func testHomeShowsKomgaRowsAndOpensASeries() {
+    func testHomeShowsKomgaRowsAndOpensASeries() throws {
         let app = launch()
         XCTAssertTrue(app.staticTexts["shelf.Test Komga.newlyAdded"].waitForExistence(timeout: 20))
 
-        let poster = app.buttons["poster.s-lantern"]
-        XCTAssertTrue(poster.waitForExistence(timeout: 10))
-        select(poster)
-        let title = app.staticTexts["series.title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 10))
-        XCTAssertEqual(title.label, "Lantern Courier")
-        XCTAssertTrue(app.element("chapter.b-lantern-1").waitForExistence(timeout: 10))
-        XCTAssertTrue(app.element("chapter.b-lantern-2").exists)
+        // The same series can sit in several rows, so open whichever poster
+        // takes focus first and check that series.
+        let id = openFocusedPoster(app)
+        let expected: [String: (String, [String])] = [
+            "s-lantern": ("Lantern Courier", ["b-lantern-1", "b-lantern-2"]),
+            "s-paper": ("Paper Moon Post", ["b-paper-1"]),
+            "s-harbor": ("Harbor Lights", ["b-harbor-1"]),
+        ]
+        let (name, books) = try XCTUnwrap(expected[id], "unexpected poster \(id)")
+        XCTAssertEqual(app.staticTexts["series.title"].label, name)
+        for book in books {
+            XCTAssertTrue(app.element("chapter.\(book)").waitForExistence(timeout: 10), book)
+        }
     }
 
     func testConnectionTestSignsIn() {
