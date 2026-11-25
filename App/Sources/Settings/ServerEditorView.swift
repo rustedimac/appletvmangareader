@@ -24,7 +24,7 @@ struct ServerEditorView: View {
             if editing == nil {
                 Section {
                     Picker("Type", selection: $draft.kind) {
-                        ForEach(ServerKind.allCases) { Text($0.displayName).tag($0) }
+                        ForEach(ServerKind.userAddable) { Text($0.displayName).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("serverEditor.kind")
@@ -67,6 +67,8 @@ struct ServerEditorView: View {
                     SecureField("Password", text: $draft.password)
                         .textContentType(.password)
                         .accessibilityIdentifier("serverEditor.password")
+                case .freeLibrary:
+                    EmptyView()
                 }
             } header: {
                 Text("Login for \(model.activeProfile.name)")
@@ -165,6 +167,8 @@ struct ServerEditorView: View {
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
             guard draft.syncProgress, !others.isEmpty else { return base }
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
+        case .freeLibrary:
+            return "The Free Library keeps progress on this Apple TV."
         }
     }
 

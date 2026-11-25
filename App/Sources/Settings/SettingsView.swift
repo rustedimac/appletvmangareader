@@ -40,7 +40,11 @@ struct SettingsView: View {
                 Section {
                     ForEach(model.servers) { server in
                         NavigationLink {
-                            ServerEditorView(editing: server)
+                            if server.kind == .freeLibrary {
+                                FreeLibrarySettingsView(server: server)
+                            } else {
+                                ServerEditorView(editing: server)
+                            }
                         } label: {
                             ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
                                       hasLogin: model.credential(for: server) != nil,
@@ -54,6 +58,14 @@ struct SettingsView: View {
                         Label("Add Server", systemImage: "plus")
                     }
                     .accessibilityIdentifier("settings.addServer")
+                    if !model.state.hasFreeLibrary {
+                        Button {
+                            model.restoreFreeLibrary()
+                        } label: {
+                            Label("Add the Free Library", systemImage: FreeLibrarySymbol.name)
+                        }
+                        .accessibilityIdentifier("settings.addFreeLibrary")
+                    }
                 } header: {
                     Text("Servers")
                 } footer: {
@@ -71,6 +83,7 @@ struct SettingsView: View {
 
 private struct ServerRow: View {
     private var subtitle: String {
+        if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
             let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
@@ -88,7 +101,7 @@ private struct ServerRow: View {
 
     var body: some View {
         HStack(spacing: 30) {
-            Image(systemName: server.kind == .kavita ? "books.vertical.fill" : "square.stack.3d.up.fill")
+            Image(systemName: server.kind.symbolName)
                 .frame(width: 50)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
@@ -99,7 +112,7 @@ private struct ServerRow: View {
             Spacer()
             if server.kind == .kavita && !hasLogin {
                 Text("No API key").font(.caption).foregroundStyle(.orange)
-            } else if !syncs {
+            } else if !syncs && server.kind != .freeLibrary {
                 Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
             }
         }
