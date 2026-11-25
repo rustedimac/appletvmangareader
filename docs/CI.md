@@ -13,11 +13,12 @@ A run that sits in "queued" for a long time is waiting for a free macOS runner. 
 
 A PR with merge conflicts gets no `pull_request` run. Merge `main` into the branch and push.
 
-## Single failing UI test: the maintainer's Mac
+## Quick tests: the maintainer's Mac
 
-Use the maintainer's MacBook (with Xcode and a tvOS simulator) **only** to re-run **one** failing UI test that is hard to fix from CI logs alone, for example a focus problem. Rules:
+Use the maintainer's MacBook (with Xcode and a tvOS simulator) for quick checks before pushing, so a fix doesn't wait an hour in the runner queue:
 
-- Run just that test, e.g.
+- `swift test` in `Packages/MangaCore` (about 1 minute).
+- Re-running **one** failing UI test, especially one that is hard to fix from CI logs alone, such as a focus problem. Run just that test, e.g.
   `xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader -destination 'platform=tvOS Simulator,name=Apple TV' -only-testing:MangaReaderUITests/<Class>/<testMethod> CODE_SIGNING_ALLOWED=NO`
 - Send back only the failures (failing assertions and the lines around them), not the whole log.
 - Only when the Mac is awake and reachable. If it isn't, fix from the CI log and push.
