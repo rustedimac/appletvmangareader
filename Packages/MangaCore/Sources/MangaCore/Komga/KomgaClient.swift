@@ -153,6 +153,19 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
         try await http.send(request)
     }
 
+    /// Komga clears a book's progress with DELETE on its read-progress.
+    public func markUnread(chapters: [Chapter]) async throws {
+        for chapter in chapters {
+            let request = try http.request("DELETE", "api/v1/books/\(Self.pathSegment(chapter.id))/read-progress")
+            try await http.send(request)
+        }
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {
+        let request = try http.request("DELETE", "api/v1/series/\(Self.pathSegment(seriesID))/read-progress")
+        try await http.send(request)
+    }
+
     public func authorize(_ request: URLRequest) -> URLRequest {
         // Only send the login to this server, never to another host.
         guard request.url?.host == config.baseURL.host else { return request }

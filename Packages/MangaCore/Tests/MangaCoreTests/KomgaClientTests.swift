@@ -257,6 +257,20 @@ final class KomgaClientTests: XCTestCase {
         XCTAssertNil(done["page"])
     }
 
+    func testMarkUnreadDeletesReadProgress() async throws {
+        mock.on("DELETE", "read-progress", status: 204, body: "")
+        let ref = SeriesRef(serverID: config.id, seriesID: seriesID)
+        let chapter = Chapter(id: bookID, seriesRef: ref, title: "x", number: 1, pageCount: 6)
+        try await client().markUnread(chapters: [chapter])
+        var request = try XCTUnwrap(mock.lastRequest(containing: "read-progress"))
+        XCTAssertEqual(request.httpMethod, "DELETE")
+        XCTAssertEqual(request.url?.absoluteString, "http://komga.local:25600/api/v1/books/\(bookID)/read-progress")
+        try await client().markSeriesUnread(seriesID)
+        request = try XCTUnwrap(mock.lastRequest(containing: "read-progress"))
+        XCTAssertEqual(request.httpMethod, "DELETE")
+        XCTAssertEqual(request.url?.absoluteString, "http://komga.local:25600/api/v1/series/\(seriesID)/read-progress")
+    }
+
     func testFactoryMakesKomgaClient() {
         let made = MangaServerFactory.make(config: config, credential: ServerCredential(apiKey: "KEY"), transport: mock)
         XCTAssertTrue(made is KomgaClient)
@@ -326,6 +340,14 @@ final class MockKomgaTransportTests: XCTestCase {
         XCTAssertEqual(reading.map(\.title), ["Lantern Courier"])
         let after = try await client.seriesDetail("s-lantern")
         XCTAssertEqual(after.chapters[0].lastPageRead, 2)
+
+        try await client.markUnread(chapters: [after.chapters[0]])
+        reading = try await client.feed(.continueReading, limit: 10)
+        XCTAssertEqual(reading, [], "mark unread clears the book's progress")
+        try await client.saveProgress(chapter: detail.chapters[1], libraryID: nil, page: 1, completed: false)
+        try await client.markSeriesUnread("s-lantern")
+        reading = try await client.feed(.continueReading, limit: 10)
+        XCTAssertEqual(reading, [], "mark series unread clears every book")
     }
 
     func testMockRejectsAWrongKey() async {

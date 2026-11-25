@@ -73,10 +73,19 @@ public final class MockKomgaTransport: HTTPTransport, @unchecked Sendable {
         if method == "GET", parts.count == 4, parts[2] == "series", let s = series.first(where: { $0.id == parts[3] }) {
             return respond(url, 200, seriesJSON(s))
         }
+        if method == "DELETE", parts.count == 5, parts[2] == "series", parts[4] == "read-progress",
+           let s = series.first(where: { $0.id == parts[3] }) {
+            lock.withLock { for book in books where book.series == s.id { progress[book.id] = nil } }
+            return respond(url, 204, "")
+        }
         if parts.count >= 5, parts[2] == "books", let book = books.first(where: { $0.id == parts[3] }) {
             if method == "GET", parts.count == 5, parts[4] == "pages" {
                 let pages = (1...book.pages).map { #"{"number":\#($0),"fileName":"\#($0).png","mediaType":"image/png","width":800,"height":1200}"# }
                 return respond(url, 200, "[" + pages.joined(separator: ",") + "]")
+            }
+            if method == "DELETE", parts[4] == "read-progress" {
+                lock.withLock { progress[book.id] = nil }
+                return respond(url, 204, "")
             }
             if method == "PATCH", parts[4] == "read-progress" {
                 let completed = body["completed"] as? Bool ?? false

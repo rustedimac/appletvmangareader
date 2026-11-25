@@ -365,6 +365,12 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
         // OPDS is read-only; the app keeps progress on the Apple TV.
     }
 
+    public func markUnread(chapters: [Chapter]) async throws {
+        // Nothing to clear on the server; local progress is cleared by the app.
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {}
+
     public func authorize(_ request: URLRequest) -> URLRequest {
         guard let authHeader, let host = request.url?.host, host == config.baseURL.host else { return request }
         var r = request
