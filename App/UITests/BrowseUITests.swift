@@ -1,7 +1,7 @@
 import XCTest
 
 /// Browsing flows against the offline demo servers ("Demo Kavita" and
-/// "Demo Suwayomi", see `DemoMangaServer`). Driven with the Siri Remote,
+/// "Demo Suwayomi", see `SampleLibraryServer`). Driven with the Siri Remote,
 /// since tvOS has no taps.
 final class BrowseUITests: XCTestCase {
     var app: XCUIApplication!
@@ -98,10 +98,10 @@ final class BrowseUITests: XCTestCase {
         let start = app.buttons["series.continue"]
         XCTAssertTrue(press(.left, until: start, max: 3), "Start should be focusable")
         remote.press(.select)
-        XCTAssertTrue(app.otherElements["reader.placeholder"].waitForExistence(timeout: 10))
+        // The reader covers series detail; Menu closes it again.
+        XCTAssertTrue(waitFor(app.staticTexts["series.title"], "exists == false"), "reader didn't open")
         remote.press(.menu)
         XCTAssertTrue(start.waitForExistence(timeout: 10))
-        XCTAssertFalse(app.otherElements["reader.placeholder"].exists)
     }
 
     func testLibraryCategoriesAndPaging() {

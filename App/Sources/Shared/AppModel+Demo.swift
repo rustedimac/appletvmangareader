@@ -3,13 +3,13 @@ import MangaCore
 
 extension AppModel {
     /// Adds two offline demo servers ("Demo Kavita" and "Demo Suwayomi")
-    /// backed by `DemoMangaServer`. Used by UI tests launched with
+    /// backed by `SampleLibraryServer`. Used by UI tests launched with
     /// `-uiTesting -demoServers`, so browsing screens have content.
     func installDemoServers() {
-        var demos: [UUID: DemoMangaServer] = [:]
+        var demos: [UUID: SampleLibraryServer] = [:]
         makeClient = { config, _, _ in
             if let existing = demos[config.id] { return existing }
-            let server = DemoMangaServer(config: config)
+            let server = SampleLibraryServer(config: config)
             demos[config.id] = server
             return server
         }

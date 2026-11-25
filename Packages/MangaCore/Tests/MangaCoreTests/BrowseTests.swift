@@ -142,8 +142,8 @@ private struct FailingServer: MangaServer {
 }
 
 final class BrowseLoaderTests: XCTestCase {
-    func demo(_ name: String, count: Int = 30) -> DemoMangaServer {
-        DemoMangaServer(config: ServerConfig(kind: .kavita, name: name, baseURL: URL(string: "https://demo.invalid")!),
+    func demo(_ name: String, count: Int = 30) -> SampleLibraryServer {
+        SampleLibraryServer(config: ServerConfig(kind: .kavita, name: name, baseURL: URL(string: "https://demo.invalid")!),
                         seriesCount: count, latency: .zero)
     }
 
@@ -198,7 +198,7 @@ final class BrowseLoaderTests: XCTestCase {
 
 final class DemoServerTests: XCTestCase {
     func testPagingCoversEverySeriesOnce() async throws {
-        let server = DemoMangaServer(config: ServerConfig(kind: .kavita, name: "D", baseURL: URL(string: "https://demo.invalid")!),
+        let server = SampleLibraryServer(config: ServerConfig(kind: .kavita, name: "D", baseURL: URL(string: "https://demo.invalid")!),
                                      seriesCount: 50, latency: .zero)
         let all = MangaCategory(id: "all", name: "All")
         var pager = LibraryPager<SeriesSummary>(pageSize: 12)
@@ -215,7 +215,7 @@ final class DemoServerTests: XCTestCase {
     }
 
     func testProgressShowsInDetail() async throws {
-        let server = DemoMangaServer(config: ServerConfig(kind: .suwayomi, name: "D", baseURL: URL(string: "https://demo.invalid")!),
+        let server = SampleLibraryServer(config: ServerConfig(kind: .suwayomi, name: "D", baseURL: URL(string: "https://demo.invalid")!),
                                      latency: .zero)
         var detail = try await server.seriesDetail("2")
         XCTAssertEqual(detail.continueAction?.label, "Start Reading")

@@ -13,7 +13,7 @@ final class AppModel {
     @ObservationIgnored let secrets: SecretStore
     @ObservationIgnored let transport: HTTPTransport
     @ObservationIgnored private var clientCache: [String: MangaServer] = [:]
-    /// Builds server clients. UI tests swap in `DemoMangaServer` (see
+    /// Builds server clients. UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
     @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, HTTPTransport) -> MangaServer = {
         MangaServerFactory.make(config: $0, credential: $1, transport: $2)

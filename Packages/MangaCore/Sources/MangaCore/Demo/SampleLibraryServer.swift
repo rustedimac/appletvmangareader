@@ -11,7 +11,7 @@ import FoundationNetworking
 /// list ("Lantern Chronicles 3"), so a search for a word matches every
 /// eighth series. Category "all" holds every series; "short" holds the
 /// series whose id is a multiple of 3.
-public final class DemoMangaServer: MangaServer, @unchecked Sendable {
+public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     public static let words = ["Ember", "Harbor", "Lantern", "Meadow", "Orbit", "Summit", "Willow", "Zephyr"]
 
     public let config: ServerConfig
