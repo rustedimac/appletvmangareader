@@ -91,7 +91,8 @@ final class HomeMergeTests: XCTestCase {
         let old = try JSONDecoder().decode(HomeLayout.self, from: Data(#"{"order":["newlyAdded"],"hidden":["caughtUp"]}"#.utf8))
         XCTAssertEqual(old.serverRows, .merged)
         XCTAssertEqual(old.serverLabel, .underTitle)
-        XCTAssertEqual(old.rows.first, .newlyAdded)
+        XCTAssertEqual(old.order, [.newlyAdded])
+        XCTAssertTrue(old.isHidden(.caughtUp))
         // Unknown values from a newer version don't break the layout.
         let newer = try JSONDecoder().decode(HomeLayout.self, from: Data(#"{"serverRows":"grid","serverLabel":"hover"}"#.utf8))
         XCTAssertEqual(newer.serverRows, .merged)
