@@ -30,8 +30,7 @@ struct ReaderDefaultsView: View {
 
     private var form: some View {
         Form {
-            ScreenTitle("Default Reader Settings")
-            Section("Reading") {
+            Section(settingsHeader: "Reading") {
                 Picker("Mode", selection: settings.mode) {
                     ForEach(ReadingMode.allCases) { Text($0.title).tag($0) }
                 }
@@ -65,12 +64,12 @@ struct ReaderDefaultsView: View {
                     }
                 }
             } header: {
-                Text("Paged")
+                SettingsHeader("Paged")
             } footer: {
                 Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls with up and down. Click while reading to zoom; press Menu to zoom out.")
             }
 
-            Section("Vertical Scroll") {
+            Section(settingsHeader: "Vertical Scroll") {
                 Picker("Column width", selection: settings.webtoonWidth) {
                     ForEach(Self.options(Self.widths, current: model.defaultReaderSettings.webtoonWidth), id: \.self) {
                         Text(Self.percent($0)).tag($0)
@@ -90,6 +89,7 @@ struct ReaderDefaultsView: View {
                 Text("Changes made while reading are saved for that series and win over these defaults.")
             }
         }
+        .settingsPage("Default Reader Settings", systemImage: "book")
     }
 
     /// Preset values, plus the current one if it isn't a preset, so the
