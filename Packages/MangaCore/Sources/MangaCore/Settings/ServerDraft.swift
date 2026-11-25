@@ -82,6 +82,8 @@ public struct ServerDraft: Equatable, Sendable {
         case .suwayomi:
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)
+        case .freeLibrary:
+            return nil
         }
     }
 
