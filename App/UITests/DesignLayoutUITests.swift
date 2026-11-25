@@ -71,6 +71,24 @@ final class DesignLayoutUITests: XCTestCase {
                              first: app.element("serverEditor.name"), last: app.element("serverEditor.remove"))
     }
 
+    /// The Server Type picker sits in a row with no platter of its own, so
+    /// only its track and the selected segment are drawn. With the platter,
+    /// the row's insets push the track in from the text fields' edges.
+    func testServerTypePickerHasNoRowPlatter() {
+        let app = XCUIApplication.launched(tab: "settings")
+        select(app.element("settings.addServer"))
+        let kind = app.element("serverEditor.kind")
+        let name = app.element("serverEditor.name")
+        XCTAssertTrue(kind.waitForExistence(timeout: 5))
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        audit(app, "settings-add-server-type")
+        let tolerance = 12 * app.windows.firstMatch.frame.width / 1920
+        XCTAssertEqual(kind.frame.minX, name.frame.minX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the text field \(name.frame): row platter is back")
+        XCTAssertEqual(kind.frame.maxX, name.frame.maxX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the text field \(name.frame): row platter is back")
+    }
+
     private func checkTitleBesideForm(_ app: XCUIApplication, _ name: String, first: XCUIElement, last: XCUIElement,
                                       file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(first.waitForExistence(timeout: 5), file: file, line: line)
