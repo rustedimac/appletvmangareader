@@ -125,7 +125,7 @@ public enum NaturalSort {
         }
 
         init(_ value: Int) {
-            self.init(integer: String(max(0, value)).compactMap { $0.wholeNumberValue.map(UInt8.init) })
+            self.init(integer: String(max(0, value)).compactMap { $0.wholeNumberValue.map { UInt8($0) } })
         }
 
         func compare(to other: NumberValue) -> ComparisonResult {

@@ -19,7 +19,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     private let limiter: DownloadLimiter
     /// Per-attempt timeout and automatic retries for downloads.
     let retryPolicy: RetryPolicy
-    private let sleep: @Sendable (TimeInterval) async throws -> Void
+    private let retrySleep: @Sendable (TimeInterval) async throws -> Void
     private let lock = NSLock()
     private var pixelSizes: [String: PageSize] = [:]
     private var prefetchTasks: [String: Task<Void, Never>] = [:]
@@ -42,7 +42,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
                 sleep: @escaping @Sendable (TimeInterval) async throws -> Void = RetryPolicy.taskSleep) {
         self.transport = transport
         self.retryPolicy = retryPolicy
-        self.sleep = sleep
+        self.retrySleep = sleep
         self.disk = diskDirectory.map { DiskImageCache(directory: $0, limit: diskLimit) }
         self.limiter = DownloadLimiter(limit: maxConcurrentDownloads)
         memory.totalCostLimit = memoryLimit
@@ -164,7 +164,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
             // Each attempt holds a download slot only while it runs, and the
             // time limit starts once it has one, so waiting behind other
             // downloads never counts as a timeout.
-            let data = try await retryPolicy.run(timingEachAttempt: false, sleep: sleep) { [self] _ in
+            let data = try await retryPolicy.run(timingEachAttempt: false, sleep: self.retrySleep) { [self] _ in
                 await limiter.acquire(key: key, high: high)
                 let result: Result<Data, Error>
                 do {

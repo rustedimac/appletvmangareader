@@ -128,6 +128,13 @@ private struct PageImageView: View {
 
     private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
 
+    /// Label, value ("loaded", "failed", "loading") and hint for VoiceOver and UI tests.
+    private var accessibilityText: (label: String, value: String, hint: String) {
+        if loaded != nil { return ("Page \(index + 1)", "loaded", "") }
+        if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
+        return ("Page \(index + 1)", "loading", "")
+    }
+
     var body: some View {
         ZStack {
             if let loaded {
@@ -143,9 +150,9 @@ private struct PageImageView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(failure == nil ? "Page \(index + 1)" : "Page \(index + 1) didn't load")
-        .accessibilityValue(loaded != nil ? "loaded" : failure != nil ? "failed" : "loading")
-        .accessibilityHint(failure == nil ? "" : "Press Select to retry")
+        .accessibilityLabel(accessibilityText.label)
+        .accessibilityValue(accessibilityText.value)
+        .accessibilityHint(accessibilityText.hint)
         .accessibilityIdentifier("reader.page.\(index)")
         .task(id: LoadKey(url: session.page(index)?.url, retry: session.pageRetryTokens[index] ?? 0)) { await load() }
     }

@@ -43,7 +43,7 @@ final class ReaderSession {
     /// Paged reader: pages of this chapter whose image didn't load after
     /// the automatic retries, with a short reason. Turning pages still works.
     private(set) var pageFailures: [Int: String] = [:]
-    /// Bumped per page by `retryFailedPages`; page views reload on a change.
+    /// Bumped per page by `retryVisibleFailedPages`; page views reload on a change.
     private(set) var pageRetryTokens: [Int: Int] = [:]
 
     @ObservationIgnored private let model: AppModel
