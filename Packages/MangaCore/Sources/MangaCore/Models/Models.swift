@@ -107,15 +107,19 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var unreadCount: Int?
     /// Kavita needs the library id when saving progress.
     public var libraryID: String?
+    /// File format, when the server says. Nil means page images.
+    public var format: ContentFormat?
 
     public var id: SeriesRef { ref }
 
-    public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil) {
+    public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
+                format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
         self.unreadCount = unreadCount
         self.libraryID = libraryID
+        self.format = format
     }
 }
 
@@ -132,9 +136,14 @@ public struct Chapter: Codable, Hashable, Identifiable, Sendable {
     public var lastPageRead: Int
     public var isRead: Bool
     public var updatedAt: Date?
+    /// File format, when the server says. Nil means page images. For EPUB
+    /// and text, `pageCount` and `lastPageRead` count sections, not pages.
+    public var format: ContentFormat?
 
     public init(id: String, seriesRef: SeriesRef, volumeID: String? = nil, title: String, number: Double,
-                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil) {
+                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil,
+                format: ContentFormat? = nil) {
+        self.format = format
         self.id = id
         self.seriesRef = seriesRef
         self.volumeID = volumeID

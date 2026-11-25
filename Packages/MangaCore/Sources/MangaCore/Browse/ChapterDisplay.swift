@@ -24,6 +24,12 @@ public extension Chapter {
         if lastPageRead > 0 { return .inProgress(page: lastPageRead + 1, pageCount: pageCount > 0 ? pageCount : nil) }
         return .unread
     }
+
+    /// The row label. Books count sections, not pages.
+    var readLabel: String {
+        guard format?.isText == true, case .inProgress(let page, let count) = readState else { return readState.label }
+        return count.map { "Part \(page) of \($0)" } ?? "Part \(page)"
+    }
 }
 
 /// The main button on series detail.

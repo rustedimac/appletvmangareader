@@ -26,6 +26,8 @@ struct KavitaSeriesDTO: Decodable {
     var libraryName: String?
     var created: Date?
     var lastChapterAdded: Date?
+    /// `MangaFormat`: Image 0, Archive 1, Unknown 2, Epub 3, Pdf 4.
+    var format: Int?
 }
 
 struct KavitaRecentlyUpdatedDTO: Decodable {
@@ -43,6 +45,7 @@ struct KavitaSearchSeriesDTO: Decodable {
     var seriesId: Int
     var name: String
     var libraryId: Int?
+    var format: Int?
 }
 
 struct KavitaPersonDTO: Decodable {
@@ -73,6 +76,13 @@ struct KavitaChapterDTO: Decodable {
     var volumeId: Int?
     var created: Date?
     var lastModifiedUtc: Date?
+    var files: [KavitaMangaFileDTO]?
+}
+
+/// The file behind a chapter. Only the format is read; the path stays on
+/// the server.
+struct KavitaMangaFileDTO: Decodable {
+    var format: Int?
 }
 
 struct KavitaVolumeDTO: Decodable {
@@ -172,4 +182,21 @@ public enum KavitaOPDS {
         guard let url = base.url else { return nil }
         return Parsed(baseURL: url, apiKey: key)
     }
+}
+
+/// `api/Book/{chapterId}/book-info`.
+struct KavitaBookInfoDTO: Decodable {
+    var bookTitle: String?
+    var seriesName: String?
+    var chapterTitle: String?
+    var pages: Int?
+    var seriesFormat: Int?
+}
+
+/// `api/Book/{chapterId}/chapters`: one table-of-contents entry.
+struct KavitaBookChapterItemDTO: Decodable {
+    var title: String?
+    var part: String?
+    var page: Int?
+    var children: [KavitaBookChapterItemDTO]?
 }

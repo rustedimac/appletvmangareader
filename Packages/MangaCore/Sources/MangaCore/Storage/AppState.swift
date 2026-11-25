@@ -42,12 +42,16 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Book (EPUB/text) reader settings. Nil until changed.
+    public var bookSettings: BookSettings?
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
                 progress: [String: SeriesProgress] = [:],
                 defaultReaderSettings: ReaderSettings = .default,
-                readerOverrides: [String: ReaderSettings] = [:]) {
+                readerOverrides: [String: ReaderSettings] = [:],
+                bookSettings: BookSettings? = nil) {
+        self.bookSettings = bookSettings
         self.serverSettings = serverSettings
         self.favorites = favorites
         self.progress = progress
@@ -232,6 +236,16 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
         mutateData(profile) { $0.defaultReaderSettings = settings }
+    }
+
+    // MARK: Book settings
+
+    public func bookSettings(profile: UUID) -> BookSettings {
+        profileData[profile.uuidString]?.bookSettings ?? .default
+    }
+
+    public mutating func setBookSettings(_ settings: BookSettings, profile: UUID) {
+        mutateData(profile) { $0.bookSettings = settings }
     }
 
     // MARK: Helpers

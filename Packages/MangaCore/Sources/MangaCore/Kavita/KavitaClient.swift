@@ -130,7 +130,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }
         return (group.series ?? []).map {
             SeriesSummary(ref: ref($0.seriesId), title: $0.name, coverURL: coverURL(seriesID: $0.seriesId),
-                          libraryID: $0.libraryId.map(String.init))
+                          libraryID: $0.libraryId.map(String.init), format: ContentFormat(kavitaFormat: $0.format))
         }
     }
 
@@ -148,7 +148,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                 authors: metadata?.writers?.map(\.name) ?? [],
                 genres: metadata?.genres?.map(\.title) ?? [],
                 status: KavitaPublicationStatus.name(metadata?.publicationStatus),
-                chapters: Self.chapters(from: volumes, seriesRef: ref(id))
+                chapters: Self.chapters(from: volumes, seriesRef: ref(id),
+                                        seriesFormat: ContentFormat(kavitaFormat: series.format))
             )
         }
     }
@@ -193,7 +194,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }()
         let title = (dto.localizedName?.isEmpty == false ? dto.localizedName : nil) ?? dto.name
         return SeriesSummary(ref: ref(dto.id), title: title, coverURL: coverURL(seriesID: dto.id),
-                             unreadCount: unread, libraryID: dto.libraryId.map(String.init))
+                             unreadCount: unread, libraryID: dto.libraryId.map(String.init),
+                             format: ContentFormat(kavitaFormat: dto.format))
     }
 
     func coverURL(seriesID: Int) -> URL? {
@@ -207,7 +209,9 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
 
     /// Flattens Kavita volumes into one reading-ordered chapter list:
     /// numbered volumes first, then loose chapters, then specials.
-    static func chapters(from volumes: [KavitaVolumeDTO], seriesRef: SeriesRef) -> [Chapter] {
+    /// `seriesFormat` is used for chapters whose files don't say.
+    static func chapters(from volumes: [KavitaVolumeDTO], seriesRef: SeriesRef,
+                         seriesFormat: ContentFormat? = nil) -> [Chapter] {
         func volumeRank(_ v: KavitaVolumeDTO) -> (Int, Double) {
             let n = v.minNumber ?? 0
             if n <= looseLeafVolumeNumber { return (1, 0) }
@@ -234,7 +238,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                     pageCount: pages,
                     lastPageRead: max(0, min(read, max(pages - 1, 0))),
                     isRead: pages > 0 && read >= pages,
-                    updatedAt: dto.lastModifiedUtc ?? dto.created
+                    updatedAt: dto.lastModifiedUtc ?? dto.created,
+                    format: dto.files?.lazy.compactMap { ContentFormat(kavitaFormat: $0.format) }.first ?? seriesFormat
                 ))
             }
         }
