@@ -105,6 +105,40 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertEqual(detail.synopsis, "Guts.")
     }
 
+    func testChapterCountUsesVolumesOnly() async throws {
+        mock.on("GET", "api/Series/volumes", body: """
+        [
+          {"id":20,"minNumber":-100000,"name":"-100000","chapters":[
+            {"id":202,"range":"12","minNumber":12,"sortOrder":12,"pages":20,"volumeId":20},
+            {"id":201,"range":"11","minNumber":11,"sortOrder":11,"pages":20,"volumeId":20}
+          ]},
+          {"id":10,"minNumber":1,"name":"1","chapters":[{"id":100,"range":"-100000","minNumber":-100000,"pages":180,"volumeId":10}]}
+        ]
+        """)
+        let count = try await client.chapterCount(seriesID: "5")
+        XCTAssertEqual(count, SeriesCount(count: 3, unit: .chapter))
+        XCTAssertNil(mock.lastRequest(containing: "api/Series/5"), "no series or metadata request")
+        XCTAssertNil(mock.lastRequest(containing: "metadata"))
+    }
+
+    func testVolumeFilesCountAsVolumes() {
+        let ref = SeriesRef(serverID: config.id, seriesID: "7")
+        let volumes = [
+            KavitaVolumeDTO(id: 1, minNumber: 1, name: "1", chapters: [chapterDTO(10, minNumber: -100000)]),
+            KavitaVolumeDTO(id: 2, minNumber: 2, name: "2", chapters: [chapterDTO(20, minNumber: -100000)]),
+        ]
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref), SeriesCount(count: 2, unit: .volume))
+        let mixed = volumes + [KavitaVolumeDTO(id: 3, minNumber: -100000, name: nil, chapters: [chapterDTO(30, minNumber: 21)])]
+        XCTAssertEqual(KavitaClient.count(mixed, seriesRef: ref), SeriesCount(count: 3, unit: .chapter))
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref, seriesFormat: .epub), SeriesCount(count: 2, unit: .book))
+    }
+
+    private func chapterDTO(_ id: Int, minNumber: Double) -> KavitaChapterDTO {
+        KavitaChapterDTO(id: id, range: nil, minNumber: minNumber, sortOrder: nil, pages: 10, pagesRead: 0,
+                         isSpecial: false, title: nil, titleName: nil, volumeId: nil, created: nil,
+                         lastModifiedUtc: nil, files: nil)
+    }
+
     func testPagesUseFileDimensions() async throws {
         mock.on("GET", "file-dimensions", body: """
         [{"width":800,"height":1200,"pageNumber":0,"fileName":"001.jpg","isWide":false},

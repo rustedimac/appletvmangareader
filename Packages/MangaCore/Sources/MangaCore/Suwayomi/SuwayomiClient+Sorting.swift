@@ -23,8 +23,7 @@ extension SuwayomiClient {
         var dates: [SeriesRef: Date] = [:]
         var summaries: [SeriesSummary] = []
         for m in all where m.manga.inLibrary != false {
-            var s = summary(m.manga)
-            s.chapterCount = m.chapterCount
+            let s = summary(m)
             summaries.append(s)
             if let date = m.date(for: sort) { dates[s.ref] = date }
         }

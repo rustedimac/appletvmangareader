@@ -161,6 +161,31 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }
     }
 
+    /// One `api/Series/volumes` call (series detail makes three). Kavita
+    /// series listings have pages but no chapter count.
+    public func chapterCount(seriesID: String) async throws -> SeriesCount {
+        guard let id = Int(seriesID) else { throw MangaError.notFound }
+        let volumes: [KavitaVolumeDTO] = try await withAuth {
+            try await $0.get("api/Series/volumes", query: ["seriesId": seriesID])
+        }
+        return Self.count(volumes, seriesRef: ref(id))
+    }
+
+    /// Volumes when every entry is a whole volume file (no chapter split),
+    /// books for ebooks and PDFs, chapters otherwise.
+    static func count(_ volumes: [KavitaVolumeDTO], seriesRef: SeriesRef, seriesFormat: ContentFormat? = nil) -> SeriesCount {
+        let list = chapters(from: volumes, seriesRef: seriesRef, seriesFormat: seriesFormat)
+        var count = SeriesCount(chapters: list, seriesFormat: seriesFormat)
+        let entries = volumes.flatMap { volume in (volume.chapters ?? []).map { (volume.minNumber ?? 0, $0) } }
+        let allVolumeFiles = entries.allSatisfy { entry in
+            let (volumeNumber, chapter) = entry
+            return (chapter.minNumber ?? 0) <= looseLeafVolumeNumber && chapter.isSpecial != true
+                && volumeNumber > looseLeafVolumeNumber && volumeNumber < specialVolumeNumber
+        }
+        if count.unit == .chapter, !entries.isEmpty, allVolumeFiles { count.unit = .volume }
+        return count
+    }
+
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {
         let dimensions: [KavitaFileDimensionDTO]? = try? await withAuth {
             try await $0.get("api/Reader/file-dimensions", query: ["chapterId": chapter.id, "extractPdf": "true"])

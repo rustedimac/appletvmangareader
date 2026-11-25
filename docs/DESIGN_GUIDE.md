@@ -124,6 +124,12 @@ that for shelves and library grids: `Grid.posterWidth` 217, height 1.5×,
 `Grid.columnSpacing` 40, `Grid.rowSpacing` 100 (poster bottom to next poster
 top, caption included).
 
+Under each poster: the title (`.caption`, two lines at most), then one line
+picked by the profile's poster caption setting (`PosterCaption`): a count
+("42 chapters", "12 volumes", "3 books"; `.caption2` `.secondary`, one line),
+the page count, a 6 pt progress bar, or nothing. Corner badges and the bar on
+the cover don't change with it. Don't add more lines under a poster than these.
+
 ## 7. Components
 
 Shared views live in `App/Sources/Shared/Design/`. Use them for new screens.
