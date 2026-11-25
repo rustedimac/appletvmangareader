@@ -95,6 +95,8 @@ public enum MangaServerFactory {
         case .suwayomi:
             return SuwayomiClient(config: config, username: credential?.username, password: credential?.password,
                                   categoryScope: categoryScope, transport: transport)
+        case .freeLibrary:
+            return FreeLibraryClient(config: config, categoryScope: categoryScope, transport: transport)
         }
     }
 }
