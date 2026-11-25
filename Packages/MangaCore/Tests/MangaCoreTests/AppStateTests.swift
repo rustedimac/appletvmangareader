@@ -141,3 +141,61 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(secrets.credential(profile: a, server: kavita.id))
     }
 }
+
+final class CategoryScopeStateTests: XCTestCase {
+    func testSelectionIsPerProfilePerServerAndDefaultsToAll() {
+        var s = AppState.initial()
+        let me = s.activeProfile!.id
+        let kid = s.addProfile(name: "Kid").id
+        let kavita = ServerConfig(kind: .kavita, name: "K", baseURL: URL(string: "http://k")!)
+        let suwayomi = ServerConfig(kind: .suwayomi, name: "S", baseURL: URL(string: "http://s")!)
+        s.addServer(kavita)
+        s.addServer(suwayomi)
+        XCTAssertNil(s.selectedCategories(profile: me, server: kavita.id))
+
+        s.setSelectedCategories(["1"], profile: me, server: kavita.id)
+        XCTAssertEqual(s.selectedCategories(profile: me, server: kavita.id), ["1"])
+        XCTAssertNil(s.selectedCategories(profile: kid, server: kavita.id))
+        XCTAssertNil(s.selectedCategories(profile: me, server: suwayomi.id))
+        // Keeps the sync setting.
+        XCTAssertTrue(s.serverSettings(profile: me, server: kavita.id).syncProgressToServer)
+        XCTAssertFalse(s.serverSettings(profile: kid, server: suwayomi.id).syncProgressToServer)
+        s.setSelectedCategories(["0"], profile: kid, server: suwayomi.id)
+        XCTAssertFalse(s.serverSettings(profile: kid, server: suwayomi.id).syncProgressToServer)
+    }
+
+    func testVisibleFavoritesFollowSelection() {
+        var s = AppState.initial()
+        let me = s.activeProfile!.id
+        let kavita = ServerConfig(kind: .kavita, name: "K", baseURL: URL(string: "http://k")!)
+        s.addServer(kavita)
+        let ref = { SeriesRef(serverID: kavita.id, seriesID: $0) }
+        s.setFavorite(SeriesSummary(ref: ref("1"), title: "In", coverURL: nil, libraryID: "1"), true, profile: me)
+        s.setFavorite(SeriesSummary(ref: ref("2"), title: "Out", coverURL: nil, libraryID: "2"), true, profile: me)
+        s.setFavorite(SeriesSummary(ref: ref("3"), title: "Unknown", coverURL: nil), true, profile: me)
+        XCTAssertEqual(s.visibleFavorites(profile: me).count, 3)
+        s.setSelectedCategories(["1"], profile: me, server: kavita.id)
+        XCTAssertEqual(Set(s.visibleFavorites(profile: me).map(\.series.title)), ["In", "Unknown"])
+        XCTAssertEqual(s.favorites(profile: me).count, 3, "hidden favorites are kept")
+    }
+
+    func testOldSavedStateDecodesWithAllSelected() throws {
+        let json = #"{"syncProgressToServer":false}"#
+        let settings = try JSONDecoder().decode(ProfileServerSettings.self, from: Data(json.utf8))
+        XCTAssertFalse(settings.syncProgressToServer)
+        XCTAssertNil(settings.selectedCategoryIDs)
+        let summary = #"{"ref":{"serverID":"7C9E6679-7425-40DE-944B-E07FC1F90AE7","seriesID":"1"},"title":"T"}"#
+        let decoded = try JSONDecoder().decode(SeriesSummary.self, from: Data(summary.utf8))
+        XCTAssertNil(decoded.categoryIDs)
+    }
+
+    func testSelectionSurvivesStateStore() {
+        let store = StateStore(backing: InMemoryKeyValueStore())
+        var s = AppState.initial()
+        let server = ServerConfig(kind: .kavita, name: "K", baseURL: URL(string: "http://k")!)
+        s.addServer(server)
+        s.setSelectedCategories(["2", "4"], profile: s.activeProfile!.id, server: server.id)
+        store.save(s)
+        XCTAssertEqual(store.load().selectedCategories(profile: s.activeProfile!.id, server: server.id), ["2", "4"])
+    }
+}

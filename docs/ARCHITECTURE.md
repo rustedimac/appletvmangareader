@@ -35,6 +35,36 @@
   server syncs there and others keep progress locally
   (`ProfileServerSettings.syncProgressToServer`).
 
+## Choosing libraries to import
+
+Each profile picks which Kavita libraries or Suwayomi categories it imports
+from each server (`ProfileServerSettings.selectedCategoryIDs`, nil = all,
+which is also what servers saved before this setting get). The server
+editor shows the checklist once a connection test succeeds, and right away
+when editing; the Library tab's "Choose Libraries/Categories" button opens
+the same list (`CategorySelectionView`). `CategorySelection` holds the
+rules: everything ticked is stored as nil so libraries added to the server
+later show up too, and at least one must be ticked.
+
+`AppModel.client(for:)` builds clients limited to the selection
+(`MangaServerFactory.make(categoryScope:)`), so Home, Library, Search and
+the server's categories all follow it. Favorites are filtered with
+`AppState.visibleFavorites`, using the library/categories stored on each
+`SeriesSummary` (favorites saved without them always show).
+
+- Kavita: newly added sends a FilterV2 `Libraries contains 1,2` statement;
+  On Deck passes `libraryId` when one library is picked and otherwise
+  over-fetches and filters; recently updated and search have no library
+  filter, so results are filtered by `libraryId`.
+- Suwayomi: manga queries add `filter: {categoryId: {in: [...]}}`, and
+  Default (id 0) is matched with `{categoryId: {isNull: true}}`. Chapter
+  feeds first fetch the ids of manga in the picked categories and pass
+  `mangaId: {in: $ids}`. Every manga query also fetches
+  `categories { nodes { id } }`, and an empty list means Default.
+
+Every client also drops anything outside the selection after the server
+answers, as a safety net.
+
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 
 Kavita
@@ -96,10 +126,12 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 `Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
 `SpreadGeometry` (both pages at one height, edge to edge, pixel-snapped) and
 each image is drawn to exactly its frame, so a printed spread split across
-two files reads as one picture. `PageImageLoader` downsamples to screen
-size, caches, coalesces requests and preloads ±2 spreads nearest first;
-sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
-correctly before the reader reaches a wide page.
+two files reads as one picture. Pages load through the shared
+`ImagePipeline` (`\.imagePipeline`), decoded to fit the screen in pixels;
+the reader prefetches ±2 spreads nearest first at that same target, so
+preloaded pages are memory-cache hits, and cancels prefetches that leave the
+window. Sizes learned while preloading feed `reportSize`, so Suwayomi
+chapters pair correctly before the reader reaches a wide page.
 
 ## Reader demo for UI tests
 
@@ -108,7 +140,22 @@ series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
 up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerDirection leftToRight`, `-readerLayout single`,
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
-tests can reuse it.
+tests can reuse it. The demo injects an `ImagePipeline` whose transport
+draws `demo://` pages, so it runs the real image path.
+
+## Live servers in the simulator
+
+`-uiTesting -liveServers` adds real servers from environment variables, so
+nothing has to be typed on the simulator keyboard and no key goes in the
+repo: `MR_KAVITA_OPDS` (a Kavita OPDS URL) and `MR_SUWAYOMI_URL` (plus
+optional `MR_SUWAYOMI_USER` / `MR_SUWAYOMI_PASS`). From a UI test, pass them
+through `app.launchEnvironment`; from `xcodebuild test`, prefix them with
+`TEST_RUNNER_`.
+
+ATS: the servers are plain HTTP on home hostnames, so the app sets
+`NSAllowsArbitraryLoads`. Don't add `NSAllowsLocalNetworking`: when it is
+present ATS ignores `NSAllowsArbitraryLoads` and only exempts `.local`
+names and IP addresses, which blocked hosts like `kavita.home`.
 
 ## Webtoon reader
 

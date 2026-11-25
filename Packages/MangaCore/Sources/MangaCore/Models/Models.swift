@@ -70,9 +70,27 @@ public struct ProfileServerSettings: Codable, Hashable, Sendable {
     /// Suwayomi has a single progress per server, so only one profile should
     /// sync; the others keep progress locally.
     public var syncProgressToServer: Bool
+    /// Which Kavita libraries or Suwayomi categories this profile imports
+    /// from the server, by `MangaCategory.id`. Nil means all of them,
+    /// including ones added to the server later; that is the default for
+    /// servers saved before this setting existed.
+    public var selectedCategoryIDs: Set<String>?
 
-    public init(syncProgressToServer: Bool = true) {
+    public init(syncProgressToServer: Bool = true, selectedCategoryIDs: Set<String>? = nil) {
         self.syncProgressToServer = syncProgressToServer
+        self.selectedCategoryIDs = selectedCategoryIDs
+    }
+
+    /// Whether a series in these categories is shown. A series whose
+    /// categories aren't known (e.g. a favorite saved by an older version)
+    /// is always shown.
+    public func includes(categories ids: [String]?) -> Bool {
+        guard let selected = selectedCategoryIDs, let ids else { return true }
+        return ids.contains(where: selected.contains)
+    }
+
+    public func includes(_ series: SeriesSummary) -> Bool {
+        includes(categories: series.memberCategoryIDs)
     }
 }
 
@@ -109,17 +127,26 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var libraryID: String?
     /// File format, when the server says. Nil means page images.
     public var format: ContentFormat?
+    /// The Suwayomi categories the series is in ("0" is Default). Nil when
+    /// unknown. Kavita uses `libraryID` instead.
+    public var categoryIDs: [String]?
 
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
-                format: ContentFormat? = nil) {
+                categoryIDs: [String]? = nil, format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
         self.unreadCount = unreadCount
         self.libraryID = libraryID
+        self.categoryIDs = categoryIDs
         self.format = format
+    }
+
+    /// The `MangaCategory` ids this series belongs to, or nil if unknown.
+    public var memberCategoryIDs: [String]? {
+        categoryIDs ?? libraryID.map { [$0] }
     }
 }
 

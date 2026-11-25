@@ -132,6 +132,13 @@ struct KavitaFilterV2: Encodable {
 
     enum Comparison {
         static let equal = 0
+        static let contains = 5
+    }
+
+    /// Series in any of these libraries.
+    static func libraries(_ ids: [Int]) -> Statement {
+        Statement(comparison: Comparison.contains, field: Field.libraries,
+                  value: ids.map(String.init).joined(separator: ","))
     }
 
     enum Sort {

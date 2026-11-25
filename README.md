@@ -42,4 +42,8 @@ CI runs both on every push and pull request (`.github/workflows/ci.yml`).
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if basic auth is enabled.
 
+After a successful connection test you pick which Kavita libraries or
+Suwayomi categories to import. Each profile has its own choice; change it
+later in the server's settings or with "Choose Libraries" on the Library tab.
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.
