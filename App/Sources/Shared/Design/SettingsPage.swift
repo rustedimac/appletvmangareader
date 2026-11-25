@@ -45,10 +45,13 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 // style would draw a second rounded box inside it.
                 .textFieldStyle(.plain)
                 .labelStyle(.settingsRow)
+                // A focused row grows about 10 %; the list would clip it at
+                // its own edges. The mask below does the clipping instead.
+                .scrollClipDisabled()
                 .frame(maxWidth: Size.formColumn, maxHeight: .infinity)
-                // Rows scrolled up fade out above the form instead of
-                // sliding under the tab bar. The mask reaches past the
-                // sides and bottom so focused rows can still grow.
+                // Rows scrolled up fade out at the top of the form instead
+                // of sliding under the tab bar. The mask reaches past the
+                // sides and bottom so focused rows are never cut off.
                 .mask {
                     VStack(spacing: 0) {
                         LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
