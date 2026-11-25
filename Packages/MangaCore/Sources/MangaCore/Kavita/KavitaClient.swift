@@ -69,25 +69,51 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         return "Signed in to Kavita as \(user.username ?? "user")"
     }
 
+    /// Libraries first, then collections. Collection ids are prefixed
+    /// (`collection-12`) so they never clash with library ids.
     public func categories() async throws -> [MangaCategory] {
         let libraries: [KavitaLibraryDTO] = try await withAuth { try await $0.get("api/Library/libraries") }
-        return libraries.enumerated().map { index, lib in
+        var result = libraries.enumerated().map { index, lib in
             MangaCategory(id: String(lib.id), name: lib.name, order: index)
         }
+        // Collections are a nice extra; never fail the library list over them.
+        let collections: [KavitaCollectionDTO] = (try? await withAuth {
+            try await $0.get("api/Collection", query: ["ownedOnly": "false"])
+        }) ?? []
+        let nonEmpty = collections
+            .filter { ($0.itemCount ?? 1) > 0 }
+            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        for (offset, collection) in nonEmpty.enumerated() {
+            result.append(MangaCategory(id: Self.collectionIDPrefix + String(collection.id), name: collection.title,
+                                        order: libraries.count + offset, kind: .collection))
+        }
+        return result
     }
+
+    static let collectionIDPrefix = "collection-"
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
         var filter = KavitaFilterV2()
-        filter.statements = [.init(comparison: KavitaFilterV2.Comparison.equal,
-                                   field: KavitaFilterV2.Field.libraries,
-                                   value: category.id)]
-        filter.sortOptions = .init(sortField: KavitaFilterV2.Sort.sortName, isAscending: true)
-        let items: [KavitaSeriesDTO] = try await withAuth {
-            try await $0.post("api/Series/v2",
-                              query: ["libraryId": category.id, "pageNumber": String(page), "pageSize": String(pageSize)],
-                              body: filter)
+        var query: [String: String?] = ["pageNumber": String(page), "pageSize": String(pageSize)]
+        switch category.kind {
+        case .library:
+            filter.statements = [.init(comparison: KavitaFilterV2.Comparison.equal,
+                                       field: KavitaFilterV2.Field.libraries,
+                                       value: category.id)]
+            query["libraryId"] = category.id
+        case .collection:
+            let id = category.id.hasPrefix(Self.collectionIDPrefix)
+                ? String(category.id.dropFirst(Self.collectionIDPrefix.count)) : category.id
+            filter.statements = [.init(comparison: KavitaFilterV2.Comparison.equal,
+                                       field: KavitaFilterV2.Field.collectionTags,
+                                       value: id)]
         }
-        return Paged(items: items.map(summary), hasMore: items.count >= pageSize)
+        filter.sortOptions = .init(sortField: KavitaFilterV2.Sort.sortName, isAscending: true)
+        let (items, response): ([KavitaSeriesDTO], HTTPURLResponse) = try await withAuth { [query, filter] in
+            try await $0.postWithResponse("api/Series/v2", query: query, body: filter)
+        }
+        let hasMore = KavitaPaginationHeader.parse(response)?.hasMore ?? (items.count >= pageSize)
+        return Paged(items: items.map(summary), hasMore: hasMore)
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
@@ -157,7 +183,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         let dimensions: [KavitaFileDimensionDTO]? = try? await withAuth {
             try await $0.get("api/Reader/file-dimensions", query: ["chapterId": chapter.id, "extractPdf": "true"])
         }
-        let sizes = Dictionary((dimensions ?? []).map { ($0.pageNumber, PageSize(width: $0.width, height: $0.height)) },
+        let sizes = Dictionary((dimensions ?? []).map { ($0.pageNumber, Self.pageSize($0)) },
                                uniquingKeysWith: { first, _ in first })
         let count = max(chapter.pageCount, dimensions?.count ?? 0)
         return try (0..<count).map { index in
@@ -183,6 +209,14 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     }
 
     // MARK: Helpers
+
+    /// Keeps Kavita's own `isWide` flag when it disagrees with the aspect
+    /// ratio (it can come from the archive's metadata).
+    static func pageSize(_ dto: KavitaFileDimensionDTO) -> PageSize {
+        var size = PageSize(width: dto.width, height: dto.height)
+        if let flag = dto.isWide, flag != size.isWideByRatio { size.wideOverride = flag }
+        return size
+    }
 
     func ref(_ id: Int) -> SeriesRef { SeriesRef(serverID: config.id, seriesID: String(id)) }
 

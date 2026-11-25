@@ -11,7 +11,7 @@ final class KavitaClientTests: XCTestCase {
 
     override func setUp() {
         mock = MockTransport()
-        mock.on("POST", "api/Plugin/authenticate", body: #"{"username":"john","token":"jwt-1","refreshToken":"r","apiKey":"KEY"}"#)
+        mock.on("POST", "api/Plugin/authenticate", body: fixture("kavita-authenticate"))
         client = KavitaClient(config: config, apiKey: " KEY ", transport: mock)
     }
 
@@ -34,25 +34,30 @@ final class KavitaClientTests: XCTestCase {
     }
 
     func testCategoriesUseBearerToken() async throws {
-        mock.on("GET", "api/Library/libraries", body: #"[{"id":1,"name":"Manga Library","type":0},{"id":3,"name":"Webtoons","type":0}]"#)
+        mock.on("GET", "api/Library/libraries", body: fixture("kavita-libraries"))
+        mock.on("GET", "api/Collection", body: "[]")
         let cats = try await client.categories()
         XCTAssertEqual(cats.map(\.name), ["Manga Library", "Webtoons"])
         XCTAssertEqual(cats.map(\.id), ["1", "3"])
+        XCTAssertEqual(cats.map(\.kind), [.library, .library])
         let req = try XCTUnwrap(mock.lastRequest(containing: "libraries"))
         XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "Bearer jwt-1")
     }
 
     func testSeriesInLibrarySendsFilter() async throws {
-        mock.on("POST", "api/Series/v2", body: #"[{"id":5,"name":"Vinland Saga","localizedName":"","pages":200,"pagesRead":50,"libraryId":1,"created":"2024-05-01T12:34:56.1234567"}]"#)
-        let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 1, pageSize: 1)
-        XCTAssertEqual(page.items.first?.title, "Vinland Saga")
-        XCTAssertEqual(page.items.first?.unreadCount, 150)
+        mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-page1"),
+                headers: ["Pagination": #"{"currentPage":1,"itemsPerPage":2,"totalItems":179,"totalPages":90}"#])
+        let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 1, pageSize: 2)
+        XCTAssertEqual(page.items.map(\.title), ["A Ninja and an Assassin Under One Roof", "A Witch's Life in Mongol"])
+        XCTAssertEqual(page.items.map(\.unreadCount), [1383, 1031])
         XCTAssertEqual(page.items.first?.libraryID, "1")
         XCTAssertTrue(page.hasMore)
         let cover = try XCTUnwrap(page.items.first?.coverURL?.absoluteString)
-        XCTAssertEqual(cover, "http://kavita.local:5000/api/Image/series-cover?apiKey=KEY&seriesId=5")
+        XCTAssertEqual(cover, "http://kavita.local:5000/api/Image/series-cover?apiKey=KEY&seriesId=29")
 
         let req = mock.lastRequest(containing: "api/Series/v2")
+        let url = try XCTUnwrap(req?.url?.absoluteString)
+        XCTAssertTrue(url.contains("libraryId=1") && url.contains("pageNumber=1") && url.contains("pageSize=2"), url)
         let body = jsonBody(req)
         let statements = try XCTUnwrap(body["statements"] as? [[String: Any]])
         XCTAssertEqual(statements.first?["field"] as? Int, 19)
@@ -61,12 +66,72 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertEqual(body["combination"] as? Int, 1)
     }
 
+    func testPaginationHeaderEndsPaging() async throws {
+        // A full page that is also the last one: only the header can tell.
+        mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-page1"),
+                headers: ["Pagination": #"{"currentPage":90,"itemsPerPage":2,"totalItems":180,"totalPages":90}"#])
+        let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 90, pageSize: 2)
+        XCTAssertEqual(page.items.count, 2)
+        XCTAssertFalse(page.hasMore)
+    }
+
+    func testPagingFallsBackToCountWithoutHeader() async throws {
+        mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-last"))
+        let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 2, pageSize: 2)
+        XCTAssertEqual(page.items.map(\.title), ["A-Channel"])
+        XCTAssertFalse(page.hasMore)
+    }
+
+    func testPaginationHeaderParsing() {
+        func response(_ value: String?) -> HTTPURLResponse {
+            HTTPURLResponse(url: URL(string: "http://h")!, statusCode: 200, httpVersion: nil,
+                            headerFields: value.map { ["Pagination": $0] })!
+        }
+        let parsed = KavitaPaginationHeader.parse(response(#"{"currentPage":1,"itemsPerPage":2,"totalItems":179,"totalPages":90}"#))
+        XCTAssertEqual(parsed, KavitaPaginationHeader(currentPage: 1, itemsPerPage: 2, totalItems: 179, totalPages: 90))
+        XCTAssertEqual(parsed?.hasMore, true)
+        // Empty on-deck result from the live server.
+        XCTAssertEqual(KavitaPaginationHeader.parse(response(#"{"currentPage":1,"itemsPerPage":2,"totalItems":0,"totalPages":0}"#))?.hasMore, false)
+        XCTAssertNil(KavitaPaginationHeader.parse(response(nil)))
+        XCTAssertNil(KavitaPaginationHeader.parse(response("garbage")))
+    }
+
+    func testCollectionsAreListedAfterLibraries() async throws {
+        mock.on("GET", "api/Library/libraries", body: fixture("kavita-libraries"))
+        mock.on("GET", "api/Collection", body: fixture("kavita-collections"))
+        let cats = try await client.categories()
+        XCTAssertEqual(cats.map(\.name), ["Manga Library", "Webtoons", "Summer Picks"]) // empty one hidden
+        XCTAssertEqual(cats.last?.kind, .collection)
+        XCTAssertEqual(cats.last?.id, "collection-4")
+        XCTAssertEqual(Set(cats.map(\.id)).count, cats.count)
+
+        mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-last"),
+                headers: ["Pagination": #"{"currentPage":1,"itemsPerPage":20,"totalItems":1,"totalPages":1}"#])
+        let page = try await client.series(in: try XCTUnwrap(cats.last), page: 1, pageSize: 20)
+        XCTAssertEqual(page.items.map(\.title), ["A-Channel"])
+        XCTAssertFalse(page.hasMore)
+        let req = mock.lastRequest(containing: "api/Series/v2")
+        XCTAssertFalse(req?.url?.absoluteString.contains("libraryId") ?? true)
+        let statements = try XCTUnwrap(jsonBody(req)["statements"] as? [[String: Any]])
+        XCTAssertEqual(statements.first?["field"] as? Int, 7)
+        XCTAssertEqual(statements.first?["value"] as? String, "4")
+    }
+
+    func testCollectionsFailureDoesNotHideLibraries() async throws {
+        mock.on("GET", "api/Library/libraries", body: fixture("kavita-libraries"))
+        mock.on("GET", "api/Collection", status: 500, body: "boom")
+        let cats = try await client.categories()
+        XCTAssertEqual(cats.map(\.id), ["1", "3"])
+    }
+
     func testRecentlyUpdatedDedupesSeries() async throws {
-        mock.on("POST", "recently-updated-series", body: """
-        [{"seriesId":1,"seriesName":"A","libraryId":1},{"seriesId":1,"seriesName":"A","libraryId":1},{"seriesId":2,"seriesName":"B","libraryId":1}]
-        """)
+        mock.on("POST", "recently-updated-series", body: fixture("kavita-recently-updated"))
         let items = try await client.feed(.recentlyUpdated, limit: 10)
-        XCTAssertEqual(items.map(\.title), ["A", "B"])
+        XCTAssertEqual(items.map(\.ref.seriesID), ["157", "2", "65"])
+        XCTAssertEqual(items.first?.title, "Let's Go, Kaikigumi")
+        XCTAssertEqual(items.first?.libraryID, "1")
+        let limited = try await client.feed(.recentlyUpdated, limit: 2)
+        XCTAssertEqual(limited.count, 2)
     }
 
     func testFeedEndpoints() async throws {
@@ -121,6 +186,50 @@ final class KavitaClientTests: XCTestCase {
                        "http://kavita.local:5000/api/Reader/image?apiKey=KEY&chapterId=77&extractPdf=true&page=0")
     }
 
+    func testRealVolumesSortChaptersAndKeepTitles() async throws {
+        mock.on("GET", "api/Series/29", body: #"{"id":29,"name":"A Ninja and an Assassin Under One Roof","localizedName":"","pages":1383,"pagesRead":0,"libraryId":1,"latestReadDate":"0001-01-01T00:00:00"}"#)
+        mock.on("GET", "api/Series/metadata", status: 404, body: "")
+        mock.on("GET", "api/Series/volumes", body: fixture("kavita-volumes"))
+        let detail = try await client.seriesDetail("29")
+        // Volume 1 first, then loose chapters sorted by sortOrder (the server
+        // sends them as 50, 51, 51.5 but not always in that order).
+        XCTAssertEqual(detail.chapters.map(\.id), ["2400", "2401", "2402", "2388", "2390", "2389"])
+        XCTAssertEqual(detail.chapters.map(\.title),
+                       ["Vol.1 Ch.1", "Vol.1 Ch.2", "Vol.1 Ch.3", "Ch.50", "Ch.51", "Ch.51.5 - Ninkoro 4koma - KILLER ROBOT"])
+        XCTAssertEqual(detail.chapters.map(\.volumeID), ["109", "109", "109", "108", "108", "108"])
+        XCTAssertEqual(detail.chapters[0].isRead, true)
+        XCTAssertEqual(detail.chapters[1].lastPageRead, 4)
+        XCTAssertEqual(detail.continueChapter?.id, "2401")
+        XCTAssertNil(detail.synopsis) // metadata failure is tolerated
+    }
+
+    func testRealFileDimensionsMarkSpreads() async throws {
+        mock.on("GET", "file-dimensions", body: fixture("kavita-file-dimensions"))
+        let ref = SeriesRef(serverID: config.id, seriesID: "29")
+        let chapter = Chapter(id: "2437", seriesRef: ref, volumeID: "113", title: "Vol.5 Ch.34", number: 1, pageCount: 28)
+        let pages = try await client.pages(for: chapter)
+        XCTAssertEqual(pages.count, 28)
+        XCTAssertEqual(pages.filter { $0.size?.isWide == true }.map(\.index), [6, 7])
+        XCTAssertTrue(pages.allSatisfy { $0.size?.wideOverride == nil })
+        let layout = SpreadLayout(sizes: pages.map(\.size), firstPageAlone: true, shift: false)
+        XCTAssertTrue(layout.spreads.contains(.single(6)))
+        XCTAssertTrue(layout.spreads.contains(.single(7)))
+    }
+
+    func testKavitaWideFlagOverridesAspectRatio() {
+        let flagged = KavitaClient.pageSize(KavitaFileDimensionDTO(width: 1000, height: 1000, pageNumber: 0, isWide: true))
+        XCTAssertEqual(flagged.wideOverride, true)
+        XCTAssertTrue(flagged.isWide)
+        let notWide = KavitaClient.pageSize(KavitaFileDimensionDTO(width: 2000, height: 1000, pageNumber: 1, isWide: false))
+        XCTAssertFalse(notWide.isWide)
+        let agrees = KavitaClient.pageSize(KavitaFileDimensionDTO(width: 2672, height: 1920, pageNumber: 6, isWide: true))
+        XCTAssertNil(agrees.wideOverride)
+        XCTAssertTrue(agrees.isWide)
+        let missing = KavitaClient.pageSize(KavitaFileDimensionDTO(width: 800, height: 1200, pageNumber: 2, isWide: nil))
+        XCTAssertNil(missing.wideOverride)
+        XCTAssertFalse(missing.isWide)
+    }
+
     func testSaveProgressBody() async throws {
         mock.on("POST", "api/Reader/progress", body: "")
         let ref = SeriesRef(serverID: config.id, seriesID: "5")
@@ -141,6 +250,7 @@ final class KavitaClientTests: XCTestCase {
         // First libraries call returns 401, the retry succeeds.
         let flaky = FlakyTransport(inner: mock)
         mock.on("GET", "api/Library/libraries", body: #"[{"id":1,"name":"L"}]"#)
+        mock.on("GET", "api/Collection", body: "[]")
         let c = KavitaClient(config: config, apiKey: "KEY", transport: flaky)
         let cats = try await c.categories()
         XCTAssertEqual(cats.count, 1)

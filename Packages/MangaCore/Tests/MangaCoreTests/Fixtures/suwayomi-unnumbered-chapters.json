@@ -1,0 +1,55 @@
+{
+ "data": {
+  "manga": {
+   "id": 10,
+   "title": "Paper Boats",
+   "description": null,
+   "author": null,
+   "artist": null,
+   "genre": [],
+   "status": "UNKNOWN",
+   "thumbnailUrl": "/api/v1/manga/10/thumbnail",
+   "unreadCount": 3
+  },
+  "chapters": {
+   "nodes": [
+    {
+     "id": 16,
+     "name": "Side Story",
+     "chapterNumber": -1.0,
+     "sourceOrder": 214,
+     "isRead": false,
+     "lastPageRead": 0,
+     "pageCount": -1,
+     "uploadDate": "1700000000000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "0"
+    },
+    {
+     "id": 10,
+     "name": "",
+     "chapterNumber": -1.0,
+     "sourceOrder": 220,
+     "isRead": false,
+     "lastPageRead": 0,
+     "pageCount": -1,
+     "uploadDate": "1700000300000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "0"
+    },
+    {
+     "id": 11,
+     "name": "Prologue",
+     "chapterNumber": -1.0,
+     "sourceOrder": 219,
+     "isRead": false,
+     "lastPageRead": 0,
+     "pageCount": -1,
+     "uploadDate": "1700000200000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "0"
+    }
+   ]
+  }
+ }
+}

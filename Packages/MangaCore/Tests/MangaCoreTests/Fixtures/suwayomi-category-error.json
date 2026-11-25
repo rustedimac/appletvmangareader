@@ -1,0 +1,17 @@
+{
+ "data": null,
+ "errors": [
+  {
+   "message": "Validation error (UnknownArgument@[category/mangas]) : Unknown field argument 'first'",
+   "locations": [
+    {
+     "line": 1,
+     "column": 43
+    }
+   ],
+   "extensions": {
+    "classification": "ValidationError"
+   }
+  }
+ ]
+}

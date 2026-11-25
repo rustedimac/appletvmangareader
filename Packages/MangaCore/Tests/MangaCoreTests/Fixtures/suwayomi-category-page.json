@@ -1,0 +1,27 @@
+{
+ "data": {
+  "mangas": {
+   "totalCount": 702,
+   "pageInfo": {
+    "hasNextPage": true,
+    "hasPreviousPage": true
+   },
+   "nodes": [
+    {
+     "id": 16109,
+     "title": "Harbor Lights",
+     "thumbnailUrl": "/api/v1/manga/16109/thumbnail",
+     "unreadCount": 8,
+     "inLibrary": true
+    },
+    {
+     "id": 20910,
+     "title": "Iron Orchard",
+     "thumbnailUrl": "/api/v1/manga/20910/thumbnail",
+     "unreadCount": 12,
+     "inLibrary": true
+    }
+   ]
+  }
+ }
+}

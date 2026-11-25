@@ -41,10 +41,17 @@ Kavita
 - Login: `POST api/Plugin/authenticate?apiKey=…&pluginName=…` → `{ token }`, used as `Authorization: Bearer`.
 - Images take `?apiKey=` and need no Bearer header: `api/Reader/image`, `api/Image/series-cover`.
 - `api/Reader/file-dimensions?chapterId=` gives every page's width/height up front, so spreads are known before loading.
-- List endpoints return a `Pagination` response header.
+- List endpoints return a JSON `Pagination` response header, e.g.
+  `{"currentPage":1,"itemsPerPage":2,"totalItems":179,"totalPages":90}`. `hasMore` is `currentPage < totalPages`.
+- `file-dimensions` entries carry `isWide`; on the live server it always matched width > height. `PageSize.wideOverride` keeps it only when it disagrees.
+- Collections: `GET api/Collection` (filter field 7 in `Series/v2`). They show up as extra categories with `kind == .collection` and ids prefixed `collection-`.
+- Chapters inside a volume are not sorted; sort by `sortOrder`. `titleName` is the display name ("Vol.1 Ch.1"), `title` is just the number.
 
 Suwayomi
 - No auth by default. `orderBy`/`orderByType` work (deprecated in favor of `order: [{by, byType}]`).
+- `category.mangas` and `manga.chapters` take no arguments and return everything (a category can hold 700+). Page with the top-level `mangas(condition: {categoryIds: [id]}, first:, offset:)`, and list chapters with `chapters(condition: {mangaId:}, orderBy: SOURCE_ORDER, orderByType: ASC)` (ascending = oldest first).
+- Category 0 is "Default" (manga in no other category). It is hidden when empty, and `categoryIds: [0]` matches nothing, so it is paged client-side.
+- `chapterNumber` is -1 when the source gave no number (hundreds of chapters on the live server). Never sort by chapter id.
 - Timestamps are strings: `lastReadAt` / `fetchedAt` in seconds, `uploadDate` in milliseconds.
 - `pageCount` is `-1` until `fetchChapterPages` runs. Page sizes are only known after an image downloads.
 - `UpdateChapterPatchInput` fields: `isBookmarked`, `isRead`, `lastPageRead`.

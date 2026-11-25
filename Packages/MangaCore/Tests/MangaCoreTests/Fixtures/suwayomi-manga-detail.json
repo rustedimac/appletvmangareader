@@ -1,0 +1,58 @@
+{
+ "data": {
+  "manga": {
+   "id": 16109,
+   "title": "Harbor Lights",
+   "description": "A lighthouse keeper's daughter.",
+   "author": "Mina Ro",
+   "artist": "Mina Ro",
+   "genre": [
+    "Drama",
+    "Slice of Life"
+   ],
+   "status": "ONGOING",
+   "thumbnailUrl": "/api/v1/manga/16109/thumbnail",
+   "unreadCount": 8
+  },
+  "chapters": {
+   "nodes": [
+    {
+     "id": 93233,
+     "name": "Chapter 1",
+     "chapterNumber": 1.0,
+     "sourceOrder": 1,
+     "isRead": true,
+     "lastPageRead": 0,
+     "pageCount": 25,
+     "uploadDate": "1572580800000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "0"
+    },
+    {
+     "id": 93234,
+     "name": "Chapter 2",
+     "chapterNumber": 2.0,
+     "sourceOrder": 2,
+     "isRead": false,
+     "lastPageRead": 8,
+     "pageCount": 26,
+     "uploadDate": "1573016400000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "1792406390"
+    },
+    {
+     "id": 93235,
+     "name": "Chapter 3",
+     "chapterNumber": 3.0,
+     "sourceOrder": 3,
+     "isRead": false,
+     "lastPageRead": 0,
+     "pageCount": -1,
+     "uploadDate": "1576126800000",
+     "fetchedAt": "1792406380",
+     "lastReadAt": "0"
+    }
+   ]
+  }
+ }
+}
