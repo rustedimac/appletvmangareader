@@ -160,9 +160,8 @@ final class DesignLayoutUITests: XCTestCase {
         }
 
         // Rows in a settings page stay inside the form column.
-        let form = app.element("settingsPage.form")
-        if form.exists {
-            for cell in form.cells.allElementsBoundByIndex where cell.exists && !cell.frame.isEmpty {
+        if let form = snapshot(of: app.element("settingsPage.form")) {
+            for cell in all(in: form, where: { $0.elementType == .cell }) where !cell.frame.isEmpty {
                 XCTAssertLessThanOrEqual(cell.frame.width, (formColumn + slack) * scale,
                                          "[\(name)] row \(describe(cell)) is \(Int(cell.frame.width / scale)) pt wide",
                                          file: file, line: line)
@@ -187,25 +186,43 @@ final class DesignLayoutUITests: XCTestCase {
         }
     }
 
-    /// On-screen focusable elements with their frames.
+    private static let focusableTypes: Set<XCUIElement.ElementType> = [
+        .cell, .button, .textField, .secureTextField, .switch, .segmentedControl,
+    ]
+
+    /// On-screen focusable elements with their frames. Reads one snapshot of
+    /// the whole tree: querying each element separately costs a round trip
+    /// per element and made this test slow on CI.
     private func focusables(_ app: XCUIApplication, in screen: CGRect) -> [(label: String, frame: CGRect)] {
-        let queries = [app.cells, app.buttons, app.textFields, app.secureTextFields, app.switches,
-                       app.segmentedControls]
+        guard let root = snapshot(of: app) else { return [] }
         var result: [(String, CGRect)] = []
-        for query in queries {
-            for element in query.allElementsBoundByIndex {
-                guard element.exists else { continue }
-                let f = element.frame
-                // Only fully visible elements; ones scrolled past the edge are fine.
-                guard !f.isEmpty, screen.contains(f) else { continue }
-                if result.contains(where: { $0.1 == f }) { continue }
-                result.append((describe(element), f))
-            }
+        for element in all(in: root, where: { Self.focusableTypes.contains($0.elementType) }) {
+            let f = element.frame
+            // Only fully visible elements; ones scrolled past the edge are fine.
+            guard !f.isEmpty, screen.contains(f) else { continue }
+            if result.contains(where: { $0.1 == f }) { continue }
+            result.append((describe(element), f))
         }
         return result
     }
 
-    private func describe(_ element: XCUIElement) -> String {
+    private func snapshot(of element: XCUIElement) -> XCUIElementSnapshot? {
+        guard element.exists else { return nil }
+        return try? element.snapshot()
+    }
+
+    private func all(in root: XCUIElementSnapshot,
+                     where match: (XCUIElementSnapshot) -> Bool) -> [XCUIElementSnapshot] {
+        var found: [XCUIElementSnapshot] = []
+        var stack = [root]
+        while let next = stack.popLast() {
+            if match(next) { found.append(next) }
+            stack.append(contentsOf: next.children.reversed())
+        }
+        return found
+    }
+
+    private func describe(_ element: XCUIElementAttributes) -> String {
         let id = element.identifier.isEmpty ? element.label : element.identifier
         return "\"\(id)\""
     }
