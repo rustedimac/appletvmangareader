@@ -34,6 +34,8 @@ struct WebtoonReaderView: View {
             }
         }
         .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.webtoon")
     }
 }
 

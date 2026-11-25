@@ -50,7 +50,6 @@ final class WebtoonContainerView: UIView {
         super.init(frame: frame)
         addSubview(scrollView)
         backgroundColor = .clear
-        accessibilityIdentifier = "reader.webtoon"
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }

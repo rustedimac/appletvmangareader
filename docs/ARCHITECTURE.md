@@ -125,3 +125,22 @@ the image arrives.
 UI tests: `WebtoonReaderUITests`, launched with
 `-uiTesting -readerDemo -readerMode webtoon` (optionally
 `-readerWebtoonWidth 1.0`).
+
+## Reader menu
+
+`Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
+view and changes show behind it as they're made. Swipe down or Play/Pause
+opens it; Menu or Play/Pause closes it. While it's open the reader under it
+is disabled so focus can't leave the drawer. Two tabs:
+
+- Settings: one row per setting, options side by side. Which rows show
+  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
+  in two-page layout first page alone and "Shift by one"; vertical: column
+  width). Every change goes through `session.updateSettings(_:)` and is
+  saved for the series. "Set as Default" copies the settings to the
+  profile default; "Reset to Default" brings the series back to it.
+- Chapters: the series' chapters with the open one focused; picking one
+  opens it.
+
+Control identifiers are `reader.menu.<row>.<option>` (for example
+`reader.menu.layout.single`), used by `ReaderMenuUITests`.
