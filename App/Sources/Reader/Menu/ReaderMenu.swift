@@ -63,8 +63,9 @@ struct ReaderMenu: View {
 
     /// Header, tabs and the open pane all live in one ScrollView, so the
     /// title and tabs scroll away with the options instead of staying pinned
-    /// while the rows slide underneath them (the scroll view doesn't clip, so
-    /// pinned text ended up drawn over the rows).
+    /// while the rows slide underneath them. The scroll view clips (no
+    /// `.scrollClipDisabled()`); the 60 pt padding inside it leaves room for
+    /// focused buttons to grow.
     private var panel: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -89,7 +90,6 @@ struct ReaderMenu: View {
                 .padding(.top, 60)
                 .padding(.bottom, 60)
             }
-            .scrollClipDisabled()
             .onChange(of: focus) { _, key in
                 // Focus moving up onto the tabs only scrolls them into view;
                 // bring the title back too.

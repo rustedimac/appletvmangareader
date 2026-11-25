@@ -25,6 +25,14 @@ final class ScreenTitleUITests: XCTestCase {
         checkTitleScrolls(app, first: app.element("serverEditor.name"), last: app.element("serverEditor.remove"))
     }
 
+    func testFreeLibraryTitleScrollsAwayAndBack() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-freeLibrary", "-uiTestingTab", "settings"]
+        app.launch()
+        select(app.element("settings.server.Free Library"))
+        checkTitleScrolls(app, first: app.element("freeLibrary.credit.0"), last: app.element("freeLibrary.remove"))
+    }
+
     private func checkTitleScrolls(_ app: XCUIApplication, first: XCUIElement, last: XCUIElement,
                                    file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(first.waitForExistence(timeout: 5), file: file, line: line)

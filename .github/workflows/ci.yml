@@ -16,6 +16,16 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Seconds on Linux: catches screen titles or headers that would stay pinned
+  # over scrolling rows (see tools/check_pinned_headers.py).
+  ui-lint:
+    name: UI lint (pinned headers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_pinned_headers.py
+
   core-tests:
     name: MangaCore unit tests
     runs-on: macos-15
