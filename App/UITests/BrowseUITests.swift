@@ -98,9 +98,11 @@ final class BrowseUITests: XCTestCase {
         let start = app.buttons["series.continue"]
         XCTAssertTrue(press(.left, until: start, max: 3), "Start should be focusable")
         remote.press(.select)
-        // The reader covers series detail; Menu closes it again.
-        XCTAssertTrue(waitFor(app.staticTexts["series.title"], "exists == false"), "reader didn't open")
+        // The reader opens full screen; Menu closes it again.
+        let reader = app.descendants(matching: .any)["reader.paged"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 15), "reader didn't open")
         remote.press(.menu)
+        XCTAssertTrue(waitFor(reader, "exists == false"), "reader didn't close")
         XCTAssertTrue(start.waitForExistence(timeout: 10))
     }
 
