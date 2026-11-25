@@ -23,6 +23,8 @@ public enum ResumePosition {
             if finished, chapter.pageCount > 0, local.page >= chapter.pageCount - 1 { return 0 }
             return max(0, local.page)
         }
+        // Marked unread on this Apple TV: the server's page is stale.
+        if let local, local.ignoresServerProgress || local.unreadChapterIDs.contains(chapter.id) { return 0 }
         if chapter.isRead { return 0 }
         return max(0, chapter.lastPageRead)
     }

@@ -26,10 +26,17 @@ enum AppStateFixtures {
     {"activeProfileID":"0E5B8C3A-2222-4A7B-9C3D-000000000002","profileData":{"0E5B8C3A-1111-4A7B-9C3D-000000000001":{"defaultReaderSettings":{"background":"black","direction":"rightToLeft","firstPageAlone":true,"layout":"double","mode":"paged","shiftPairing":false,"webtoonScrollStep":0.75,"webtoonWidth":0.6},"favorites":[{"addedAt":785000000,"series":{"coverURL":"http:\/\/kavita.local:5000\/api\/image\/series-cover?seriesId=12","libraryID":"1","ref":{"serverID":"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A","seriesID":"12"},"title":"Lantern Harbor","unreadCount":3}},{"addedAt":785000050,"series":{"categoryIDs":["0","2"],"ref":{"serverID":"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B","seriesID":"7"},"title":"Paper Comet"}}],"progress":{"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12":{"chapterID":"104","page":17,"readChapterIDs":["101","102","103"],"updatedAt":785000100.5}},"readerOverrides":{"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12":{"background":"gray","direction":"leftToRight","firstPageAlone":false,"layout":"single","mode":"webtoon","shiftPairing":true,"webtoonScrollStep":0.5,"webtoonWidth":0.8}},"serverSettings":{"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A":{"selectedCategoryIDs":["1","3"],"syncProgressToServer":true},"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B":{"syncProgressToServer":true}}},"0E5B8C3A-2222-4A7B-9C3D-000000000002":{"defaultReaderSettings":{"background":"white","direction":"leftToRight","firstPageAlone":true,"layout":"double","mode":"paged","shiftPairing":false,"webtoonScrollStep":0.75,"webtoonWidth":0.6},"favorites":[],"progress":{"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|7":{"chapterID":"70","page":4,"readChapterIDs":[],"updatedAt":785000200}},"readerOverrides":{},"serverSettings":{"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A":{"syncProgressToServer":true},"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B":{"selectedCategoryIDs":[],"syncProgressToServer":false}}}},"profiles":[{"colorIndex":0,"id":"0E5B8C3A-1111-4A7B-9C3D-000000000001","name":"Me","symbol":"person.fill"},{"colorIndex":1,"id":"0E5B8C3A-2222-4A7B-9C3D-000000000002","name":"Kid","symbol":"star.fill"}],"servers":[{"baseURL":"http:\/\/kavita.local:5000","id":"5A1D2C3B-AAAA-4E5F-8A9B-00000000000A","kind":"kavita","name":"Kavita"},{"baseURL":"http:\/\/suwayomi.local:4567","id":"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B","kind":"suwayomi","name":"Suwayomi"}],"version":1}
     """#
 
+    /// Adds mark unread (#11): `unreadChapterIDs` and
+    /// `ignoresServerProgress` on progress, written only when set.
+    static let v1MarkUnread = v1LibrarySelection.replacingOccurrences(
+        of: #""chapterID":"70","page":4,"readChapterIDs":[],"updatedAt":785000200}"#,
+        with: #""chapterID":"70","page":4,"readChapterIDs":[],"unreadChapterIDs":["69"],"updatedAt":785000200},"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|8":{"chapterID":"","ignoresServerProgress":true,"page":0,"readChapterIDs":[],"updatedAt":785000300}"#)
+
     /// Every shape a shipped or merged build has written, oldest first.
     static let all: [(name: String, json: String)] = [
         ("v1 foundation (#1-#10)", v1Foundation),
         ("v1 library selection (#12)", v1LibrarySelection),
+        ("v1 mark unread (#11)", v1MarkUnread),
     ]
 }
 
@@ -105,6 +112,18 @@ final class AppStateUpgradeTests: XCTestCase {
         XCTAssertEqual(n.selectedCategories(profile: me, server: kavita), ["1", "3"])
         XCTAssertEqual(n.selectedCategories(profile: kid, server: suwayomi), [])
         XCTAssertEqual(n.favorites(profile: me).first?.series.categoryIDs, ["0", "2"])
+    }
+
+    func testMarkUnreadFieldsSurvive() throws {
+        XCTAssertNotEqual(F.v1MarkUnread, F.v1LibrarySelection)
+        let (store, _) = makeStore(with: F.v1MarkUnread)
+        let s = store.load()
+        XCTAssertEqual(store.lastLoad, .decoded)
+        XCTAssertEqual(s.progress(SeriesRef(serverID: suwayomi, seriesID: "7"), profile: kid)?.unreadChapterIDs, ["69"])
+        XCTAssertEqual(s.progress(SeriesRef(serverID: suwayomi, seriesID: "8"), profile: kid)?.ignoresServerProgress, true)
+        // Older shapes default to nothing marked.
+        let old = makeStore(with: F.v1Foundation).0.load()
+        XCTAssertEqual(old.progress(SeriesRef(serverID: suwayomi, seriesID: "7"), profile: kid)?.unreadChapterIDs, [])
     }
 
     func testEveryFixtureSurvivesSaveAndReload() {

@@ -50,6 +50,16 @@ final class ResumePositionTests: XCTestCase {
         XCTAssertEqual(ResumePosition.startPage(for: c, sessionPage: 8, local: local("a", page: 2)), 8)
     }
 
+    func testMarkedUnreadIgnoresTheServersPage() {
+        let c = chapter("a", lastPageRead: 9)
+        var p = local("b", page: 3)
+        p.unreadChapterIDs = ["a"]
+        XCTAssertEqual(ResumePosition.startPage(for: c, local: p), 0)
+        var whole = local("", page: 0)
+        whole.ignoresServerProgress = true
+        XCTAssertEqual(ResumePosition.startPage(for: c, local: whole), 0)
+    }
+
     func testNeverNegative() {
         XCTAssertEqual(ResumePosition.startPage(for: chapter("a", lastPageRead: -1), local: nil), 0)
         XCTAssertEqual(ResumePosition.startPage(for: chapter("a"), local: local("a", page: -5)), 0)
