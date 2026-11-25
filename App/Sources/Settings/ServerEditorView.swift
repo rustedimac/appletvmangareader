@@ -58,14 +58,6 @@ struct ServerEditorView: View {
             Section {
                 switch draft.kind {
                 case .kavita:
-<<<<<<< HEAD
-                    SecureField("API key", text: $draft.apiKey)
-                        .textInputAutocapitalization(.never)
-                        .onSubmit { draft.absorbOPDS() }
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("serverEditor.apiKey")
-                        .settingsTextFieldRow()
-=======
                     Picker("Sign in with", selection: $draft.kavitaMethod) {
                         ForEach(ServerDraft.KavitaSignInMethod.allCases) { Text($0.title).tag($0) }
                     }
@@ -85,11 +77,11 @@ struct ServerEditorView: View {
                     } else {
                         SecureField("API key", text: $draft.apiKey)
                             .textInputAutocapitalization(.never)
+                            .onSubmit { draft.absorbOPDS() }
                             .autocorrectionDisabled()
                             .accessibilityIdentifier("serverEditor.apiKey")
                             .settingsTextFieldRow()
                     }
->>>>>>> origin/main
                 case .komga:
                     TextField("API key (recommended)", text: $draft.apiKey)
                         .textInputAutocapitalization(.never)
@@ -194,7 +186,7 @@ struct ServerEditorView: View {
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in
             // Never rewrite the field here: this runs on every keystroke, and
-            // splitting an OPDS URL mid-typing ate "/api/opds/" (John, 2026-11-25).
+            // splitting an OPDS URL mid-typing ate "/api/opds/" (2026-11-25).
             // `resolvedURL`/`resolvedAPIKey` read a full OPDS URL as it is.
             connectionChanged()
         }
@@ -285,6 +277,7 @@ struct ServerEditorView: View {
             draft.kind = prefill.kind
             draft.address = prefill.address
             draft.apiKey = prefill.apiKey
+            if prefill.kind == .kavita, !prefill.apiKey.isEmpty { draft.kavitaMethod = .apiKey }
         }
         if let editing {
             draft = ServerDraft(editing: editing, credential: model.credential(for: editing),
@@ -297,15 +290,13 @@ struct ServerEditorView: View {
     /// checklist until the next successful test. Ticks the user already
     /// made are kept if the same ids come back.
     private func connectionChanged() {
-<<<<<<< HEAD
-        // Tidying the fields (absorbOPDS) changes the text but not where it
-        // connects, so it keeps the test result.
-        if connectionKey != testedKey { test = .idle }
-=======
-        test = .idle
         saveError = nil
-        resolvedCredential = nil
->>>>>>> origin/main
+        // Tidying the fields (absorbOPDS) before a test changes the text but
+        // not where it connects, so it keeps the running test.
+        if connectionKey != testedKey {
+            test = .idle
+            resolvedCredential = nil
+        }
         guard categoriesKey != connectionKey else { return }
         categoryTask?.cancel()
         if let selection = categories.selection { pendingSelection = .some(selection.storedValue) }
@@ -316,9 +307,9 @@ struct ServerEditorView: View {
     /// The login a successful test signed in with (for a Kavita password,
     /// the auth key it got), reused by the checklist and Save.
     @State private var resolvedCredential: ServerCredential?
-    @State private var categoryTask: Task<Void, Never>?
     /// The server and login the last Test Connection ran against.
     @State private var testedKey: String?
+    @State private var categoryTask: Task<Void, Never>?
     /// The server and login the checklist was loaded for.
     @State private var categoriesKey: String?
     /// Ticks made before the address or login changed, applied when the
@@ -359,18 +350,14 @@ struct ServerEditorView: View {
     }
 
     private func runTest() {
+        draft.absorbOPDS()
+        testedKey = connectionKey
         if let message = draft.validationMessage {
             test = .failure(message)
             return
         }
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
-<<<<<<< HEAD
-        let credential = draft.credential
-        draft.absorbOPDS()
-        testedKey = connectionKey
-=======
         let draft = self.draft
->>>>>>> origin/main
         test = .running
         Task {
             do {
@@ -384,7 +371,8 @@ struct ServerEditorView: View {
                 test = .success(message)
                 loadCategories()
             } catch {
-                test = .failure(ConnectionErrorMessage.describe(error, kind: config.kind, url: config.baseURL))
+                test = .failure(ConnectionErrorMessage.describe(error, kind: config.kind, url: config.baseURL,
+                                                                password: draft.needsKavitaSignIn))
             }
         }
     }
@@ -419,7 +407,8 @@ struct ServerEditorView: View {
                                                               selectedCategoryIDs: selected), for: config)
                 dismiss()
             } catch {
-                saveError = error.localizedDescription
+                saveError = ConnectionErrorMessage.describe(error, kind: config.kind, url: config.baseURL,
+                                                            password: draft.needsKavitaSignIn)
             }
         }
     }

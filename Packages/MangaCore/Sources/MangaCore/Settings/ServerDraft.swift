@@ -55,39 +55,30 @@ public struct ServerDraft: Equatable, Sendable {
                   kavitaMethod: kavitaByPassword ? .password : .apiKey, existing: credential)
     }
 
-<<<<<<< HEAD
     /// Tidies the address (and, for Kavita, the API key) once the person is
     /// done typing: on Return, Test Connection or Save. Never call this on
     /// every keystroke: the address would rewrite itself mid-typing.
     ///
     /// For Kavita, a full OPDS URL in either field splits into the server
-    /// address and the API key. Returns true when a field changed.
+    /// address and the API key, and switches to API key sign-in. Returns
+    /// true when a field changed.
     @discardableResult
     public mutating func absorbOPDS() -> Bool {
         guard kind == .kavita else { return false }
-        let before = (address, apiKey)
+        let before = (address, apiKey, kavitaMethod)
         if let parsed = KavitaOPDS.parse(address) {
             address = parsed.baseURL.absoluteString
             apiKey = parsed.apiKey
+            kavitaMethod = .apiKey
         } else if let url = resolvedURL, Self.trimmedServicePath(address, kind: kind) {
             // `http://host/api/opds/` with no key: keep just the server.
             address = url.absoluteString
         }
-        let key = resolvedAPIKey
-        if !key.isEmpty, key != apiKey { apiKey = key }
-        return before != (address, apiKey)
-=======
-    /// If `address` is a Kavita OPDS URL, splits it into the server address
-    /// and API key fields and switches to API key sign-in. Returns true
-    /// when it did.
-    @discardableResult
-    public mutating func absorbOPDS() -> Bool {
-        guard kind == .kavita, let parsed = KavitaOPDS.parse(address) else { return false }
-        address = parsed.baseURL.absoluteString
-        apiKey = parsed.apiKey
-        kavitaMethod = .apiKey
-        return true
->>>>>>> origin/main
+        if kavitaMethod == .apiKey {
+            let key = resolvedAPIKey
+            if !key.isEmpty, key != apiKey { apiKey = key }
+        }
+        return before != (address, apiKey, kavitaMethod)
     }
 
     /// Kavita with a username and password, so the app has to sign in
@@ -132,7 +123,7 @@ public struct ServerDraft: Equatable, Sendable {
     public static func addressHelp(for kind: ServerKind) -> String {
         switch kind {
         case .kavita:
-            return "Type the address you open Kavita at in a browser, for example http://kavita.local:5000. You can also use the full OPDS URL from Kavita → User Settings → 3rd Party Clients (it ends in /api/opds/ and your key); the API key is then filled in for you."
+            return "The address you open Kavita at in a browser, for example http://kavita.local:5000. The full OPDS URL from Kavita → User Settings → 3rd Party Clients works too: it ends in /api/opds/ and your key, and signs in with that key."
         case .komga:
             return "The address you open Komga at in a browser, for example http://komga.local:25600."
         case .suwayomi:
@@ -165,8 +156,7 @@ public struct ServerDraft: Equatable, Sendable {
         return url
     }
 
-    /// True when the typed address carries a path, slash or missing scheme
-    /// that `resolvedURL` tidies away.
+    /// True when `resolvedURL` drops an API path from the typed address.
     static func trimmedServicePath(_ address: String, kind: ServerKind) -> Bool {
         guard let url = normalizedURL(address, keepQuery: kind == .opds) else { return false }
         return droppingServicePath(url, kind: kind) != url
@@ -176,17 +166,13 @@ public struct ServerDraft: Equatable, Sendable {
     public var validationMessage: String? {
         if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the server address." }
         guard resolvedURL != nil else { return "That doesn't look like a web address." }
-<<<<<<< HEAD
-        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key from Kavita → User Settings → 3rd Party Clients, or use the full OPDS URL as the address." }
-=======
         if usesKavitaPassword {
             if keepsExistingLogin { return nil }
             if username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter your Kavita username." }
             if password.isEmpty { return "Enter your Kavita password." }
             return nil
         }
-        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
->>>>>>> origin/main
+        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key from Kavita → User Settings → 3rd Party Clients, or use the full OPDS URL as the address." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
         if kind == .komga, resolvedAPIKey.isEmpty {

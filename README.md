@@ -54,20 +54,14 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
 
 ## Connecting servers
 
-<<<<<<< HEAD
 - **Kavita**: the address you open Kavita at, e.g. `http://kavita.local:5000`,
-  plus the API key from User Settings → 3rd Party Clients. Or use the whole
-  OPDS URL from that page (`http://kavita.local:5000/api/opds/<api-key>`) as
-  the address, or paste it into the API key field: the app splits it when you
-  test or save. Each profile can use its own Kavita user.
-=======
-- **Kavita**: the server address and your Kavita username and password.
-  Each profile signs in as its own Kavita user, and reading progress,
-  read state and Continue Reading sync with that user. The app keeps an
-  auth key named "Apple TV Manga Reader" (revocable under Kavita's Manage
-  Auth Keys), never the password. Pasting an OPDS URL
-  (`http://kavita.local:5000/api/opds/<api-key>`) works too.
->>>>>>> origin/main
+  and your Kavita username and password. Each profile signs in as its own
+  Kavita user, and reading progress, read state and Continue Reading sync
+  with that user. The app keeps an auth key named "Apple TV Manga Reader"
+  (revocable under Kavita's Manage Auth Keys), never the password. Or sign in
+  with an API key: the whole OPDS URL from User Settings → 3rd Party Clients
+  (`http://kavita.local:5000/api/opds/<api-key>`) works as the address or in
+  the API key field, and is split when you test or save.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if the server asks for one (basic auth or UI login).
   Suwayomi keeps one progress per server, so one profile syncs there and the

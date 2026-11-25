@@ -7,7 +7,9 @@ import FoundationNetworking
 /// the address (nothing answered, or something that isn't this kind of
 /// server) or the login (the server answered and said no).
 public enum ConnectionErrorMessage {
-    public static func describe(_ error: Error, kind: ServerKind, url: URL?) -> String {
+    /// `password`: the login was a username and password (Kavita sign-in)
+    /// rather than an API key.
+    public static func describe(_ error: Error, kind: ServerKind, url: URL?, password: Bool = false) -> String {
         let name = kind.displayName
         let host = url.map { u in u.host.map { h in u.port.map { "\(h):\($0)" } ?? h } ?? u.absoluteString } ?? "that address"
         let example = exampleAddress(kind)
@@ -29,14 +31,14 @@ public enum ConnectionErrorMessage {
         if let mangaError = error as? MangaError {
             switch mangaError {
             case .unauthorized:
-                return loginRejected(kind)
+                return loginRejected(kind, password: password)
             case .missingCredential:
                 return kind == .kavita ? "Enter the API key." : "Enter the login for this server."
             case .notFound, .decoding:
                 return notThisServer(name, host: host, example: example)
             case .http(let status, _):
                 switch status {
-                case 401, 403: return loginRejected(kind)
+                case 401, 403: return loginRejected(kind, password: password)
                 case 404, 405, 400: return notThisServer(name, host: host, example: example)
                 case 500...599: return "\(name) at \(host) had a problem (HTTP \(status)). Try again, or check the server's logs."
                 default: return notThisServer(name, host: host, example: example)
@@ -51,8 +53,10 @@ public enum ConnectionErrorMessage {
         return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
-    static func loginRejected(_ kind: ServerKind) -> String {
+    static func loginRejected(_ kind: ServerKind, password: Bool = false) -> String {
         switch kind {
+        case .kavita where password:
+            return "Kavita rejected the username or password. Use the login you sign in to Kavita with."
         case .kavita:
             return "Kavita rejected the API key. Copy it again from Kavita → User Settings → 3rd Party Clients: it's the last part of the OPDS URL, after /api/opds/."
         case .komga:

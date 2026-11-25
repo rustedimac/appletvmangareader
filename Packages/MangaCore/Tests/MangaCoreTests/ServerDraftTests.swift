@@ -182,6 +182,8 @@ final class ServerDraftTests: XCTestCase {
         XCTAssertTrue(wrongServer.contains("doesn't look like Kavita"), wrongServer)
         let html = ConnectionErrorMessage.describe(MangaError.decoding("x"), kind: .komga, url: url)
         XCTAssertTrue(html.contains("doesn't look like Komga"), html)
+        let badPassword = ConnectionErrorMessage.describe(MangaError.unauthorized, kind: .kavita, url: url, password: true)
+        XCTAssertTrue(badPassword.contains("username or password"), badPassword)
         let suwayomiLogin = ConnectionErrorMessage.describe(MangaError.http(status: 401, body: ""), kind: .suwayomi, url: url)
         XCTAssertTrue(suwayomiLogin.contains("username or password"), suwayomiLogin)
     }
