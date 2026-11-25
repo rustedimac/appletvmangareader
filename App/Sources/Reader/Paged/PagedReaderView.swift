@@ -311,35 +311,42 @@ private struct PageImageView: View {
     @State private var failed = false
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            if let loaded {
-                let full = CGSize(width: size.width / crop.visibleWidth, height: size.height / crop.visibleHeight)
-                Image(uiImage: loaded.image)
-                    .resizable()
-                    .interpolation(.high)
-                    .antialiased(true)
-                    .frame(width: full.width, height: full.height)
-                    .offset(x: -crop.left * full.width, y: -crop.top * full.height)
-            } else if failed {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                    Text("Page \(index + 1) didn't load").font(.caption)
-                }
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The image is an overlay, so its larger (uncropped) size never
+        // changes the page's layout or accessibility frame.
+        Rectangle()
+            .fill(.clear)
+            .frame(width: size.width, height: size.height)
+            .accessibilityElement()
+            .accessibilityLabel("Page \(index + 1)")
+            .accessibilityValue(crop.isZero ? "uncropped" : "cropped")
+            .accessibilityIdentifier("reader.page.\(index)")
+            .overlay(alignment: .topLeading) { content.accessibilityHidden(true) }
+            .clipped()
+            .task(id: LoadKey(url: session.page(index)?.url, target: images.targetSize,
+                              crop: session.settings.cropBorders)) { await load() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let loaded {
+            let full = CGSize(width: size.width / crop.visibleWidth, height: size.height / crop.visibleHeight)
+            Image(uiImage: loaded.image)
+                .resizable()
+                .interpolation(.high)
+                .antialiased(true)
+                .frame(width: full.width, height: full.height)
+                .offset(x: -crop.left * full.width, y: -crop.top * full.height)
+        } else if failed {
+            VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle")
+                Text("Page \(index + 1) didn't load").font(.caption)
             }
+            .foregroundStyle(.secondary)
+            .frame(width: size.width, height: size.height)
+        } else {
+            ProgressView()
+                .frame(width: size.width, height: size.height)
         }
-        .frame(width: size.width, height: size.height, alignment: .topLeading)
-        .clipped()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Page \(index + 1)")
-        .accessibilityValue(crop.isZero ? "uncropped" : "cropped")
-        .accessibilityIdentifier("reader.page.\(index)")
-        .task(id: LoadKey(url: session.page(index)?.url, target: images.targetSize,
-                          crop: session.settings.cropBorders)) { await load() }
     }
 
     private struct LoadKey: Hashable {
