@@ -7,6 +7,8 @@ struct ReaderRoute: Identifiable {
     let series: SeriesSummary
     let chapters: [Chapter]
     let start: Chapter
+    /// Page to open at (a bookmark). Nil resumes saved progress.
+    var startPage: Int? = nil
 }
 
 /// Presents the reader full screen from series detail.
@@ -14,6 +16,6 @@ struct ReaderHost: View {
     let route: ReaderRoute
 
     var body: some View {
-        ReaderView(series: route.series, chapters: route.chapters, start: route.start)
+        ReaderView(series: route.series, chapters: route.chapters, start: route.start, startPage: route.startPage)
     }
 }

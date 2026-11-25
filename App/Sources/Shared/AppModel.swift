@@ -39,6 +39,7 @@ final class AppModel {
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
             if ProcessInfo.processInfo.arguments.contains("-mockKomga") { model.installMockKomga() }
             if ProcessInfo.processInfo.arguments.contains("-mockOPDS") { model.installMockOPDS() }
+            if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
