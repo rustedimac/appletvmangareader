@@ -8,26 +8,32 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Profile") {
-                    Button {
-                        model.isPickingProfile = true
-                    } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: model.activeProfile, size: 64)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(model.activeProfile.name)
-                                Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
+                if model.perAppleTVUser {
+                    AppleTVUserSection()
+                }
+
+                Section(model.perAppleTVUser ? "Reading" : "Profile") {
+                    if showsInAppProfiles {
+                        Button {
+                            model.isPickingProfile = true
+                        } label: {
+                            HStack(spacing: 30) {
+                                ProfileAvatarView(profile: model.activeProfile, size: 64)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(model.activeProfile.name)
+                                    Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
+                                }
                             }
                         }
-                    }
-                    .accessibilityIdentifier("settings.switchProfile")
+                        .accessibilityIdentifier("settings.switchProfile")
 
-                    NavigationLink {
-                        ProfilesListView()
-                    } label: {
-                        Label("Manage Profiles", systemImage: "person.2")
+                        NavigationLink {
+                            ProfilesListView()
+                        } label: {
+                            Label("Manage Profiles", systemImage: "person.2")
+                        }
+                        .accessibilityIdentifier("settings.manageProfiles")
                     }
-                    .accessibilityIdentifier("settings.manageProfiles")
 
                     NavigationLink {
                         ReaderDefaultsView()
@@ -65,6 +71,13 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
         }
+    }
+
+    /// In-app profiles are the fallback when there are no Apple TV users.
+    /// With Apple TV users they only show for older state that already has
+    /// several profiles.
+    private var showsInAppProfiles: Bool {
+        !model.perAppleTVUser || model.state.profiles.count > 1
     }
 }
 

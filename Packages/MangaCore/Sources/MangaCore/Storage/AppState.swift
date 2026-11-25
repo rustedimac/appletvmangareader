@@ -71,14 +71,20 @@ public struct AppState: Codable, Hashable, Sendable {
     public var servers: [ServerConfig]
     /// Keyed by profile id (uuidString).
     public var profileData: [String: ProfileData]
+    /// The profile to open without asking "Who's reading?". Only used when
+    /// the app runs as the current Apple TV user, where this state belongs
+    /// to that user alone (see `ProfileLaunch`).
+    public var rememberedProfileID: UUID?
 
     public init(version: Int = AppState.currentVersion, profiles: [Profile] = [], activeProfileID: UUID? = nil,
-                servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:]) {
+                servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:],
+                rememberedProfileID: UUID? = nil) {
         self.version = version
         self.profiles = profiles
         self.activeProfileID = activeProfileID
         self.servers = servers
         self.profileData = profileData
+        self.rememberedProfileID = rememberedProfileID
     }
 
     /// A fresh install has one profile so the app works without setup.
@@ -122,6 +128,7 @@ public struct AppState: Codable, Hashable, Sendable {
         profiles.remove(at: i)
         profileData[id.uuidString] = nil
         if activeProfileID == id { activeProfileID = profiles.first?.id }
+        if rememberedProfileID == id { rememberedProfileID = nil }
         return true
     }
 
