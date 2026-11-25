@@ -5,6 +5,7 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case kavita
     case suwayomi
     case komga
+    case opds
 
     public var id: String { rawValue }
 
@@ -13,11 +14,12 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .kavita: return "Kavita"
         case .suwayomi: return "Suwayomi"
         case .komga: return "Komga"
+        case .opds: return "OPDS"
         }
     }
 
     /// The kinds offered when adding a server, in picker order.
-    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi] }
+    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi, .opds] }
 }
 
 /// A saved server connection, shared by every profile. Credentials are not

@@ -62,6 +62,9 @@ public enum MangaServerFactory {
         case .komga:
             return KomgaClient(config: config, apiKey: credential?.apiKey, username: credential?.username,
                                password: credential?.password, categoryScope: categoryScope, transport: transport)
+        case .opds:
+            return OPDSClient(config: config, username: credential?.username, password: credential?.password,
+                              categoryScope: categoryScope, transport: transport)
         }
     }
 }

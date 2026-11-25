@@ -9,6 +9,8 @@
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
+| `MangaCore/Komga` | `KomgaClient` (REST `api/v1`/`api/v2`, API key or basic auth). |
+| `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
@@ -78,6 +80,17 @@ Suwayomi
 - Timestamps are strings: `lastReadAt` / `fetchedAt` in seconds, `uploadDate` in milliseconds.
 - `pageCount` is `-1` until `fetchChapterPages` runs. Page sizes are only known after an image downloads.
 - `UpdateChapterPatchInput` fields: `isBookmarked`, `isRead`, `lastPageRead`.
+
+Komga (verified against 1.30.2)
+- Login: `X-API-Key` header, or basic auth with the email and password. Images need it too (`authorize`).
+- `POST api/v1/series/list` and `api/v1/books/list` take `{"condition": …, "fullTextSearch": …}`; `GET api/v1/series` is deprecated since 1.19.
+- Pages are one-based everywhere (`books/{id}/pages/{n}`, read progress `page`). `books/{id}/pages` gives every page's width/height.
+- `series/new` and `series/updated` take `library_id` as a comma-separated list. Genres come back lower-case.
+
+OPDS (verified against Komga 1.30.2 and Stump)
+- OPDS-PSE `{pageNumber}` is zero-based. `pse:lastRead` is one-based in Komga. Stump links are relative and its templates already carry a query (`?zero_based=true`).
+- `URL` percent-encodes `{}`, so templates are kept as strings (`OPDSLink.template`).
+- Series and chapter ids carry what's needed to reopen a book (`OPDSBook`, base64 JSON), so favorites and progress survive catalog changes. OPDS can't store progress; the editor hides the sync toggle and saves it off.
 
 ## Double-page spreads
 

@@ -47,7 +47,7 @@ public struct ServerDraft: Equatable, Sendable {
     /// drops a trailing slash. For Kavita, an OPDS URL resolves to its base.
     public var resolvedURL: URL? {
         if kind == .kavita, let parsed = KavitaOPDS.parse(address) { return parsed.baseURL }
-        return Self.normalizedURL(address)
+        return Self.normalizedURL(address, keepQuery: kind == .opds)
     }
 
     public var resolvedAPIKey: String {
@@ -61,7 +61,7 @@ public struct ServerDraft: Equatable, Sendable {
         guard resolvedURL != nil else { return "That doesn't look like a web address." }
         if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        if kind == .suwayomi, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
+        if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
         if kind == .komga, resolvedAPIKey.isEmpty {
             if user.isEmpty && password.isEmpty { return "Enter an API key, or your Komga email and password." }
             if user.isEmpty || password.isEmpty { return "Enter both your Komga email and password." }
@@ -86,6 +86,9 @@ public struct ServerDraft: Equatable, Sendable {
         case .suwayomi:
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)
+        case .opds:
+            let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            return user.isEmpty ? nil : ServerCredential(username: user, password: password)
         case .komga:
             // An API key wins; the email and password are the fallback.
             let key = resolvedAPIKey
@@ -102,7 +105,8 @@ public struct ServerDraft: Equatable, Sendable {
     }
 
     /// Parses a typed address. Accepts `host`, `host:port`, or a full URL.
-    public static func normalizedURL(_ string: String) -> URL? {
+    /// OPDS catalog URLs keep their query (`keepQuery`).
+    public static func normalizedURL(_ string: String, keepQuery: Bool = false) -> URL? {
         var s = string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !s.isEmpty, !s.contains(" ") else { return nil }
         if !s.contains("://") { s = "http://" + s }
@@ -111,7 +115,7 @@ public struct ServerDraft: Equatable, Sendable {
               let scheme = components.scheme?.lowercased(), scheme == "http" || scheme == "https",
               let host = components.host, !host.isEmpty else { return nil }
         components.scheme = scheme
-        components.query = nil
+        if !keepQuery { components.query = nil }
         components.fragment = nil
         return components.url
     }
