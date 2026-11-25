@@ -82,6 +82,8 @@ struct ServerEditorView: View {
                     SecureField("Password", text: $draft.password)
                         .textContentType(.password)
                         .accessibilityIdentifier("serverEditor.password")
+                case .freeLibrary:
+                    EmptyView()
                 }
             } header: {
                 Text("Login for \(model.activeProfile.name)")
@@ -183,6 +185,8 @@ struct ServerEditorView: View {
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
             guard draft.syncProgress, !others.isEmpty else { return base }
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
+        case .freeLibrary:
+            return "The Free Library keeps progress on this Apple TV."
         }
     }
 
@@ -192,6 +196,7 @@ struct ServerEditorView: View {
         case .komga: return "Address, e.g. komga.local:25600"
         case .suwayomi: return "Address, e.g. suwayomi.local:4567"
         case .opds: return "Catalog URL or address, e.g. books.local:8083/opds"
+        case .freeLibrary: return ""
         }
     }
 
@@ -201,6 +206,7 @@ struct ServerEditorView: View {
         case .komga: return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
         case .suwayomi: return "Only needed if basic authentication is turned on in Suwayomi."
         case .opds: return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
+        case .freeLibrary: return "The Free Library needs no login."
         }
     }
 

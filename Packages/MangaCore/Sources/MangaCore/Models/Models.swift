@@ -6,6 +6,9 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case suwayomi
     case komga
     case opds
+    /// The built-in Free Library (public-domain Internet Archive items and
+    /// Pepper&Carrot). Always there; never typed in by the user.
+    case freeLibrary
 
     public var id: String { rawValue }
 
@@ -15,6 +18,7 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .suwayomi: return "Suwayomi"
         case .komga: return "Komga"
         case .opds: return "OPDS"
+        case .freeLibrary: return "Free Library"
         }
     }
 

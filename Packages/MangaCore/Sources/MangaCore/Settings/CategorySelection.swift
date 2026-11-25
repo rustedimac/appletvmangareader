@@ -55,12 +55,13 @@ public struct CategorySelection: Equatable, Sendable {
 
 public extension ServerKind {
     /// "Libraries" for Kavita and Komga, "Sections" for OPDS catalogs,
-    /// "Categories" for Suwayomi.
+    /// "Categories" for Suwayomi, "Collections" for the Free Library.
     var categoryNoun: String {
         switch self {
         case .kavita, .komga: return "Libraries"
         case .opds: return "Sections"
         case .suwayomi: return "Categories"
+        case .freeLibrary: return "Collections"
         }
     }
 }

@@ -95,6 +95,8 @@ public struct ServerDraft: Equatable, Sendable {
             if !key.isEmpty { return ServerCredential(apiKey: key) }
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)
+        case .freeLibrary:
+            return nil
         }
     }
 
