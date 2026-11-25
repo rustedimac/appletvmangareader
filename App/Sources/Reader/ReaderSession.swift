@@ -66,8 +66,12 @@ final class ReaderSession {
     private(set) var pageFailures: [Int: String] = [:]
     /// Bumped per page by `retryVisibleFailedPages`; page views reload on a change.
     private(set) var pageRetryTokens: [Int: Int] = [:]
+    /// A short message shown over the page, such as "Bookmarked".
+    var notice: ReaderNotice?
+    /// Asks the webtoon strip to scroll to a page (opening a bookmark).
+    var pageJump: PageJump?
 
-    @ObservationIgnored private let model: AppModel
+    @ObservationIgnored let model: AppModel
     @ObservationIgnored private let initialPage: Int?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
