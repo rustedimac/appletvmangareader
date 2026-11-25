@@ -21,7 +21,10 @@ enum ReaderDemo {
         @State private var ready = false
 
         var body: some View {
-            Group {
+            // A ZStack with a real background, not an empty Group: onAppear
+            // never fires on a view with nothing in it.
+            ZStack {
+                Color.black.ignoresSafeArea()
                 if ready {
                     let chapters = DemoMangaServer.chapters
                     let defaults = UserDefaults.standard
