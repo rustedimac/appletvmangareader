@@ -16,6 +16,11 @@ final class AppModel {
     /// True while the "Who's reading?" picker is showing. Set at launch when
     /// there's more than one profile, and by "Switch Profile" in Settings.
     var isPickingProfile = false
+    /// Builds server clients. UI tests swap in `SampleLibraryServer` (see
+    /// `AppModel+Demo.swift`).
+    @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, HTTPTransport) -> MangaServer = {
+        MangaServerFactory.make(config: $0, credential: $1, transport: $2)
+    }
 
     init(stateStore: StateStore, secrets: SecretStore, transport: HTTPTransport = URLSessionTransport()) {
         self.stateStore = stateStore
@@ -29,7 +34,9 @@ final class AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
             let store = StateStore(backing: InMemoryKeyValueStore())
             if let seeded = UITestingSeed.state() { store.save(seeded) }
-            return AppModel(stateStore: store, secrets: InMemorySecretStore())
+            let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
+            if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            return model
         }
         return AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore())
     }
@@ -77,7 +84,7 @@ final class AppModel {
         let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: activeProfile.id, server: server.id)
-        let client = MangaServerFactory.make(config: server, credential: credential, transport: transport)
+        let client = makeClient(server, credential, transport)
         clientCache[key] = client
         return client
     }
@@ -102,7 +109,7 @@ final class AppModel {
 
     /// Checks a server and login without saving them.
     func testConnection(_ server: ServerConfig, credential: ServerCredential?) async throws -> String {
-        try await MangaServerFactory.make(config: server, credential: credential, transport: transport).validate()
+        try await makeClient(server, credential, transport).validate()
     }
 
     func serverSettings(for server: ServerConfig) -> ProfileServerSettings {
