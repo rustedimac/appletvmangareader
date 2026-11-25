@@ -10,6 +10,11 @@ import MangaCore
 /// It switches on `settings.mode` between the paged and webtoon readers and
 /// overlays the in-reader menu. The Menu button closes the menu if it is
 /// open, otherwise it saves progress and closes the reader.
+///
+/// Game controllers (`GameControllerHub`, mapping in `GamepadMapping`):
+/// shoulders turn pages, triggers jump chapters, Y or Options toggles the
+/// menu, X toggles webtoon auto-scroll, either stick scrolls the webtoon.
+/// B and the d-pad act like the remote's Menu and arrows.
 struct ReaderView: View {
     let series: SeriesSummary
     let chapters: [Chapter]
@@ -56,9 +61,18 @@ struct ReaderView: View {
             let s = ReaderSession(model: model, server: client, series: series, chapters: chapters,
                                   start: start, startPage: startPage)
             session = s
+            GameControllerHub.shared.push(owner: s, onButton: { [weak s] button in
+                s?.handleController(button)
+            }, onStick: { [weak s] x, y in
+                s?.handleControllerStick(x: x, y: y)
+            })
             await s.start()
         }
-        .onDisappear { session?.close() }
+        .onDisappear {
+            guard let session else { return }
+            session.close()
+            GameControllerHub.shared.remove(owner: session)
+        }
     }
 }
 

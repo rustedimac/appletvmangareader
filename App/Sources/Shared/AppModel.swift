@@ -177,9 +177,49 @@ final class AppModel {
     /// Records progress locally, and on the server if this profile syncs there.
     func recordProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async {
         let profile = activeProfile.id
+        unreadCountOverrides[chapter.seriesRef] = nil
         update { $0.recordProgress(chapter.seriesRef, chapterID: chapter.id, page: page, completed: completed, profile: profile) }
         guard syncsProgress(to: chapter.seriesRef.serverID), let client = client(for: chapter.seriesRef) else { return }
         try? await client.saveProgress(chapter: chapter, libraryID: libraryID, page: page, completed: completed)
+    }
+
+    /// Poster badge counts changed by "Mark as Unread" since the feeds
+    /// loaded, so posters update without reloading every row.
+    private(set) var unreadCountOverrides: [SeriesRef: Int] = [:]
+
+    func unreadCount(for series: SeriesSummary) -> Int? {
+        unreadCountOverrides[series.ref] ?? series.unreadCount
+    }
+
+    /// Marks chapters of one series unread for this profile, and on the
+    /// server when this profile syncs there.
+    func markUnread(_ chapters: [Chapter], in ref: SeriesRef) async throws {
+        guard !chapters.isEmpty else { return }
+        let profile = activeProfile.id
+        update { $0.markUnread(ref, chapterIDs: Set(chapters.map(\.id)), profile: profile) }
+        if syncsProgress(to: ref.serverID), let client = client(for: ref) {
+            try await client.markUnread(chapters: chapters)
+        }
+        await refreshUnreadCount(ref)
+    }
+
+    /// Marks every chapter of a series unread for this profile, and on the
+    /// server when this profile syncs there.
+    func markSeriesUnread(_ ref: SeriesRef) async throws {
+        let profile = activeProfile.id
+        update { $0.markSeriesUnread(ref, profile: profile) }
+        if syncsProgress(to: ref.serverID), let client = client(for: ref) {
+            try await client.markSeriesUnread(ref.seriesID)
+        }
+        await refreshUnreadCount(ref)
+    }
+
+    private func refreshUnreadCount(_ ref: SeriesRef) async {
+        guard let detail = try? await seriesDetail(ref) else { return }
+        // A profile that doesn't sync can't trust the server's count.
+        unreadCountOverrides[ref] = syncsProgress(to: ref.serverID)
+            ? detail.posterUnreadCount
+            : detail.chapters.filter { !$0.isRead }.count
     }
 
     /// Series detail with this profile's local progress applied when it

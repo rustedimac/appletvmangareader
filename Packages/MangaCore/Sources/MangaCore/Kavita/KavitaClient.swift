@@ -193,6 +193,22 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         try await withAuth { try await $0.postIgnoringResponse("api/Reader/progress", body: body) }
     }
 
+    public func markUnread(chapters: [Chapter]) async throws {
+        guard let first = chapters.first else { return }
+        guard let seriesID = Int(first.seriesRef.seriesID) else { throw MangaError.notFound }
+        let ids = try chapters.map { chapter -> Int in
+            guard let id = Int(chapter.id), chapter.seriesRef == first.seriesRef else { throw MangaError.notFound }
+            return id
+        }
+        let body = KavitaMarkMultipleDTO(seriesId: seriesID, volumeIds: [], chapterIds: ids)
+        try await withAuth { try await $0.postIgnoringResponse("api/Reader/mark-multiple-unread", body: body) }
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {
+        guard let id = Int(seriesID) else { throw MangaError.notFound }
+        try await withAuth { try await $0.postIgnoringResponse("api/Reader/mark-unread", body: KavitaMarkSeriesDTO(seriesId: id)) }
+    }
+
     public func authorize(_ request: URLRequest) -> URLRequest {
         request // API key is already in image URLs.
     }
