@@ -8,6 +8,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                ScreenTitle("Settings")
                 if model.perAppleTVUser {
                     AppleTVUserSection()
                 }
@@ -70,7 +71,6 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
         }
     }
 
