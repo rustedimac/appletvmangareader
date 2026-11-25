@@ -1,19 +1,25 @@
 name: CI
 
+# Pull requests run on pull_request only. Pushing to claude/** branches used
+# to start a second, identical run for every PR push, which doubled the load
+# on the few free macOS runners. main still runs on every merge.
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
+# One run per PR (or branch). A new push cancels the PR's stale run.
+# main is never cancelled, so every merge is fully tested.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   core-tests:
     name: MangaCore unit tests
     runs-on: macos-15
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -25,6 +31,7 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode

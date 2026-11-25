@@ -185,8 +185,17 @@ the image arrives.
 - **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
-  page; select or Play/Pause opens the menu; Menu passes through to
-  `ReaderView`.
+  page; select opens the menu; Play/Pause toggles auto-scroll; Menu passes
+  through to `ReaderView`.
+- **Auto-scroll.** `WebtoonScrollDriver` moves the strip at
+  `WebtoonAutoScroll.speed(level:viewport:)` (ten levels, fractions of a
+  screen per second), tracking the position below a pixel so slow speeds
+  stay smooth. While it runs a click stops it and up/down (clicks or
+  swipes) change the level. It stops when the menu opens, a chapter loads
+  or the series ends, and waits at the bottom while the next chapter
+  joins. The level is saved per profile (`ProfileData.autoScrollLevel`),
+  not per series, and the menu has a speed row and a Start button. The
+  screen's idle timer is off while it runs.
 - Only views within a screen above and two below the top exist; the rest are
   recycled.
 
@@ -194,17 +203,42 @@ UI tests: `WebtoonReaderUITests`, launched with
 `-uiTesting -readerDemo -readerMode webtoon` (optionally
 `-readerWebtoonWidth 1.0`).
 
+## Game controllers
+
+`Shared/Controller/GameControllerHub` watches connected extended gamepads
+and passes the buttons tvOS doesn't map to the open reader (`ReaderView`
+registers its session). The d-pad, A and B already drive the focus engine
+like the remote's arrows, select and Menu, so browsing needs nothing
+extra. The mapping lives in MangaCore (`GamepadMapping`, `GamepadStick`,
+tested in `ReaderInputTests`):
+
+| Input | Paged | Vertical |
+| --- | --- | --- |
+| L1 / R1 (LB / RB) | Page toward the left / right | Previous / next page |
+| L2 / R2 (LT / RT) | Previous / next chapter | Previous / next chapter |
+| Either stick | (focus) | Smooth scroll, quadratic past a 15% dead zone |
+| X | | Toggle auto-scroll |
+| Y or Options | Open / close menu | Open / close menu |
+| B | Close menu, then the reader | Close menu, then the reader |
+
+The strip ignores arrow presses while a stick is pushed in case tvOS also
+turns the stick into presses, and drops a second auto-scroll toggle within
+0.3 s in case one press arrives as both X and Play/Pause. XCUITest can't
+press controller buttons, so only the mapping is unit tested; check on a
+device with a controller.
+
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
 view and changes show behind it as they're made. Swipe down or Play/Pause
-opens it; Menu or Play/Pause closes it. While it's open the reader under it
+(paged), a click (vertical), or Y on a controller opens it; Menu or
+Play/Pause closes it. While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
   comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
   in two-page layout first page alone and "Shift by one"; vertical: column
-  width). Every change goes through `session.updateSettings(_:)` and is
+  width and auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one

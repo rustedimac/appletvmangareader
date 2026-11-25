@@ -9,6 +9,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case shiftPairing
     case background
     case webtoonWidth
+    case autoScroll
 
     public var id: String { rawValue }
 
@@ -21,6 +22,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .shiftPairing: return "Page Pairing"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
+        case .autoScroll: return "Auto-Scroll"
         }
     }
 }
@@ -40,7 +42,7 @@ public enum ReaderMenuOptions {
             items.append(.background)
             return items
         case .webtoon:
-            return [.mode, .webtoonWidth, .background]
+            return [.mode, .webtoonWidth, .autoScroll, .background]
         }
     }
 

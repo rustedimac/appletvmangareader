@@ -32,6 +32,10 @@ targets:
         # default so builds without a paid Apple Developer membership work;
         # see docs/ICLOUD.md.
         MRCloudKitContainer: $(MR_ICLOUD_CONTAINER)
+        GCSupportsControllerUserInteraction: true
+        GCSupportedGameControllers:
+          - ProfileName: ExtendedGamepad
+          - ProfileName: MicroGamepad
         NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
         # Servers are plain HTTP on home hostnames (e.g. kavita.home). Don't add
         # NSAllowsLocalNetworking: when present, ATS ignores NSAllowsArbitraryLoads
