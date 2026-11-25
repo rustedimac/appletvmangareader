@@ -1,0 +1,360 @@
+{
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://stump.local:10801/opds/v2.0/catalog"
+        },
+        {
+            "rel": "start",
+            "href": "http://stump.local:10801/opds/v2.0/catalog"
+        },
+        {
+            "rel": "search",
+            "href": "http://stump.local:10801/opds/v2.0/search{?query}",
+            "type": "application/opds+json",
+            "templated": true
+        }
+    ],
+    "navigation": [
+        {
+            "title": "Libraries",
+            "rel": "subsection",
+            "href": "http://stump.local:10801/opds/v2.0/libraries"
+        }
+    ],
+    "groups": [
+        {
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://stump.local:10801/opds/v2.0/libraries"
+                }
+            ],
+            "navigation": [
+                {
+                    "title": "Manga",
+                    "rel": "subsection",
+                    "href": "http://stump.local:10801/opds/v2.0/libraries/886eb9c6-ddb9-4bc4-a065-c2427feb3b0c",
+                    "type": "application/opds+json"
+                },
+                {
+                    "title": "Comics",
+                    "rel": "subsection",
+                    "href": "http://stump.local:10801/opds/v2.0/libraries/281ab025-729c-4893-bd0a-3ef50256190a",
+                    "type": "application/opds+json"
+                }
+            ],
+            "metadata": {
+                "title": "Libraries",
+                "modified": "2026-11-25T09:17:10.159674408+00:00",
+                "numberOfItems": 2,
+                "itemsPerPage": 10,
+                "currentPage": 1
+            }
+        },
+        {
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://stump.local:10801/opds/v2.0/books/latest"
+                }
+            ],
+            "publications": [
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Harbor Lights 001",
+                        "modified": "2026-11-25T09:17:10.161612919+00:00",
+                        "belongsTo": {
+                            "series": {
+                                "name": "Harbor Lights",
+                                "position": 1.0,
+                                "links": [
+                                    {
+                                        "rel": "subsection",
+                                        "href": "http://stump.local:10801/opds/v2.0/series/5ab26869-7e71-4180-a548-5980dd52672c",
+                                        "type": "application/opds+json"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://stump.local:10801/opds/v2.0/books/abc8e094-4897-4e91-831d-ff27ab7dc25a",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://stump.local:10801/opds/v2.0/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/progression",
+                            "href": "http://stump.local:10801/opds/v2.0/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/progression",
+                            "type": "application/opds-progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://stump.local:10801/opds/v2.0/books/abc8e094-4897-4e91-831d-ff27ab7dc25a/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Lantern Courier v01",
+                        "modified": "2026-11-25T09:17:10.161883156+00:00",
+                        "belongsTo": {
+                            "series": {
+                                "name": "Lantern Courier",
+                                "position": 1.0,
+                                "links": [
+                                    {
+                                        "rel": "subsection",
+                                        "href": "http://stump.local:10801/opds/v2.0/series/0d6d970f-47f5-41d0-98a1-05b5a1c2992e",
+                                        "type": "application/opds+json"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://stump.local:10801/opds/v2.0/books/8d29a722-28da-4c0d-abb3-30f5511f3167",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://stump.local:10801/opds/v2.0/books/8d29a722-28da-4c0d-abb3-30f5511f3167/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/progression",
+                            "href": "http://stump.local:10801/opds/v2.0/books/8d29a722-28da-4c0d-abb3-30f5511f3167/progression",
+                            "type": "application/opds-progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://stump.local:10801/opds/v2.0/books/8d29a722-28da-4c0d-abb3-30f5511f3167/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Lantern Courier v02",
+                        "modified": "2026-11-25T09:17:10.162092112+00:00",
+                        "belongsTo": {
+                            "series": {
+                                "name": "Lantern Courier",
+                                "position": 2.0,
+                                "links": [
+                                    {
+                                        "rel": "subsection",
+                                        "href": "http://stump.local:10801/opds/v2.0/series/0d6d970f-47f5-41d0-98a1-05b5a1c2992e",
+                                        "type": "application/opds+json"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://stump.local:10801/opds/v2.0/books/ca1e7ac5-595e-4a0c-a855-358d079e3942",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://stump.local:10801/opds/v2.0/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/progression",
+                            "href": "http://stump.local:10801/opds/v2.0/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/progression",
+                            "type": "application/opds-progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://stump.local:10801/opds/v2.0/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Paper Moon Post v01",
+                        "modified": "2026-11-25T09:17:10.162250946+00:00",
+                        "belongsTo": {
+                            "series": {
+                                "name": "Paper Moon Post",
+                                "position": 1.0,
+                                "links": [
+                                    {
+                                        "rel": "subsection",
+                                        "href": "http://stump.local:10801/opds/v2.0/series/b11ec8e8-289f-456b-9b2a-9efec220bfff",
+                                        "type": "application/opds+json"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://stump.local:10801/opds/v2.0/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://stump.local:10801/opds/v2.0/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/progression",
+                            "href": "http://stump.local:10801/opds/v2.0/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/progression",
+                            "type": "application/opds-progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://stump.local:10801/opds/v2.0/books/877a7c51-9a17-4758-b5ee-2f1287c0f75c/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://stump.local:10801/opds/v2.0/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+            "metadata": {
+                "title": "Latest Books",
+                "modified": "2026-11-25T09:17:10.162266264+00:00",
+                "numberOfItems": 4,
+                "itemsPerPage": 10,
+                "currentPage": 1
+            }
+        },
+        {
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://stump.local:10801/opds/v2.0/books/keep-reading"
+                }
+            ],
+            "metadata": {
+                "title": "Keep Reading",
+                "modified": "2026-11-25T09:17:10.163558545+00:00",
+                "numberOfItems": 0,
+                "itemsPerPage": 10,
+                "currentPage": 1
+            }
+        }
+    ],
+    "metadata": {
+        "title": "Stump OPDS V2 Catalog",
+        "modified": "2026-11-25T09:17:10.163566670+00:00"
+    }
+}

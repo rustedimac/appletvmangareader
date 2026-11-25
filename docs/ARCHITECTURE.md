@@ -9,6 +9,8 @@
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
+| `MangaCore/Komga` | `KomgaClient` (REST `api/v1`/`api/v2`, API key or basic auth). |
+| `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
@@ -92,6 +94,17 @@ Suwayomi
 - Mark unread: `updateChapters(input: {ids, patch: {isRead: false, lastPageRead: 0}})`. A whole series looks up its chapter ids first.
 
 Kavita mark unread: `POST api/Reader/mark-multiple-unread` with `{seriesId, volumeIds: [], chapterIds}` for chapters, `POST api/Reader/mark-unread` with `{seriesId}` for a series.
+
+Komga (verified against 1.30.2)
+- Login: `X-API-Key` header, or basic auth with the email and password. Images need it too (`authorize`).
+- `POST api/v1/series/list` and `api/v1/books/list` take `{"condition": …, "fullTextSearch": …}`; `GET api/v1/series` is deprecated since 1.19.
+- Pages are one-based everywhere (`books/{id}/pages/{n}`, read progress `page`). `books/{id}/pages` gives every page's width/height.
+- `series/new` and `series/updated` take `library_id` as a comma-separated list. Genres come back lower-case.
+
+OPDS (verified against Komga 1.30.2 and Stump)
+- OPDS-PSE `{pageNumber}` is zero-based. `pse:lastRead` is one-based in Komga. Stump links are relative and its templates already carry a query (`?zero_based=true`).
+- `URL` percent-encodes `{}`, so templates are kept as strings (`OPDSLink.template`).
+- Series and chapter ids carry what's needed to reopen a book (`OPDSBook`, base64 JSON), so favorites and progress survive catalog changes. OPDS can't store progress; the editor hides the sync toggle and saves it off.
 
 ## Double-page spreads
 
@@ -331,3 +344,17 @@ series. Series detail updates immediately (`SeriesDetail.markingUnread`)
 and reloads after the server answers; poster badges use
 `AppModel.unreadCount(for:)`. UI tests: `MarkUnreadUITests`, launched with
 `-demoProgress` so demo series start with progress.
+
+## Screen titles and scrolling headers
+
+tvOS keeps a `.navigationTitle` pinned while a Form or List scrolls, so the
+title ends up drawn over the rows. Settings screens use `.settingsPage(...)`
+(docs/DESIGN_GUIDE.md), which puts the title in a side column; any other
+screen puts its title inside its scrolling content. Panels with their own
+header (the in-reader menu) keep the header inside the same ScrollView as
+the rows. `.scrollClipDisabled()` is for horizontal shelves and tab bars: on
+a vertical scroll view it lets rows slide over whatever sits above it.
+`tools/check_pinned_headers.py` enforces both rules in CI (a reviewed
+exception ends its line with `// pinned-header-ok: <reason>`), and
+`ReaderMenuUITests.testHeaderScrollsWithOptions` scrolls the menu down and
+back up.

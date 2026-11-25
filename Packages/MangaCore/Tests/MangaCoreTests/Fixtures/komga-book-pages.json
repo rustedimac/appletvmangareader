@@ -1,0 +1,56 @@
+[
+    {
+        "number": 1,
+        "fileName": "001.jpg",
+        "mediaType": "image/jpeg",
+        "width": 800,
+        "height": 1200,
+        "sizeBytes": 31578,
+        "size": "30.8 KiB"
+    },
+    {
+        "number": 2,
+        "fileName": "002.jpg",
+        "mediaType": "image/jpeg",
+        "width": 800,
+        "height": 1200,
+        "sizeBytes": 31229,
+        "size": "30.5 KiB"
+    },
+    {
+        "number": 3,
+        "fileName": "003.jpg",
+        "mediaType": "image/jpeg",
+        "width": 800,
+        "height": 1200,
+        "sizeBytes": 30483,
+        "size": "29.8 KiB"
+    },
+    {
+        "number": 4,
+        "fileName": "004.jpg",
+        "mediaType": "image/jpeg",
+        "width": 1600,
+        "height": 1200,
+        "sizeBytes": 50994,
+        "size": "49.8 KiB"
+    },
+    {
+        "number": 5,
+        "fileName": "005.jpg",
+        "mediaType": "image/jpeg",
+        "width": 800,
+        "height": 1200,
+        "sizeBytes": 30740,
+        "size": "30 KiB"
+    },
+    {
+        "number": 6,
+        "fileName": "006.jpg",
+        "mediaType": "image/jpeg",
+        "width": 800,
+        "height": 1200,
+        "sizeBytes": 30903,
+        "size": "30.2 KiB"
+    }
+]
