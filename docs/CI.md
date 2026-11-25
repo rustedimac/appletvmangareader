@@ -5,7 +5,7 @@
 Every PR runs `.github/workflows/ci.yml` on GitHub's macOS runners:
 
 - **MangaCore unit tests**: `swift test` in `Packages/MangaCore` (about 1 minute, 15 minute timeout).
-- **tvOS app build and UI tests**: `xcodegen generate` and then `xcodebuild test` on a tvOS simulator (15 to 25 minutes, 30 minute timeout).
+- **tvOS app build and UI tests**: `xcodegen generate` and then `xcodebuild test` on a tvOS simulator (20 to 30 minutes as the UI suite grows, 40 minute timeout).
 
 Push runs happen only on `main`. Each PR gets one run per push, and a new push cancels the previous run for that PR.
 
