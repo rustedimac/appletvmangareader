@@ -157,4 +157,116 @@ final class SuwayomiClientTests: XCTestCase {
         XCTAssertNil(c.resolve(nil))
         XCTAssertNil(c.resolve(""))
     }
+
+    // MARK: Login (UI_LOGIN) and per-user progress
+
+    func tokenClient(_ transport: HTTPTransport) -> SuwayomiClient {
+        SuwayomiClient(config: config, username: "john", password: "pw", loginMode: .token, transport: transport)
+    }
+
+    func testTokenLoginSendsBearer() async throws {
+        mock.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A1","refreshToken":"R1"}}}"#)
+        mock.onGraphQL("aboutServer", body: #"{"data":{"aboutServer":{"name":"S","version":"2"}}}"#)
+        let c = tokenClient(mock)
+        _ = try await c.validate()
+        let login = try XCTUnwrap(mock.lastRequest(containing: "login("))
+        XCTAssertNil(login.value(forHTTPHeaderField: "Authorization"), "login is anonymous")
+        let vars = jsonBody(login)["variables"] as? [String: Any]
+        XCTAssertEqual(vars?["u"] as? String, "john")
+        XCTAssertEqual(vars?["p"] as? String, "pw")
+        XCTAssertEqual(mock.lastRequest(containing: "aboutServer")?.value(forHTTPHeaderField: "Authorization"), "Bearer A1")
+        // Images carry the token too.
+        let img = c.imageRequest(URL(string: "http://suwayomi.local:4567/api/v1/manga/1/thumbnail")!)
+        XCTAssertEqual(img.value(forHTTPHeaderField: "Authorization"), "Bearer A1")
+    }
+
+    func testExpiredTokenIsRefreshed() async throws {
+        let script = ExpiringTokenTransport(inner: mock)
+        mock.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A1","refreshToken":"R1"}}}"#)
+        mock.onGraphQL("refreshToken(", body: #"{"data":{"refreshToken":{"accessToken":"A2"}}}"#)
+        mock.onGraphQL("aboutServer", body: #"{"data":{"aboutServer":{"name":"S","version":"2"}}}"#)
+        let c = tokenClient(script)
+        _ = try await c.validate()
+        script.expired = "Bearer A1"
+        _ = try await c.validate()
+        XCTAssertEqual(mock.lastRequest(containing: "aboutServer")?.value(forHTTPHeaderField: "Authorization"), "Bearer A2")
+        let refresh = jsonBody(mock.lastRequest(containing: "refreshToken("))["variables"] as? [String: Any]
+        XCTAssertEqual(refresh?["t"] as? String, "R1")
+    }
+
+    func testUnauthorizedGraphQLErrorAlsoRenews() async throws {
+        let script = ExpiringTokenTransport(inner: mock)
+        script.asGraphQLError = true
+        mock.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A1","refreshToken":"R1"}}}"#)
+        mock.onGraphQL("refreshToken(", body: #"{"data":{"refreshToken":{"accessToken":"A2"}}}"#)
+        mock.onGraphQL("categories", body: #"{"data":{"categories":{"nodes":[]}}}"#)
+        let c = tokenClient(script)
+        script.expired = "Bearer A1"
+        _ = try await c.categories()
+        XCTAssertEqual(mock.lastRequest(containing: "categories")?.value(forHTTPHeaderField: "Authorization"), "Bearer A2")
+    }
+
+    func testDetectLoginMode() async {
+        mock.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A","refreshToken":"R"}}}"#)
+        let token = await SuwayomiClient.detectLoginMode(config: config, username: "john", password: "pw", transport: mock)
+        XCTAssertEqual(token, .token)
+
+        // Basic auth servers answer 401 before GraphQL; NONE mode says
+        // "Cannot login while already logged-in".
+        let basic = MockTransport()
+        basic.onGraphQL("login(", status: 401, body: "")
+        let detectedBasic = await SuwayomiClient.detectLoginMode(config: config, username: "john", password: "pw", transport: basic)
+        XCTAssertEqual(detectedBasic, .basic)
+        let open = MockTransport()
+        open.onGraphQL("login(", body: #"{"data":null,"errors":[{"message":"Cannot login while already logged-in"}]}"#)
+        let detectedOpen = await SuwayomiClient.detectLoginMode(config: config, username: "john", password: "pw", transport: open)
+        XCTAssertEqual(detectedOpen, .basic)
+    }
+
+    func testCurrentUserOnlyForPerUserLogins() async {
+        mock.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A","refreshToken":"R"}}}"#)
+        mock.onGraphQL("user {", body: #"{"data":{"user":{"username":"john"}}}"#)
+        let user = await tokenClient(mock).currentUser()
+        XCTAssertEqual(user, "john")
+        // Basic auth and no auth are always user 1, so progress is shared.
+        let basicUser = await SuwayomiClient(config: config, username: "john", password: "pw", transport: mock).currentUser()
+        XCTAssertNil(basicUser)
+        // Released servers have no `user` field.
+        let old = MockTransport()
+        old.onGraphQL("login(", body: #"{"data":{"login":{"accessToken":"A","refreshToken":"R"}}}"#)
+        old.onGraphQL("user {", body: #"{"data":null,"errors":[{"message":"Validation error: Field 'user' in type 'Query' is undefined"}]}"#)
+        let oldUser = await tokenClient(old).currentUser()
+        XCTAssertNil(oldUser)
+    }
+
+    func testChapterLastReadAt() {
+        let ref = SeriesRef(serverID: config.id, seriesID: "1")
+        var read = SuwayomiChapterDTO(id: 1, name: "Ch 1", chapterNumber: 1, sourceOrder: 0)
+        read.lastPageRead = 4
+        read.lastReadAt = (try? JSONDecoder().decode([FlexibleNumber].self, from: Data(#"["1763000000"]"#.utf8)))?.first
+        let never = SuwayomiChapterDTO(id: 2, name: "Ch 2", chapterNumber: 2, sourceOrder: 1)
+        let chapters = SuwayomiClient.chapters(from: [read, never], seriesRef: ref)
+        XCTAssertEqual(chapters[0].lastReadAt, Date(timeIntervalSince1970: 1_763_000_000))
+        XCTAssertNil(chapters[1].lastReadAt)
+    }
+}
+
+/// Answers 401 (or a GraphQL "Unauthorized" error) to one expired token.
+final class ExpiringTokenTransport: HTTPTransport, @unchecked Sendable {
+    let inner: MockTransport
+    var expired: String?
+    var asGraphQLError = false
+
+    init(inner: MockTransport) { self.inner = inner }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        if let expired, request.value(forHTTPHeaderField: "Authorization") == expired {
+            if asGraphQLError {
+                let body = #"{"data":null,"errors":[{"message":"suwayomi.tachidesk.server.user.UnauthorizedException: Unauthorized"}]}"#
+                return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            }
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
+        }
+        return try await inner.send(request)
+    }
 }

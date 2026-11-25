@@ -30,8 +30,8 @@ final class KavitaBookTests: XCTestCase {
             BookTOCEntry(title: "Bad", section: 13),
         ])
         XCTAssertEqual(BookTOCEntry.flatten(manifest.toc).map(\.level), [0, 1, 0])
-        let auth = mock.lastRequest(containing: "book-info")?.value(forHTTPHeaderField: "Authorization")
-        XCTAssertEqual(auth, "Bearer jwt-1")
+        let auth = mock.lastRequest(containing: "book-info")?.value(forHTTPHeaderField: "x-api-key")
+        XCTAssertEqual(auth, "KEY")
     }
 
     func testManifestWithoutTOCStillOpens() async throws {

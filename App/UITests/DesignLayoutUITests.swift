@@ -48,7 +48,8 @@ final class DesignLayoutUITests: XCTestCase {
         back(app, to: "settings.addServer")
 
         select(app.element("settings.server.Test Kavita"))
-        XCTAssertTrue(app.element("serverEditor.apiKey").waitForExistence(timeout: 5))
+        // No login yet, so Kavita offers username and password sign-in.
+        XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         audit(app, "settings-edit-server")
         focus(app.element("serverEditor.remove"))
         audit(app, "settings-edit-server-bottom")
