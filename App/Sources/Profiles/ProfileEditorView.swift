@@ -18,7 +18,7 @@ struct ProfileEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.xl) {
+            VStack(alignment: .leading, spacing: Space.l) {
                 TextField("Name", text: $name)
                     .textContentType(.name)
                     .autocorrectionDisabled()
@@ -30,7 +30,7 @@ struct ProfileEditorView: View {
                           alignment: .leading, spacing: Space.l) {
                     ForEach(ProfileAvatars.symbols, id: \.self) { s in
                         Button { symbol = s } label: {
-                            ProfileAvatarView(symbol: s, colorIndex: colorIndex, size: 96)
+                            ProfileAvatarView(symbol: s, colorIndex: colorIndex, size: 88)
                                 .opacity(s == symbol ? 1 : 0.5)
                         }
                         .buttonStyle(ProfileTileButtonStyle())
@@ -41,12 +41,13 @@ struct ProfileEditorView: View {
 
                 VStack(alignment: .leading, spacing: Space.m) {
                 header("Color")
-                HStack(spacing: Space.l) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.l), count: ProfileAvatars.colorCount),
+                          alignment: .leading, spacing: Space.l) {
                     ForEach(0..<ProfileAvatars.colorCount, id: \.self) { i in
                         Button { colorIndex = i } label: {
                             Circle()
                                 .fill(ProfileColors.color(i))
-                                .frame(width: 80, height: 80)
+                                .frame(width: 72, height: 72)
                                 .overlay {
                                     if i == colorIndex {
                                         Image(systemName: "checkmark").font(.title3.bold()).foregroundStyle(.white)

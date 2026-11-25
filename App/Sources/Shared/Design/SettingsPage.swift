@@ -27,8 +27,10 @@ struct SettingsPage<Hero: View, Content: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: Space.xxl) {
             VStack(spacing: Space.l) {
+                // Bottom-aligned so the gap to the title is the same whatever
+                // the symbol's shape.
                 hero
-                    .frame(width: Size.heroSymbol, height: Size.heroSymbol)
+                    .frame(width: Size.heroSymbol, height: Size.heroSymbol, alignment: .bottom)
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.title3.weight(.semibold))
@@ -41,9 +43,6 @@ struct SettingsPage<Hero: View, Content: View>: View {
             .frame(maxHeight: .infinity)
 
             content
-                // The form row is already the field's platter; the default
-                // style would draw a second rounded box inside it.
-                .textFieldStyle(.plain)
                 .labelStyle(.settingsRow)
                 // A focused row grows about 10 %; the list would clip it at
                 // its own edges. The mask below does the clipping instead.
@@ -132,7 +131,8 @@ struct SettingsHeader: View {
     var body: some View {
         Text(title)
             .font(.callout.weight(.semibold))
-            .foregroundStyle(.secondary)
+            // Brighter than .secondary, which is hard to read across a room.
+            .foregroundStyle(.primary.opacity(0.75))
             .textCase(nil)
             .lineLimit(1)
             .padding(.top, Space.m)
@@ -145,5 +145,15 @@ extension Section where Parent == SettingsHeader, Footer == EmptyView, Content: 
     /// `Section(settingsHeader: "Reading") { … }`
     init(settingsHeader title: String, @ViewBuilder content: () -> Content) {
         self.init(content: content, header: { SettingsHeader(title) })
+    }
+}
+
+extension View {
+    /// A text field row in a settings form. The row's own platter is
+    /// removed so the field's capsule is the only outline, filling the row
+    /// with its text lined up with the section header.
+    func settingsTextFieldRow() -> some View {
+        listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
     }
 }

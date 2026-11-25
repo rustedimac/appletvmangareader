@@ -35,6 +35,7 @@ struct ServerEditorView: View {
                 TextField("Name (optional)", text: $draft.name)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("serverEditor.name")
+                    .settingsTextFieldRow()
                 TextField(draft.kind == .kavita ? "OPDS URL or address" : "Address, e.g. suwayomi.local:4567",
                           text: $draft.address)
                     .keyboardType(.URL)
@@ -43,6 +44,7 @@ struct ServerEditorView: View {
                     .autocorrectionDisabled()
                     .onSubmit { draft.absorbOPDS() }
                     .accessibilityIdentifier("serverEditor.address")
+                    .settingsTextFieldRow()
             } header: {
                 SettingsHeader("\(draft.kind.displayName) Server")
             } footer: {
@@ -58,15 +60,18 @@ struct ServerEditorView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.apiKey")
+                        .settingsTextFieldRow()
                 case .suwayomi:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.username")
+                        .settingsTextFieldRow()
                     SecureField("Password", text: $draft.password)
                         .textContentType(.password)
                         .accessibilityIdentifier("serverEditor.password")
+                        .settingsTextFieldRow()
                 }
             } header: {
                 SettingsHeader("Login for \(model.activeProfile.name)")

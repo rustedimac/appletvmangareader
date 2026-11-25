@@ -145,7 +145,7 @@ the server editor and category picker) uses the tvOS Settings layout:
 - Use `Form` (not `List`) so every settings page has the same row and
   section rhythm.
 - Every section has a header, and headers use `SettingsHeader` (or
-  `Section(settingsHeader:)`): `.callout` semibold, secondary, title case,
+  `Section(settingsHeader:)`): `.callout` semibold, primary at 75 % opacity, title case,
   24 pt above and 16 pt below. Don't use `Section("Title")`: on tvOS its
   size and case differ between `List` and `Form`.
 - Row icons go through `Label`; `SettingsPage` applies `.settingsRow`, which
@@ -182,7 +182,9 @@ Form { … }
 
 ### Text fields
 
-- Inside a `Form` row, the system draws them at the right size.
+- Inside a settings `Form`, add `.settingsTextFieldRow()` to every field. It
+  removes the row platter so the field's own capsule is the only outline
+  (otherwise tvOS draws a capsule inside a capsule).
 - Outside a form, cap the width at `Size.textField` and give them a visible
   label or a prompt that says what to type. Prefer pickers or buttons when
   the choices are known (HIG: minimize text entry on tvOS).

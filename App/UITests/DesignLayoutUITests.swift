@@ -127,8 +127,9 @@ final class DesignLayoutUITests: XCTestCase {
         for (label, frame) in targets {
             // Tab bar items are drawn by the system.
             if frame.minY < 140 * scale { continue }
-            // A row cut off by the bottom edge reports only its visible part.
-            if frame.maxY > screen.maxY - 4 * scale { continue }
+            // A row cut off at the bottom of the scroll area (which ends in
+            // the bottom safe area) reports only its visible part.
+            if frame.maxY > screen.maxY - 60 * scale { continue }
             // A button inside a form row reports only its label's frame;
             // the row around it is what gets focus and what we measure.
             if targets.contains(where: { $0.frame != frame && $0.frame.contains(frame) }) { continue }
