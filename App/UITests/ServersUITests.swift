@@ -27,7 +27,7 @@ final class ServersUITests: XCTestCase {
         XCTAssertTrue(app.element("serverEditor.sync").exists)
         XCTAssertTrue(app.element("serverEditor.save").isEnabled)
         select(app.element("serverEditor.remove"))
-        select(app.element("serverEditor.confirmRemove"))
+        select(app.element("serverEditor.confirmRemove"), .right)
 
         XCTAssertTrue(app.element("settings.server.Test Kavita").waitForExistence(timeout: 5))
         XCTAssertFalse(app.element("settings.server.Test Suwayomi").exists)

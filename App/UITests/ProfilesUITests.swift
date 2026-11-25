@@ -44,7 +44,7 @@ final class ProfilesUITests: XCTestCase {
         select(app.element("settings.manageProfiles"))
         select(app.element("profiles.row.Kid"))
         select(app.element("profileEditor.delete"))
-        select(app.element("profileEditor.confirmDelete"))
+        select(app.element("profileEditor.confirmDelete"), .right)
         XCTAssertTrue(app.element("profiles.row.Me").waitForExistence(timeout: 5))
         XCTAssertFalse(app.element("profiles.row.Kid").exists)
     }
