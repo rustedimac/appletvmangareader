@@ -3,9 +3,12 @@ import CoreGraphics
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+<<<<<<< HEAD
 #if canImport(UIKit)
 import UIKit
 #endif
+=======
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
 
 /// Loads cover and page images for every screen. Use `ImagePipeline.shared`
 /// (the SwiftUI environment's `imagePipeline` defaults to it).
@@ -13,6 +16,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     public static let shared = ImagePipeline()
 
     let transport: HTTPTransport
+<<<<<<< HEAD
     let disk: DiskImageCache?
     private let memory = NSCache<NSString, CachedImage>()
     private let coalescer = FetchCoalescer()
@@ -50,6 +54,20 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     /// `Library/Caches/ImagePipeline`.
     public static var defaultDiskDirectory: URL { DiskImageCache.defaultDirectory() }
 
+=======
+    private let memory = NSCache<NSString, CachedImage>()
+    private let lock = NSLock()
+    private var pixelSizes: [String: PageSize] = [:]
+    private var prefetchTasks: [String: Task<Void, Never>] = [:]
+
+    /// - Parameter memoryLimit: bytes of decoded images kept in memory.
+    public init(transport: HTTPTransport = URLSessionTransport(session: ImagePipeline.makeSession()),
+                memoryLimit: Int = 256 * 1024 * 1024) {
+        self.transport = transport
+        memory.totalCostLimit = memoryLimit
+    }
+
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
     /// A session without URLCache (the pipeline caches itself) that allows a
     /// few parallel downloads per server.
     public static func makeSession() -> URLSession {
@@ -67,7 +85,11 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         let target = Self.bucketed(targetSize)
         let key = Self.memoryKey(url, targetSize: target, scaling: scaling)
         if let hit = memory.object(forKey: key as NSString) { return hit.value }
+<<<<<<< HEAD
         let data = try await data(for: url, server: server, high: true)
+=======
+        let data = try await fetch(url, server: server)
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
         try Task.checkCancellation()
         let image = try ImageDecoder.decode(data, targetSize: target, scaling: scaling)
         store(image, key: key, url: url)
@@ -82,6 +104,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         for url in urls {
             let key = Self.cacheKey(url)
             lock.lock()
+<<<<<<< HEAD
             defer { lock.unlock() }
             if prefetchTasks[key] != nil { continue }
             // Created under the lock so a fast finish can't run before the
@@ -112,6 +135,24 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
                     onPixelSize?(url, size)
                 }
             }
+=======
+            let running = prefetchTasks[key] != nil
+            lock.unlock()
+            if running { continue }
+            let task = Task(priority: .utility) { [weak self] in
+                guard let self else { return }
+                defer { self.finishPrefetch(key) }
+                if let size = self.cachedPixelSize(for: url), targetSize == nil {
+                    onPixelSize?(url, size)
+                    return
+                }
+                guard let loaded = try? await self.load(url, server: server, targetSize: targetSize, scaling: .fit) else { return }
+                onPixelSize?(url, loaded.pixelSize)
+            }
+            lock.lock()
+            prefetchTasks[key] = task
+            lock.unlock()
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
         }
     }
 
@@ -127,12 +168,17 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         return pixelSizes[Self.cacheKey(url)]
     }
 
+<<<<<<< HEAD
     /// Drops decoded images (done automatically on a memory warning).
     /// Sizes and the disk cache are kept.
+=======
+    /// Drops decoded images (e.g. on a memory warning). Sizes are kept.
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
     public func clearMemory() {
         memory.removeAllObjects()
     }
 
+<<<<<<< HEAD
     /// Empties the memory and disk caches (Settings → "Clear image cache").
     public func clearAll() {
         memory.removeAllObjects()
@@ -171,6 +217,10 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         }
     }
 
+=======
+    // MARK: Internals
+
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
     func fetch(_ url: URL, server: MangaServer) async throws -> Data {
         let (data, response) = try await transport.send(server.imageRequest(url))
         switch response.statusCode {
@@ -184,12 +234,17 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     private func store(_ image: LoadedImage, key: String, url: URL) {
         let cost = image.cgImage.bytesPerRow * image.cgImage.height
         memory.setObject(CachedImage(image), forKey: key as NSString, cost: cost)
+<<<<<<< HEAD
         recordSize(image.pixelSize, url: url)
     }
 
     private func recordSize(_ size: PageSize, url: URL) {
         lock.lock()
         pixelSizes[Self.cacheKey(url)] = size
+=======
+        lock.lock()
+        pixelSizes[Self.cacheKey(url)] = image.pixelSize
+>>>>>>> d45d78a5422da4309a951a0c43a2564e8b57cda0
         lock.unlock()
     }
 
