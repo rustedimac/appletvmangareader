@@ -86,6 +86,9 @@ Suwayomi
 - Timestamps are strings: `lastReadAt` / `fetchedAt` in seconds, `uploadDate` in milliseconds.
 - `pageCount` is `-1` until `fetchChapterPages` runs. Page sizes are only known after an image downloads.
 - `UpdateChapterPatchInput` fields: `isBookmarked`, `isRead`, `lastPageRead`.
+- Mark unread: `updateChapters(input: {ids, patch: {isRead: false, lastPageRead: 0}})`. A whole series looks up its chapter ids first.
+
+Kavita mark unread: `POST api/Reader/mark-multiple-unread` with `{seriesId, volumeIds: [], chapterIds}` for chapters, `POST api/Reader/mark-unread` with `{seriesId}` for a series.
 
 ## Double-page spreads
 
@@ -261,3 +264,18 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Mark as unread
+
+Long-pressing a chapter row offers "Mark as Unread" and "Mark Series as
+Unread"; the series "More" button and a poster's long-press offer "Mark
+Series as Unread". `AppModel.markUnread` / `markSeriesUnread` always update
+the profile's local progress and call the server only when the profile
+syncs there. Locally, `SeriesProgress.unreadChapterIDs` hides the server's
+read state for those chapters until they are opened again, and
+`ignoresServerProgress` (set by a series reset) makes only local progress
+count, so a profile that doesn't sync to Suwayomi can still reset a
+series. Series detail updates immediately (`SeriesDetail.markingUnread`)
+and reloads after the server answers; poster badges use
+`AppModel.unreadCount(for:)`. UI tests: `MarkUnreadUITests`, launched with
+`-demoProgress` so demo series start with progress.

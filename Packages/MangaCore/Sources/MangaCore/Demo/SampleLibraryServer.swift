@@ -159,5 +159,27 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         }
     }
 
+    /// Marks the first `read` chapters of every series read and leaves the
+    /// next one open at `page`, so UI tests start with progress to undo.
+    public func seedProgress(read: Int, inProgressPage page: Int) {
+        store.lock.withLock {
+            for n in 1...seriesCount {
+                for c in 1...min(read, Self.chapterCount(for: n)) { store.progress["\(n)-\(c)"] = (19, true) }
+                if read < Self.chapterCount(for: n) { store.progress["\(n)-\(read + 1)"] = (page, false) }
+            }
+        }
+    }
+
+    public func markUnread(chapters: [Chapter]) async throws {
+        try await wait()
+        store.lock.withLock { for chapter in chapters { store.progress[chapter.id] = nil } }
+    }
+
+    public func markSeriesUnread(_ seriesID: String) async throws {
+        try await wait()
+        let prefix = "\(try number(seriesID))-"
+        store.lock.withLock { store.progress = store.progress.filter { !$0.key.hasPrefix(prefix) } }
+    }
+
     public func authorize(_ request: URLRequest) -> URLRequest { request }
 }
