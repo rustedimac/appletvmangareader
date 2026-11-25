@@ -53,8 +53,15 @@ struct HomeView: View {
                           systemImage: "server.rack")
         }
         ForEach(sections.filter { $0.errorMessage != nil }) { section in
-            BrowseMessage(title: "Couldn't reach \(section.server.name)", message: section.errorMessage ?? "",
-                          systemImage: "wifi.exclamationmark") { Task { await reload() } }
+            if section.errorMessage == MangaError.missingCredential.errorDescription {
+                // Not a network problem: this profile hasn't signed in here yet.
+                BrowseMessage(title: "\(model.activeProfile.name) isn't signed in to \(section.server.name)",
+                              message: "Add a login for this profile in Settings → Servers → \(section.server.name).",
+                              systemImage: "person.crop.circle.badge.exclamationmark")
+            } else {
+                BrowseMessage(title: "Couldn't reach \(section.server.name)", message: section.errorMessage ?? "",
+                              systemImage: "wifi.exclamationmark") { Task { await reload() } }
+            }
         }
         ForEach(model.homeLayout.visibleRows) { kind in
             rows(for: kind)
