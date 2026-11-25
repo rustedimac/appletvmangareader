@@ -198,6 +198,22 @@ final class ReaderMenuUITests: XCTestCase {
         expectIndicator("1 / 4")
     }
 
+    func testChapterListReturnsToTheExactPageLeft() {
+        launch()
+        remote.press(.left)
+        remote.press(.left)
+        expectIndicator("4 / 6")
+        openMenu()
+        choose("tab.chapters")
+        choose("chapter.demo-3")
+        expectIndicator("1 / 4")
+        openMenu()
+        choose("tab.chapters")
+        choose("chapter.demo-1")
+        wait(element("reader.menu"), "exists == false")
+        expectIndicator("4 / 6")
+    }
+
     func testSetAsDefaultAndReset() {
         launch()
         openMenu()
