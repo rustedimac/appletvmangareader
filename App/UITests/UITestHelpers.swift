@@ -65,7 +65,9 @@ func isFocused(_ element: XCUIElement) -> Bool {
     guard focused.exists else { return false }
     let f = focused.frame, e = element.frame
     guard !f.isEmpty, !e.isEmpty else { return false }
-    return f.insetBy(dx: -4, dy: -4).contains(e)
+    // The cell and the button inside it don't line up exactly, so compare
+    // the button's center against the focused cell.
+    return f.contains(CGPoint(x: e.midX, y: e.midY))
 }
 
 /// Focuses `element` and clicks it.
