@@ -19,6 +19,7 @@ struct ProfileEditorView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 50) {
+                ScreenTitle(editing == nil ? "New Profile" : "Edit Profile")
                 HStack(spacing: 40) {
                     ProfileAvatarView(symbol: symbol, colorIndex: colorIndex, size: 160)
                     TextField("Name", text: $name)
@@ -79,7 +80,6 @@ struct ProfileEditorView: View {
             .padding(.horizontal, 90)
             .padding(.vertical, 40)
         }
-        .navigationTitle(editing == nil ? "New Profile" : "Edit Profile")
         .onAppear(perform: load)
         .confirmationDialog("Delete \(editing?.name ?? "")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {

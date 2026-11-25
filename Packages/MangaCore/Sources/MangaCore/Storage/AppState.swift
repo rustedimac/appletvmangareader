@@ -76,6 +76,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
+    /// `autoScrollLevel`.
+    public var webtoonAutoScrollLevel: Int? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
