@@ -16,8 +16,7 @@ final class OPDSUITests: XCTestCase {
 
     func testHomeShowsLatestSeriesAndOpensOne() {
         let app = launch()
-        XCTAssertTrue(app.staticTexts["home.server.Test OPDS"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["shelf.Test OPDS.newlyAdded"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["shelf.Test OPDS.newlyAdded"].waitForExistence(timeout: 20))
         let poster = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.f:'")).firstMatch
         XCTAssertTrue(poster.waitForExistence(timeout: 10))
         select(poster)

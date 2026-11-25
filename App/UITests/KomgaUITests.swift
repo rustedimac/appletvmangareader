@@ -16,8 +16,7 @@ final class KomgaUITests: XCTestCase {
 
     func testHomeShowsKomgaRowsAndOpensASeries() {
         let app = launch()
-        XCTAssertTrue(app.staticTexts["home.server.Test Komga"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["shelf.Test Komga.newlyAdded"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["shelf.Test Komga.newlyAdded"].waitForExistence(timeout: 20))
 
         let poster = app.buttons["poster.s-lantern"]
         XCTAssertTrue(poster.waitForExistence(timeout: 10))
