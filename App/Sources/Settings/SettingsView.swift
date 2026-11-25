@@ -48,6 +48,13 @@ struct SettingsView: View {
                         Label("Customize Home", systemImage: "rectangle.grid.1x2")
                     }
                     .accessibilityIdentifier("settings.customizeHome")
+
+                    NavigationLink {
+                        ControlsHelpView()
+                    } label: {
+                        Label("Remote and Controller", systemImage: "appletvremote.gen4")
+                    }
+                    .accessibilityIdentifier("settings.controls")
                 }
 
                 Section {

@@ -262,6 +262,19 @@ final class AppModel {
         await refreshUnreadCount(ref)
     }
 
+    /// Marks chapters of one series read for this profile, and on the
+    /// server when this profile syncs there. Where Continue resumes stays
+    /// the same; it skips read chapters on its own.
+    func markRead(_ chapters: [Chapter], in ref: SeriesRef, libraryID: String?) async throws {
+        guard !chapters.isEmpty else { return }
+        let profile = activeProfile.id
+        update { $0.markRead(ref, chapterIDs: Set(chapters.map(\.id)), profile: profile) }
+        if syncsProgress(to: ref.serverID), let client = client(for: ref) {
+            try await client.markRead(chapters: chapters, libraryID: libraryID)
+        }
+        await refreshUnreadCount(ref)
+    }
+
     /// Marks every chapter of a series unread for this profile, and on the
     /// server when this profile syncs there.
     func markSeriesUnread(_ ref: SeriesRef) async throws {

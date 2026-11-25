@@ -280,6 +280,22 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         try await updateChaptersUnread(ids)
     }
 
+    public func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        guard !chapters.isEmpty else { return }
+        let ids = try chapters.map { chapter -> JSONValue in
+            guard let id = Int(chapter.id) else { throw MangaError.notFound }
+            return .int(id)
+        }
+        struct Response: Decodable {
+            struct Payload: Decodable { var clientMutationId: String? }
+            var updateChapters: Payload
+        }
+        let _: Response = try await graphQL(
+            "mutation($ids: [Int!]!) { updateChapters(input: {ids: $ids, patch: {isRead: true}}) { clientMutationId } }",
+            variables: ["ids": .array(ids)]
+        )
+    }
+
     func updateChaptersUnread(_ ids: [JSONValue]) async throws {
         struct Response: Decodable {
             struct Payload: Decodable { var clientMutationId: String? }

@@ -44,12 +44,23 @@ public protocol MangaServer: Sendable {
     /// Marks every chapter of a series as unread.
     func markSeriesUnread(_ seriesID: String) async throws
 
+    /// Marks chapters of one series as read. Does nothing for an empty
+    /// list. The default saves each chapter's progress as completed.
+    func markRead(chapters: [Chapter], libraryID: String?) async throws
+
     /// Adds any auth headers the server needs to fetch an image URL it
     /// returned (covers and pages).
     func authorize(_ request: URLRequest) -> URLRequest
 }
 
 public extension MangaServer {
+    func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        for chapter in chapters {
+            try await saveProgress(chapter: chapter, libraryID: libraryID,
+                                   page: max(0, chapter.pageCount - 1), completed: true)
+        }
+    }
+
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
         try await series(in: category, page: page, pageSize: pageSize)
     }

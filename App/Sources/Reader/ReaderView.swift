@@ -100,6 +100,7 @@ private struct ReaderContent: View {
             .disabled(session.isMenuPresented)
             ReaderLoadStateView(session: session)
             ReaderBookmarkOverlay(session: session)
+            ReaderControlsHint(session: session)
             if session.isMenuPresented {
                 ReaderMenu(session: session)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -145,6 +146,66 @@ struct ReaderBookmarkOverlay: View {
         .allowsHitTesting(false)
         .ignoresSafeArea()
     }
+}
+
+/// "Click for reader options · …" at the top of the screen the first few
+/// times a reader mode opens (`ReaderHintTracker`), so the route to the
+/// options is never a secret. It fades after a few seconds and stops
+/// showing once the options have been opened in that mode.
+struct ReaderControlsHint: View {
+    let session: ReaderSession
+    @State private var visible = false
+
+    var body: some View {
+        ZStack {
+            if visible, !session.isMenuPresented, session.notice == nil {
+                Label(ReaderControls.hint(for: session.settings.mode), systemImage: "appletvremote.gen4")
+                    .font(.callout)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 14)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 60)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .transition(.opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(ReaderControls.hint(for: session.settings.mode))
+                    .accessibilityIdentifier("reader.hint")
+            }
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.3), value: visible)
+        .task(id: session.settings.mode) {
+            let mode = session.settings.mode
+            guard let tracker = ReaderHintTracker.app, tracker.takeHint(for: mode) else {
+                visible = false
+                return
+            }
+            visible = true
+            try? await Task.sleep(for: .seconds(8))
+            if !Task.isCancelled { visible = false }
+        }
+        .onChange(of: session.isMenuPresented) { _, presented in
+            guard presented else { return }
+            visible = false
+            ReaderHintTracker.app?.menuOpened(in: session.settings.mode)
+        }
+    }
+}
+
+extension ReaderHintTracker {
+    /// The app's tracker. UI tests get no hint (it would sit over what they
+    /// check) unless they pass `-readerHints`, which starts from a clean
+    /// count each launch.
+    @MainActor static let app: ReaderHintTracker? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uiTesting") else { return ReaderHintTracker() }
+        guard args.contains("-readerHints"),
+              let defaults = UserDefaults(suiteName: "uiTesting.readerHints") else { return nil }
+        let tracker = ReaderHintTracker(defaults: defaults)
+        tracker.reset()
+        return tracker
+    }()
 }
 
 /// Spinner while a chapter loads, and an error with Retry if it fails.

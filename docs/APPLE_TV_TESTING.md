@@ -80,8 +80,12 @@ Use a Suwayomi webtoon (KR category).
 
 ## Reader menu
 
-- [ ] Swipe down or Play/Pause opens the drawer on the right; the page stays
-      visible behind it.
+- [ ] A click, holding Select, swipe down or Play/Pause opens the drawer on
+      the right in the page reader; the page stays visible behind it.
+- [ ] Vertical reader: a click or holding Select opens the drawer, and
+      Play/Pause starts and stops auto-scroll. Holding Select opens the
+      drawer even while auto-scroll runs.
+- [ ] The first few opens of each mode show a hint at the top naming these.
 - [ ] Every setting applies immediately.
 - [ ] Settings are remembered per series (leave and reopen).
 - [ ] Set as Default makes new series open that way.

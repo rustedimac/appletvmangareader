@@ -370,6 +370,19 @@ public struct AppState: Codable, Hashable, Sendable {
         }
     }
 
+    /// Marks chapters of one series read for this profile. The open
+    /// chapter and page (where Continue resumes) stay as they are.
+    public mutating func markRead(_ ref: SeriesRef, chapterIDs: Set<String>, profile: UUID, now: Date = Date()) {
+        guard !chapterIDs.isEmpty else { return }
+        mutateData(profile) { data in
+            var p = data.progress[ref.storageKey] ?? SeriesProgress(chapterID: "", page: 0, updatedAt: now)
+            p.readChapterIDs.formUnion(chapterIDs)
+            p.unreadChapterIDs.subtract(chapterIDs)
+            p.updatedAt = now
+            data.progress[ref.storageKey] = p
+        }
+    }
+
     /// Marks a whole series unread for this profile. Server read state is
     /// ignored from now on, so profiles that don't sync see it unread too.
     public mutating func markSeriesUnread(_ ref: SeriesRef, profile: UUID, now: Date = Date()) {

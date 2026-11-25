@@ -221,8 +221,11 @@ the image arrives.
 - **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
-  page; select opens the menu; Play/Pause toggles auto-scroll; Menu passes
-  through to `ReaderView`.
+  page; select opens the menu (acted on at release, so holding Select for
+  0.5 s can open it too, even while auto-scroll runs); Play/Pause toggles
+  auto-scroll; Menu passes through to `ReaderView`. The full button map
+  is `ReaderControls` (MangaCore), shown in Settings > Remote and
+  Controller and in docs/CONTROLS.md.
 - **Auto-scroll.** `WebtoonScrollDriver` moves the strip at
   `WebtoonAutoScroll.speed(level:viewport:)` (ten levels, fractions of a
   screen per second), tracking the position below a pixel so slow speeds
@@ -266,9 +269,11 @@ device with a controller.
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
-view and changes show behind it as they're made. Swipe down or Play/Pause
-(paged), a click (vertical), or Y on a controller opens it; Menu or
-Play/Pause closes it. While it's open the reader under it
+view and changes show behind it as they're made. A click or holding Select
+(every reader), swipe down or Play/Pause (paged and book), or Y on a
+controller opens it; Menu or Play/Pause closes it. The first few times
+each mode opens, `ReaderControlsHint` names the route at the top of the
+screen (`ReaderHintTracker`; off in UI tests unless `-readerHints`). While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
@@ -450,11 +455,18 @@ UI tests: `-uiTesting -demoServers -demoFavorites` seeds four favorites with
 distinct sort values and two bookmarks (`AppModel+DemoBookmarks.swift`), used
 by `FavoritesSortUITests` and `BookmarksUITests`.
 
-## Mark as unread
+## Mark as read and unread
 
-Long-pressing a chapter row offers "Mark as Unread" and "Mark Series as
-Unread"; the series "More" button and a poster's long-press offer "Mark
-Series as Unread". `AppModel.markUnread` / `markSeriesUnread` always update
+Each chapter row has a "…" button on its right (reached by moving right,
+so no long press is needed) and the same items on a long press: "Mark as
+Read", "Mark as Unread", "Mark Previous as Read" and "Mark Series as
+Unread". The series "More" button offers "Mark Series as Read" and "Mark
+Series as Unread", and a poster's long-press "Mark Series as Unread".
+`AppModel.markRead` uses `MangaServer.markRead(chapters:libraryID:)`:
+Kavita's `mark-multiple-read`, Suwayomi's `updateChapters(isRead: true)`,
+and for the rest the default, which saves each chapter's progress as
+completed. Locally it adds to `readChapterIDs` and leaves the resume
+position alone. `AppModel.markUnread` / `markSeriesUnread` always update
 the profile's local progress and call the server only when the profile
 syncs there. Locally, `SeriesProgress.unreadChapterIDs` hides the server's
 read state for those chapters until they are opened again, and

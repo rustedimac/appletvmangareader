@@ -186,6 +186,23 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         try await withAuth { try await $0.postIgnoringResponse("api/Reader/progress", body: body) }
     }
 
+    /// One call for any number of chapters (`mark-multiple-read`), which
+    /// needs no volume or library id.
+    public func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        guard let body = try markMultipleBody(chapters) else { return }
+        try await withAuth { try await $0.postIgnoringResponse("api/Reader/mark-multiple-read", body: body) }
+    }
+
+    private func markMultipleBody(_ chapters: [Chapter]) throws -> KavitaMarkMultipleDTO? {
+        guard let first = chapters.first else { return nil }
+        guard let seriesID = Int(first.seriesRef.seriesID) else { throw MangaError.notFound }
+        let ids = try chapters.map { chapter -> Int in
+            guard let id = Int(chapter.id), chapter.seriesRef == first.seriesRef else { throw MangaError.notFound }
+            return id
+        }
+        return KavitaMarkMultipleDTO(seriesId: seriesID, volumeIds: [], chapterIds: ids)
+    }
+
     public func markUnread(chapters: [Chapter]) async throws {
         guard let first = chapters.first else { return }
         guard let seriesID = Int(first.seriesRef.seriesID) else { throw MangaError.notFound }

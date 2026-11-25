@@ -112,7 +112,7 @@ struct KavitaMarkSeriesDTO: Encodable {
     var seriesId: Int
 }
 
-/// `MarkVolumesReadDto`, for `api/Reader/mark-multiple-unread`.
+/// `MarkVolumesReadDto`, for `api/Reader/mark-multiple-read` and `-unread`.
 struct KavitaMarkMultipleDTO: Encodable {
     var seriesId: Int
     var volumeIds: [Int]
