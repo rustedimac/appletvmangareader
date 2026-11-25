@@ -2,7 +2,8 @@ import SwiftUI
 import MangaCore
 
 /// Cover, synopsis, genres, a favorite toggle, Continue/Start, and the
-/// chapter list. Chapters open the reader full screen.
+/// chapter list. Chapters open the reader full screen. Long-pressing a
+/// chapter, or the "More" button, offers Mark as Unread.
 struct SeriesDetailView: View {
     @Environment(AppModel.self) private var model
     let series: SeriesSummary
@@ -11,6 +12,7 @@ struct SeriesDetailView: View {
     @State private var errorMessage: String?
     @State private var newestFirst = false
     @State private var reader: ReaderRoute?
+    @State private var markError: String?
     @FocusState private var focus: Field?
 
     private enum Field: Hashable { case primary }
@@ -36,6 +38,11 @@ struct SeriesDetailView: View {
         .task { await load() }
         .fullScreenCover(item: $reader, onDismiss: { Task { await load() } }) { route in
             ReaderHost(route: route)
+        }
+        .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(markError ?? "")
         }
     }
 
@@ -125,6 +132,21 @@ struct SeriesDetailView: View {
                 }
                 .accessibilityIdentifier("series.sort")
             }
+
+            if let detail {
+                Menu {
+                    Button {
+                        markUnread(nil)
+                    } label: {
+                        Label("Mark Series as Unread", systemImage: "circle")
+                    }
+                    .disabled(!detail.hasProgress)
+                    .accessibilityIdentifier("series.more.unread")
+                } label: {
+                    Label("More", systemImage: "ellipsis")
+                }
+                .accessibilityIdentifier("series.more")
+            }
         }
     }
 
@@ -139,7 +161,10 @@ struct SeriesDetailView: View {
                     .font(.headline)
                     .foregroundStyle(.secondary)
                 ForEach(detail.displayChapters(newestFirst: newestFirst)) { chapter in
-                    ChapterRow(chapter: chapter) { open(chapter) }
+                    ChapterRow(chapter: chapter, seriesHasProgress: detail.hasProgress,
+                               open: { open(chapter) },
+                               markUnread: { markUnread([chapter]) },
+                               markSeriesUnread: { markUnread(nil) })
                 }
             }
             .focusSection()
@@ -149,6 +174,25 @@ struct SeriesDetailView: View {
     private func open(_ chapter: Chapter, page: Int? = nil) {
         guard let detail else { return }
         reader = ReaderRoute(series: summary, chapters: detail.chapters, start: chapter, startPage: page)
+    }
+
+    /// Shows the chapters (nil: the whole series) as unread right away,
+    /// then saves and reloads from the server.
+    private func markUnread(_ chapters: [Chapter]?) {
+        guard let detail else { return }
+        self.detail = detail.markingUnread(chapters.map { Set($0.map(\.id)) })
+        Task {
+            do {
+                if let chapters {
+                    try await model.markUnread(chapters, in: series.ref)
+                } else {
+                    try await model.markSeriesUnread(series.ref)
+                }
+            } catch {
+                markError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+            await load()
+        }
     }
 
     private func load() async {
@@ -176,10 +220,13 @@ struct SeriesDetailView: View {
 
 private struct ChapterRow: View {
     let chapter: Chapter
-    let action: () -> Void
+    let seriesHasProgress: Bool
+    let open: () -> Void
+    let markUnread: () -> Void
+    let markSeriesUnread: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: open) {
             HStack(spacing: 24) {
                 Image(systemName: icon)
                     .foregroundStyle(chapter.isRead ? Color.secondary : Color.accentColor)
@@ -201,6 +248,18 @@ private struct ChapterRow: View {
         }
         .accessibilityIdentifier("chapter.\(chapter.id)")
         .accessibilityValue(chapter.readState == .read ? "read" : chapter.readState == .unread ? "unread" : "in progress")
+        .contextMenu {
+            Button(action: markUnread) {
+                Label("Mark as Unread", systemImage: "circle")
+            }
+            .disabled(chapter.readState == .unread)
+            .accessibilityIdentifier("chapter.menu.unread")
+            Button(action: markSeriesUnread) {
+                Label("Mark Series as Unread", systemImage: "circle.dashed")
+            }
+            .disabled(!seriesHasProgress)
+            .accessibilityIdentifier("chapter.menu.seriesUnread")
+        }
     }
 
     private var icon: String {
