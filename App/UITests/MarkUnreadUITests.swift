@@ -132,8 +132,12 @@ final class MarkUnreadUITests: XCTestCase {
         XCTAssertTrue(waitFor(item, "exists == false"), "menu didn't close")
         // Give the demo server's round trip a moment, then open the series.
         sleep(1)
-        let poster = app.buttons["poster.\(id)"]
-        XCTAssertTrue(press(.down, until: poster, max: 2) || poster.hasFocus)
+        // The series can sit in more than one Home row (Continue Reading and
+        // Recently Updated), so look for the focused copy rather than one
+        // unique element.
+        let poster = app.buttons.matching(NSPredicate(format: "identifier == %@ AND hasFocus == true", "poster.\(id)")).firstMatch
+        if !poster.exists { press(.down, until: poster, max: 2) }
+        XCTAssertTrue(poster.exists, "poster \(id) lost focus. \(screen)")
         remote.press(.select)
         XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10))
         for n in 1...3 {
