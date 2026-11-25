@@ -11,9 +11,9 @@ struct AppleTVUserSection: View {
             NavigationLink {
                 ProfileEditorView(editing: model.activeProfile)
             } label: {
-                HStack(spacing: 30) {
-                    ProfileAvatarView(profile: model.activeProfile, size: 64)
-                    VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: Space.m) {
+                    ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
+                    VStack(alignment: .leading, spacing: Space.xxs) {
                         Text(model.activeProfile.name)
                         Text("Edit Name and Picture").font(.caption).foregroundStyle(.secondary)
                     }
@@ -21,7 +21,7 @@ struct AppleTVUserSection: View {
             }
             .accessibilityIdentifier("settings.appleTVUser")
         } header: {
-            Text("Profile")
+            SettingsHeader("Profile")
         } footer: {
             Text("Favorites, reading progress, reader settings and logins belong to whoever is signed in to this Apple TV. Switch users from Control Center. Servers are shared with every user, so they only need to be added once.")
         }
