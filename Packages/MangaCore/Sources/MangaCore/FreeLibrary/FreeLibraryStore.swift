@@ -33,7 +33,7 @@ public actor FreeLibraryStore {
                 remoteURL: URL? = FreeLibrary.remoteCatalogURL,
                 cacheFile: URL? = FreeLibraryStore.defaultCacheFile,
                 maxAge: TimeInterval = 6 * 3600,
-                now: @escaping @Sendable () -> Date = Date.init) {
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.bundled = bundled
         self.remoteURL = remoteURL
         self.cacheFile = cacheFile

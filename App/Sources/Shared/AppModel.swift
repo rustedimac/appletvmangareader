@@ -37,7 +37,11 @@ final class AppModel {
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+<<<<<<< HEAD
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
+=======
+            if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
+>>>>>>> origin/main
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore())

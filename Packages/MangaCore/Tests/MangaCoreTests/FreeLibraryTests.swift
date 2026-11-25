@@ -98,8 +98,12 @@ final class FreeLibraryTests: XCTestCase {
         XCTAssertEqual(afterNewer.series.count, 2)
 
         // Older or invalid catalogs are ignored.
-        for bad in [{ var c = self.sampleCatalog; c.version = 1; return c }(),
-                    { var c = self.sampleCatalog; c.version = 9; c.series[0].license = .ccBy4; return c }()] {
+        var older = sampleCatalog
+        older.version = 1
+        var invalid = sampleCatalog
+        invalid.version = 9
+        invalid.series[0].license = .ccBy4
+        for bad in [older, invalid] {
             let t = MockTransport()
             t.on("GET", "raw.example", body: String(decoding: try JSONEncoder().encode(bad), as: UTF8.self))
             let s = makeStore(sampleCatalog, remote: remote)

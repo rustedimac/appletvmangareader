@@ -43,6 +43,13 @@ the Internet Archive, plus the Pepper&Carrot webcomic by David Revoy (CC BY
 `Packages/MangaCore/Sources/MangaCore/FreeLibrary/catalog.json`; see
 [docs/FREE_LIBRARY.md](docs/FREE_LIBRARY.md) for the rules.
 
+## Game controllers
+
+Xbox, PlayStation and MFi controllers work everywhere the remote does
+(d-pad, A to select, B to go back). In the reader, the shoulder buttons
+turn pages, the triggers jump chapters, either stick scrolls the vertical
+reader, X starts or stops auto-scroll, and Y opens the reader menu.
+
 ## Connecting servers
 
 - **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.

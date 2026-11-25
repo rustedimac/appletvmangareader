@@ -15,8 +15,14 @@ import MangaCore
 /// - Click up or down to move `settings.webtoonScrollStep` of a screen;
 ///   hold to scroll continuously (it speeds up the longer you hold).
 /// - Click left or right to snap to the previous or next page.
-/// - Click the center or press Play/Pause to open the reader menu.
+/// - Click the center to open the reader menu.
+/// - Play/Pause starts or stops auto-scroll. While it runs, a click stops
+///   it, and swiping (or clicking) up/down makes it faster/slower. The
+///   speed is saved for the profile.
 /// - Menu closes the reader (handled by `ReaderView`).
+///
+/// Game controller: either stick scrolls smoothly, shoulders snap to the
+/// previous/next page, triggers jump chapters, X toggles auto-scroll.
 ///
 /// The next chapter joins the bottom of the strip as you near the end, and
 /// the previous one the top as you scroll up, with a divider between them.
@@ -30,7 +36,14 @@ struct WebtoonReaderView: View {
             WebtoonStripRepresentable(session: session, state: StripState(session: session))
                 .ignoresSafeArea()
             if session.loadState == .loaded, session.pageCount > 0 {
-                WebtoonIndicator(session: session)
+                VStack(spacing: 12) {
+                    if session.isAutoScrolling {
+                        AutoScrollBadge(level: session.autoScrollLevel)
+                            .transition(.opacity)
+                    }
+                    WebtoonIndicator(session: session)
+                }
+                .animation(.easeInOut(duration: 0.2), value: session.isAutoScrolling)
             }
         }
         .ignoresSafeArea()
@@ -47,6 +60,8 @@ struct StripState: Equatable {
     var pageCount: Int
     var settings: ReaderSettings
     var menuPresented: Bool
+    var autoScrolling: Bool
+    var autoScrollLevel: Int
 
     @MainActor
     init(session: ReaderSession) {
@@ -55,6 +70,8 @@ struct StripState: Equatable {
         pageCount = session.pageCount
         settings = session.settings
         menuPresented = session.isMenuPresented
+        autoScrolling = session.isAutoScrolling
+        autoScrollLevel = session.autoScrollLevel
     }
 }
 
@@ -106,6 +123,26 @@ private struct WebtoonIndicator: View {
             .padding(.bottom, 24)
             .allowsHitTesting(false)
             .accessibilityIdentifier("reader.webtoon.indicator")
+            .accessibilityLabel(text)
+    }
+}
+
+/// "Auto-scroll · Speed 3 of 10" above the page indicator while it runs.
+private struct AutoScrollBadge: View {
+    let level: Int
+
+    var body: some View {
+        let text = "Auto-scroll · \(WebtoonAutoScroll.label(level))"
+        Label(text, systemImage: "play.fill")
+            .font(.caption)
+            .monospacedDigit()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(.black.opacity(0.45), in: Capsule())
+            .foregroundStyle(.white.opacity(0.85))
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier("reader.webtoon.autoScroll")
             .accessibilityLabel(text)
     }
 }

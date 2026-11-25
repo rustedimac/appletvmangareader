@@ -101,6 +101,8 @@ struct SeriesDetailView: View {
                     open(action.chapter)
                 } label: {
                     Label(action.label, systemImage: "play.fill")
+                        .lineLimit(1)
+                        .frame(maxWidth: 760)
                 }
                 .focused($focus, equals: .primary)
                 .accessibilityIdentifier("series.continue")
