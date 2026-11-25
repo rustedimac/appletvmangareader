@@ -53,7 +53,12 @@ struct HomeView: View {
                     .font(.title3.bold())
                     .accessibilityIdentifier("home.server.\(section.server.name)")
             }
-            if let error = section.errorMessage {
+            if let error = section.errorMessage, error == MangaError.missingCredential.errorDescription {
+                // Not a network problem: this profile hasn't signed in here yet.
+                BrowseMessage(title: "\(model.activeProfile.name) isn't signed in to \(section.server.name)",
+                              message: "Add a login for this profile in Settings → Servers → \(section.server.name).",
+                              systemImage: "person.crop.circle.badge.exclamationmark")
+            } else if let error = section.errorMessage {
                 BrowseMessage(title: "Couldn't reach \(section.server.name)", message: error,
                               systemImage: "wifi.exclamationmark") { Task { await reload() } }
             } else if section.rows.isEmpty {
