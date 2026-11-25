@@ -4,6 +4,9 @@ import Foundation
 public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case kavita
     case suwayomi
+    /// The built-in Free Library (public-domain Internet Archive items and
+    /// Pepper&Carrot). Always there; never typed in by the user.
+    case freeLibrary
 
     public var id: String { rawValue }
 
@@ -11,8 +14,12 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .kavita: return "Kavita"
         case .suwayomi: return "Suwayomi"
+        case .freeLibrary: return "Free Library"
         }
     }
+
+    /// The kinds offered in the Add Server picker.
+    public static var userAddable: [ServerKind] { [.kavita, .suwayomi] }
 }
 
 /// A saved server connection, shared by every profile. Credentials are not

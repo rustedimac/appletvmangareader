@@ -136,6 +136,8 @@ public struct ServerDraft: Equatable, Sendable {
             let unchanged = existing?.username == user && existing?.password == password
             return ServerCredential(username: user, password: password,
                                     suwayomiLogin: unchanged ? existing?.suwayomiLogin : nil)
+        case .freeLibrary:
+            return nil
         }
     }
 

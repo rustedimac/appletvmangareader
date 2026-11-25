@@ -41,28 +41,61 @@ public final class InMemoryKeyValueStore: KeyValueStore, @unchecked Sendable {
     }
 }
 
-/// Loads and saves `AppState` as JSON.
+/// Loads and saves `AppState` as JSON. Never throws saved state away: data
+/// from any past version is migrated (see `AppStateUpgrade`), and data that
+/// can't be read in full is kept under `backupKey` before anything new is
+/// saved over it.
 public final class StateStore: @unchecked Sendable {
     public static let key = "mangareader.appstate.v1"
+    /// The original bytes of state that couldn't be fully read, kept so a
+    /// later build can recover them. Never overwritten once set.
+    public static let backupKey = "mangareader.appstate.unreadable"
     let backing: KeyValueStore
+    /// How the last `load()` went: nil for a fresh install.
+    public private(set) var lastLoad: LoadResult?
+
+    public enum LoadResult: Equatable, Sendable {
+        case decoded
+        /// Some entries were unreadable and left out (original backed up).
+        case salvaged
+        /// Nothing could be read; started fresh (original backed up).
+        case unreadable
+    }
 
     public init(backing: KeyValueStore) {
         self.backing = backing
     }
 
     public func load() -> AppState {
-        guard let data = backing.data(forKey: Self.key),
-              let state = try? JSONDecoder().decode(AppState.self, from: data),
-              !state.profiles.isEmpty else {
+        guard let data = backing.data(forKey: Self.key) else {
+            lastLoad = nil
             return .initial()
         }
+        guard case let (state, outcome)? = Self.decode(data), !state.profiles.isEmpty else {
+            backUp(data)
+            lastLoad = .unreadable
+            return .initial()
+        }
+        if outcome == .salvaged { backUp(data) }
+        lastLoad = outcome == .salvaged ? .salvaged : .decoded
         return state
     }
 
     public func save(_ state: AppState) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        backing.set(try? encoder.encode(state), forKey: Self.key)
+        // A failed encode must not erase what's saved.
+        guard let data = try? encoder.encode(state) else { return }
+        backing.set(data, forKey: Self.key)
+    }
+
+    private static func decode(_ data: Data) -> (AppState, AppStateUpgrade.Outcome)? {
+        try? AppStateUpgrade.decode(data)
+    }
+
+    private func backUp(_ data: Data) {
+        guard backing.data(forKey: Self.backupKey) == nil else { return }
+        backing.set(data, forKey: Self.backupKey)
     }
 }
 
