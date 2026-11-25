@@ -19,8 +19,10 @@ extension XCUIApplication {
 
 /// Moves focus with the Siri Remote until `element` has it. Tries `direction`
 /// first, then the opposite way, so tests don't depend on where focus starts.
+/// 16 presses each way covers the longest form (server editor with phone
+/// setup, other addresses, a three-field login and a library checklist).
 @discardableResult
-func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPresses: Int = 10,
+func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPresses: Int = 16,
            file: StaticString = #filePath, line: UInt = #line) -> Bool {
     XCTAssertTrue(element.waitForExistence(timeout: 10), "\(element) doesn't exist", file: file, line: line)
     let opposite: XCUIRemote.Button
