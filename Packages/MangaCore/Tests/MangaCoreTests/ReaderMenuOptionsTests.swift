@@ -5,17 +5,25 @@ final class ReaderMenuOptionsTests: XCTestCase {
     func testPagedDoubleShowsPairingRows() {
         let s = ReaderSettings(mode: .paged, layout: .double)
         XCTAssertEqual(ReaderMenuOptions.items(for: s),
-                       [.mode, .layout, .direction, .firstPageAlone, .shiftPairing, .background])
+                       [.mode, .layout, .direction, .firstPageAlone, .shiftPairing,
+                        .fit, .cropBorders, .zoom, .background])
     }
 
     func testPagedSingleHidesPairingRows() {
         let s = ReaderSettings(mode: .paged, layout: .single)
-        XCTAssertEqual(ReaderMenuOptions.items(for: s), [.mode, .layout, .direction, .background])
+        XCTAssertEqual(ReaderMenuOptions.items(for: s),
+                       [.mode, .layout, .direction, .fit, .cropBorders, .zoom, .background])
     }
 
     func testWebtoonShowsWidthAndHidesPagedRows() {
         let s = ReaderSettings(mode: .webtoon, layout: .double)
         XCTAssertEqual(ReaderMenuOptions.items(for: s), [.mode, .webtoonWidth, .background])
+    }
+
+    func testZoomLabel() {
+        XCTAssertEqual(ReaderMenuOptions.zoomLabel(2), "2×")
+        XCTAssertEqual(ReaderMenuOptions.zoomLabel(1.5), "1.5×")
+        XCTAssertEqual(ReaderMenuOptions.zoomLabel(3.0), "3×")
     }
 
     func testEveryItemHasATitle() {
@@ -65,5 +73,39 @@ final class ReaderMenuOptionsTests: XCTestCase {
         let normal = ReaderSettings.default
         XCTAssertEqual(normal.layout(for: sizes).spreads.first, .single(0))
         XCTAssertEqual(normal.with(\.shiftPairing, true).layout(for: sizes).spreads.first, .double(0, 1))
+    }
+}
+
+final class ReaderSettingsCodingTests: XCTestCase {
+    func testSettingsFromAnOlderBuildStillDecode() throws {
+        // Saved before crop/fit/zoom existed.
+        let json = #"{"mode":"paged","direction":"leftToRight","layout":"single","firstPageAlone":false,"shiftPairing":true,"background":"gray","webtoonWidth":0.8,"webtoonScrollStep":0.5}"#
+        let s = try JSONDecoder().decode(ReaderSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(s.direction, .leftToRight)
+        XCTAssertEqual(s.layout, .single)
+        XCTAssertTrue(s.shiftPairing)
+        XCTAssertEqual(s.webtoonWidth, 0.8)
+        XCTAssertFalse(s.cropBorders)
+        XCTAssertEqual(s.fit, .screen)
+        XCTAssertEqual(s.zoomScale, 2)
+    }
+
+    func testUnknownValuesFallBackToDefaults() throws {
+        let json = #"{"mode":"carousel","fit":"stretch","cropBorders":true}"#
+        let s = try JSONDecoder().decode(ReaderSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(s.mode, .paged)
+        XCTAssertEqual(s.fit, .screen)
+        XCTAssertTrue(s.cropBorders)
+    }
+
+    func testRoundTrip() throws {
+        let s = ReaderSettings(cropBorders: true, fit: .width, zoomScale: 3)
+        let back = try JSONDecoder().decode(ReaderSettings.self, from: JSONEncoder().encode(s))
+        XCTAssertEqual(back, s)
+    }
+
+    func testZoomIsClamped() {
+        XCTAssertEqual(ReaderSettings(zoomScale: 10).clampedZoomScale, 4)
+        XCTAssertEqual(ReaderSettings(zoomScale: 0.5).clampedZoomScale, 1.25)
     }
 }

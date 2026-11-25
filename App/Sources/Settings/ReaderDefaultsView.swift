@@ -35,10 +35,22 @@ struct ReaderDefaultsView: View {
                 }
                 .accessibilityIdentifier("readerDefaults.layout")
                 Toggle("Show first page alone", isOn: settings.firstPageAlone)
+                Picker("Page fit", selection: settings.fit) {
+                    ForEach(PageFit.allCases) { Text($0.title).tag($0) }
+                }
+                .accessibilityIdentifier("readerDefaults.fit")
+                Toggle("Crop borders", isOn: settings.cropBorders)
+                    .accessibilityIdentifier("readerDefaults.cropBorders")
+                Picker("Click to zoom", selection: settings.zoomScale) {
+                    ForEach(Self.options(ReaderMenuOptions.zoomScales, current: model.defaultReaderSettings.zoomScale),
+                            id: \.self) {
+                        Text(ReaderMenuOptions.zoomLabel($0)).tag($0)
+                    }
+                }
             } header: {
                 Text("Paged")
             } footer: {
-                Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly.")
+                Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls with up and down. Click while reading to zoom; press Menu to zoom out.")
             }
 
             Section("Vertical Scroll") {

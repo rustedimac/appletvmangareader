@@ -35,6 +35,8 @@ final class ReaderSession {
     /// Known pixel sizes by page index. Kavita gives them up front; Suwayomi
     /// fills them in as images download.
     private(set) var sizes: [Int: PageSize] = [:]
+    /// Detected page margins by page index (paged reader, Crop Borders).
+    private(set) var crops: [Int: CropInsets] = [:]
     private(set) var settings: ReaderSettings
     private(set) var navigator: ReaderNavigator
     private(set) var loadState: LoadState = .loading
@@ -121,6 +123,7 @@ final class ReaderSession {
         loadState = .loading
         pages = []
         sizes = [:]
+        crops = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
         let task = Task { [server] in
@@ -166,6 +169,7 @@ final class ReaderSession {
         let ordered = loaded.sorted { $0.index < $1.index }
         pages = ordered
         sizes = known
+        crops = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
         lastSaved = nil
@@ -237,6 +241,15 @@ final class ReaderSession {
         guard pages.indices.contains(page), sizes[page] != size else { return }
         sizes[page] = size
         navigator.setSize(size, forPage: page)
+    }
+
+    func crop(ofPage index: Int) -> CropInsets? { crops[index] }
+
+    /// Records a page's detected margins. Only changes layout while Crop
+    /// Borders is on.
+    func reportCrop(_ crop: CropInsets, forPage page: Int) {
+        guard pages.indices.contains(page), crops[page] != crop else { return }
+        crops[page] = crop
     }
 
     // MARK: Settings

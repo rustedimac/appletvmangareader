@@ -7,6 +7,9 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case direction
     case firstPageAlone
     case shiftPairing
+    case fit
+    case cropBorders
+    case zoom
     case background
     case webtoonWidth
 
@@ -19,6 +22,9 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .direction: return "Direction"
         case .firstPageAlone: return "First Page Alone"
         case .shiftPairing: return "Page Pairing"
+        case .fit: return "Page Fit"
+        case .cropBorders: return "Crop Borders"
+        case .zoom: return "Click to Zoom"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
         }
@@ -37,11 +43,21 @@ public enum ReaderMenuOptions {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
             if settings.layout == .double { items += [.firstPageAlone, .shiftPairing] }
-            items.append(.background)
+            items += [.fit, .cropBorders, .zoom, .background]
             return items
         case .webtoon:
             return [.mode, .webtoonWidth, .background]
         }
+    }
+
+    /// Magnifications offered for click-to-zoom in the paged reader.
+    public static let zoomScales: [Double] = [1.5, 2, 3]
+
+    /// "2×", "1.5×".
+    public static func zoomLabel(_ scale: Double) -> String {
+        let rounded = (scale * 10).rounded() / 10
+        let text = rounded == rounded.rounded() ? String(Int(rounded)) : String(rounded)
+        return "\(text)×"
     }
 
     /// Column width steps for the webtoon reader, as a fraction of screen width.

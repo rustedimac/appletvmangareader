@@ -103,6 +103,34 @@ preloaded pages are memory-cache hits, and cancels prefetches that leave the
 window. Sizes learned while preloading feed `reportSize`, so Suwayomi
 chapters pair correctly before the reader reaches a wide page.
 
+### Fit, zoom and crop
+
+- **Fit** (`ReaderSettings.fit`): Fit Screen shows the whole spread; Fit
+  Width fills the screen's width and Fit Height its height.
+  `SpreadGeometry.canvas(for:in:_:fit:scale:)` lays the spread out on a
+  canvas at least the size of the screen, with the same seamless,
+  pixel-snapped frames.
+- **Zoom and pan**: `PagedViewport` holds the zoom and the position as a
+  0–1 fraction of what can be panned on each axis, so it survives the
+  canvas changing size. Click zooms to `zoomScale` (1.5×, 2×, 3×) around
+  the screen's center; click again or Menu zooms out; turning resets it.
+  `PagedRemote.action(for:...)` decides what a press does: pan while more
+  of the spread lies that way (forward at the end of a row drops a row and
+  returns to the reading-start side), turn only at the end, and down opens
+  the menu only when nothing is below. A spread reached going forward
+  opens at its top, going backward at its bottom.
+- **Crop borders**: `BorderCropDetector` finds plain white or black
+  margins on a 256 px grayscale thumbnail and returns `CropInsets`
+  (fractions). Results are cached per image URL (`PageCropCache`) and per
+  page in `ReaderSession.crops`, detected for preloaded pages too, and
+  before a page first shows so it doesn't jump. `SpreadCrop` keeps a
+  two-page spread seamless: both pages share the smaller top and bottom
+  crop and the inner edges are never cropped.
+
+UI tests: `ReaderFitZoomUITests` (`-readerFit width`, `-readerCrop 1`,
+`-readerZoom 3`, and `-readerDemoMargins 1` to draw pages with margins).
+The page indicator's accessibility value reports the viewport.
+
 ## Reader demo for UI tests
 
 Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
@@ -171,9 +199,9 @@ opens it; Menu or Play/Pause closes it. While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
-  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
-  in two-page layout first page alone and "Shift by one"; vertical: column
-  width). Every change goes through `session.updateSettings(_:)` and is
+  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction,
+  in two-page layout first page alone and "Shift by one", then page fit,
+  crop borders and click-to-zoom level; vertical: column width). Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one
