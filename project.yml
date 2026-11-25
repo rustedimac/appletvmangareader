@@ -28,6 +28,10 @@ targets:
         UILaunchScreen: {}
         UIRequiredDeviceCapabilities: [arm64]
         UIUserInterfaceStyle: Automatic
+        GCSupportsControllerUserInteraction: true
+        GCSupportedGameControllers:
+          - ProfileName: ExtendedGamepad
+          - ProfileName: MicroGamepad
         NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
