@@ -70,7 +70,7 @@ final class FreeLibraryUITests: XCTestCase {
         select(app.element("freeLibrary.remove"))
         let confirm = app.buttons["freeLibrary.confirmRemove"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-        select(confirm)
+        select(confirm, .right)
 
         let add = app.element("settings.addFreeLibrary")
         XCTAssertTrue(add.waitForExistence(timeout: 10))
