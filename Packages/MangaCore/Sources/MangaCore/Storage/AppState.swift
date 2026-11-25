@@ -45,6 +45,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// Home layout, library sorts and reading styles, poster size. Nil
     /// until changed (see `AppState+Browse.swift`).
     public var browse: BrowsePreferences?
+    /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
+    /// `autoScrollLevel`.
+    public var webtoonAutoScrollLevel: Int? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],

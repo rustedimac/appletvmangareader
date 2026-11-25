@@ -5,7 +5,8 @@ import MangaCore
 /// over the page while `session.isMenuPresented` is true, so the page stays
 /// visible and every change shows up behind it straight away.
 ///
-/// Siri Remote: swipe down or Play/Pause opens it (the readers do that).
+/// Siri Remote: in the paged reader swipe down or Play/Pause opens it, in
+/// the vertical reader a click does (the readers handle that).
 /// Up/down moves between rows, left/right between options, click picks.
 /// Menu closes it (ReaderView handles that) and so does Play/Pause.
 ///
@@ -144,6 +145,8 @@ struct ReaderMenu: View {
                         selected: settings.background) { set(\.background, $0) }
             case .webtoonWidth:
                 widthStepper
+            case .autoScroll:
+                autoScrollControls
             }
         }
     }
@@ -208,6 +211,54 @@ struct ReaderMenu: View {
             .focused($focus, equals: "webtoonWidth.increase")
             .accessibilityLabel("Wider")
             .accessibilityIdentifier("reader.menu.webtoonWidth.increase")
+        }
+    }
+
+    /// Auto-scroll speed (saved for the profile, not the series) and a
+    /// button that closes the menu and starts it.
+    private var autoScrollControls: some View {
+        let level = session.autoScrollLevel
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 28) {
+                Button {
+                    session.isMenuPresented = false
+                    session.webtoonInput?.toggleAutoScroll()
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                }
+                .focused($focus, equals: "autoScroll.start")
+                .accessibilityIdentifier("reader.menu.autoScroll.start")
+
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: -1))
+                } label: {
+                    Image(systemName: "tortoise").frame(width: 50)
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: -1))
+                .focused($focus, equals: "autoScroll.slower")
+                .accessibilityLabel("Slower")
+                .accessibilityIdentifier("reader.menu.autoScroll.slower")
+
+                Text(WebtoonAutoScroll.label(level))
+                    .font(.callout.monospacedDigit())
+                    .frame(minWidth: 180)
+                    .accessibilityIdentifier("reader.menu.autoScroll.value")
+
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: 1))
+                } label: {
+                    Image(systemName: "hare").frame(width: 50)
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: 1))
+                .focused($focus, equals: "autoScroll.faster")
+                .accessibilityLabel("Faster")
+                .accessibilityIdentifier("reader.menu.autoScroll.faster")
+            }
+            .font(.callout)
+            Text("Play/Pause starts and stops it. While it runs, swipe up or down to change speed.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
