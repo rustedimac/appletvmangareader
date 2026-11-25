@@ -10,10 +10,10 @@
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
-| `MangaCore/Reader` | `ReaderSettings` and `SpreadLayout`, the two-page pairing logic. |
+| `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
 | `App/Sources/<Tab>` | One folder per tab: Home, Library, Favorites, Search, Settings. |
-| `App/Sources/Reader` | Paged and webtoon readers. |
+| `App/Sources/Reader` | `ReaderView` (entry point) and `ReaderSession` (shared reader state and progress saving). `Paged/`, `Webtoon/` and `Menu/` hold the paged reader, the vertical reader and the in-reader menu. |
 | `App/UITests` | XCUITest UI tests. Launch with `-uiTesting` for in-memory state. |
 
 ## Rules of the road
@@ -62,3 +62,37 @@ after one. The first page is alone by default (cover). `shiftPairing` flips the
 parity of the first run when a chapter's pairs come out wrong. Unknown sizes
 count as tall; the reader re-lays out when sizes arrive and keeps the current
 page on screen. See `SpreadLayoutTests` for the exact rules.
+
+## Reader contract
+
+`ReaderView(series:chapters:start:)` creates a `ReaderSession` and shows
+`PagedReaderView` or `WebtoonReaderView` by `settings.mode`, with
+`ReaderMenu` overlaid while `session.isMenuPresented` is true.
+
+- Paged reader: `session.turn(.left/.right)` for remote presses. The first
+  press past a chapter edge shows a transition card (`session.edge`), the
+  second opens the next or previous chapter.
+- Webtoon reader: `session.reportVisiblePage(_:)` as it scrolls.
+- Both: `session.reportSize(_:forPage:)` when an image's pixel size is known.
+- Menu: `session.updateSettings(_:)` applies live and saves for the series.
+- Progress goes through `AppModel.recordProgress`, two seconds after the
+  last page turn, on chapter change, and on close.
+
+## Paged reader
+
+`Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
+`SpreadGeometry` (both pages at one height, edge to edge, pixel-snapped) and
+each image is drawn to exactly its frame, so a printed spread split across
+two files reads as one picture. `PageImageLoader` downsamples to screen
+size, caches, coalesces requests and preloads ±2 spreads nearest first;
+sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
+correctly before the reader reaches a wide page.
+
+## Reader demo for UI tests
+
+Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
+series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
+up front, one with sizes learned on load, pages drawn on device. Options:
+`-readerDirection leftToRight`, `-readerLayout single`,
+`-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
+tests can reuse it.
