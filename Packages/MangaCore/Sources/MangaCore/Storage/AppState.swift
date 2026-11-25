@@ -151,11 +151,14 @@ public struct AppState: Codable, Hashable, Sendable {
     /// The caller also deletes its credentials from the `SecretStore`.
     public mutating func removeServer(_ id: UUID) {
         servers.removeAll { $0.id == id }
-        for key in profileData.keys {
-            profileData[key]?.serverSettings[id.uuidString] = nil
-            profileData[key]?.favorites.removeAll { $0.series.ref.serverID == id }
-            profileData[key]?.progress = profileData[key]?.progress.filter { !$0.key.hasPrefix(id.uuidString) } ?? [:]
-            profileData[key]?.readerOverrides = profileData[key]?.readerOverrides.filter { !$0.key.hasPrefix(id.uuidString) } ?? [:]
+        let prefix = id.uuidString + "|"
+        for key in Array(profileData.keys) {
+            guard var data = profileData[key] else { continue }
+            data.serverSettings[id.uuidString] = nil
+            data.favorites.removeAll { $0.series.ref.serverID == id }
+            data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
+            data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
+            profileData[key] = data
         }
     }
 
