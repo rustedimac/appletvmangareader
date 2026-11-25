@@ -10,6 +10,7 @@ struct BrowseSettingsView: View {
         let layout = model.homeLayout
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 24) {
+                ScreenTitle("Customize Home")
                 Text("Home Rows")
                     .font(.headline)
                     .foregroundStyle(.secondary)
@@ -52,7 +53,6 @@ struct BrowseSettingsView: View {
             .padding(60)
             .frame(maxWidth: .infinity)
         }
-        .navigationTitle("Customize Home")
     }
 }
 

@@ -12,6 +12,7 @@ struct LibraryOptionsView: View {
     var body: some View {
         let options = model.libraryOptions(server, category)
         List {
+            ScreenTitle("\(category.name): Sort & View")
             Section("Sort By") {
                 ForEach(LibrarySort.allCases) { sort in
                     ChoiceRow(title: sort.title, isSelected: (options.sort ?? .default) == sort,
@@ -64,7 +65,6 @@ struct LibraryOptionsView: View {
                 Text("Small fits more series on screen. Applies to every library and to Favorites.")
             }
         }
-        .navigationTitle(category.name)
     }
 
     private func set<V>(_ keyPath: WritableKeyPath<LibraryOptions, V>, _ value: V) {
