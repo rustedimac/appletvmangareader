@@ -10,7 +10,9 @@ import FoundationNetworking
 /// Series ids are "1"..."seriesCount". Titles cycle through a fixed word
 /// list ("Lantern Chronicles 3"), so a search for a word matches every
 /// eighth series. Category "all" holds every series; "short" holds the
-/// series whose id is a multiple of 3.
+/// series whose id is a multiple of 3. `categoryScope` limits feeds, search
+/// and categories the way the real clients do; `scoped(to:)` makes a copy
+/// that shares progress.
 public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     public static let words = ["Ember", "Harbor", "Lantern", "Meadow", "Orbit", "Summit", "Willow", "Zephyr"]
 
@@ -19,15 +21,38 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     /// Added before every response, to exercise loading states.
     public let latency: Duration
 
-    private let lock = NSLock()
-    /// chapterID → (zero-based page, completed)
-    private var progress: [String: (page: Int, completed: Bool)] = [:]
-    private var lastReadSeries: [String] = []
+    /// Library ids to show; nil shows both.
+    public let categoryScope: Set<String>?
+    private let store: ProgressStore
 
-    public init(config: ServerConfig, seriesCount: Int = 90, latency: Duration = .milliseconds(150)) {
+    /// Reading progress, shared by every scoped copy of one demo server.
+    final class ProgressStore: @unchecked Sendable {
+        let lock = NSLock()
+        /// chapterID → (zero-based page, completed)
+        var progress: [String: (page: Int, completed: Bool)] = [:]
+        var lastReadSeries: [String] = []
+    }
+
+    public init(config: ServerConfig, seriesCount: Int = 90, latency: Duration = .milliseconds(150),
+                categoryScope: Set<String>? = nil) {
         self.config = config
         self.seriesCount = seriesCount
         self.latency = latency
+        self.categoryScope = categoryScope
+        self.store = ProgressStore()
+    }
+
+    private init(copying other: SampleLibraryServer, categoryScope: Set<String>?) {
+        config = other.config
+        seriesCount = other.seriesCount
+        latency = other.latency
+        self.categoryScope = categoryScope
+        store = other.store
+    }
+
+    /// The same server and progress, showing only `scope`.
+    public func scoped(to scope: Set<String>?) -> SampleLibraryServer {
+        SampleLibraryServer(copying: self, categoryScope: scope)
     }
 
     public static func title(for n: Int) -> String {
@@ -40,7 +65,8 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         let read = chapters(n).filter(\.isRead).count
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
                              title: Self.title(for: n), coverURL: nil,
-                             unreadCount: Self.chapterCount(for: n) - read, libraryID: "all")
+                             unreadCount: Self.chapterCount(for: n) - read, libraryID: "all",
+                             categoryIDs: n % 3 == 0 ? ["all", "short"] : ["all"])
     }
 
     private func chapters(_ n: Int) -> [Chapter] {
@@ -48,7 +74,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         let base = Date(timeIntervalSince1970: 1_700_000_000)
         return (1...Self.chapterCount(for: n)).map { c in
             let id = "\(n)-\(c)"
-            let p = lock.withLock { progress[id] }
+            let p = store.lock.withLock { store.progress[id] }
             return Chapter(id: id, seriesRef: ref, title: "Chapter \(c)", number: Double(c), pageCount: 20,
                            lastPageRead: p?.page ?? 0, isRead: p?.completed ?? false,
                            updatedAt: base.addingTimeInterval(Double(n * 1000 + c)))
@@ -71,8 +97,10 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     public func categories() async throws -> [MangaCategory] {
         try await wait()
+        let scope = categoryScope
         return [MangaCategory(id: "all", name: "All Series", order: 0),
                 MangaCategory(id: "short", name: "Every Third", order: 1)]
+            .filter { scope?.contains($0.id) ?? true }
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
@@ -86,14 +114,16 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
         try await wait()
+        let ids: [Int]
         switch feed {
         case .continueReading:
-            return lock.withLock { lastReadSeries }.prefix(limit).compactMap { Int($0) }.map(summary)
+            ids = store.lock.withLock { store.lastReadSeries }.compactMap { Int($0) }
         case .recentlyUpdated:
-            return Array(stride(from: seriesCount, through: 1, by: -1).prefix(limit)).map(summary)
+            ids = Array(stride(from: seriesCount, through: 1, by: -1))
         case .newlyAdded:
-            return Array(stride(from: seriesCount - 5, through: 1, by: -2).prefix(limit)).map(summary)
+            ids = Array(stride(from: seriesCount - 5, through: 1, by: -2))
         }
+        return Array(ids.map(summary).scoped(to: categoryScope).prefix(limit))
     }
 
     public func search(_ query: String) async throws -> [SeriesSummary] {
@@ -101,6 +131,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !q.isEmpty else { return [] }
         return (1...seriesCount).filter { Self.title(for: $0).lowercased().contains(q) }.map(summary)
+            .scoped(to: categoryScope)
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
@@ -121,10 +152,10 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {
-        lock.withLock {
-            progress[chapter.id] = (page, completed)
-            lastReadSeries.removeAll { $0 == chapter.seriesRef.seriesID }
-            lastReadSeries.insert(chapter.seriesRef.seriesID, at: 0)
+        store.lock.withLock {
+            store.progress[chapter.id] = (page, completed)
+            store.lastReadSeries.removeAll { $0 == chapter.seriesRef.seriesID }
+            store.lastReadSeries.insert(chapter.seriesRef.seriesID, at: 0)
         }
     }
 

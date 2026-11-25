@@ -81,7 +81,10 @@ struct ServerLibraryView: View {
                     ProgressView().frame(maxWidth: .infinity).padding(80)
                 } else if categories.isEmpty {
                     BrowseMessage(title: "Nothing to browse",
-                                  message: "This server has no libraries or categories that your account can see.")
+                                  message: model.selectedCategories(for: server) == nil
+                                      ? "This server has no libraries or categories that your account can see."
+                                      : "None of the \(server.kind.categoryNoun.lowercased()) you picked are on this server anymore.")
+                    chooseLink.frame(maxWidth: .infinity)
                 } else {
                     categoryBar
                     if let selected {
@@ -92,7 +95,17 @@ struct ServerLibraryView: View {
             }
             .padding(.bottom, 60)
         }
-        .task(id: server) { await load() }
+        .task(id: "\(server.id)|\(server.baseURL)|\(model.scopeKey(for: server))") { await load() }
+    }
+
+    /// Opens the picker for which libraries/categories this profile imports.
+    private var chooseLink: some View {
+        NavigationLink {
+            CategorySelectionView(server: server)
+        } label: {
+            Label("Choose \(server.kind.categoryNoun)", systemImage: "checklist")
+        }
+        .accessibilityIdentifier("library.chooseCategories")
     }
 
     private var categoryBar: some View {
@@ -110,6 +123,7 @@ struct ServerLibraryView: View {
                     .accessibilityIdentifier("category.\(category.id)")
                     .accessibilityValue(isSelected ? "selected" : "")
                 }
+                chooseLink
             }
             .padding(.vertical, 20)
         }
