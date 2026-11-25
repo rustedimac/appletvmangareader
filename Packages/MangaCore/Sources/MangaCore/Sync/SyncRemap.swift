@@ -119,6 +119,15 @@ public struct SyncRemap: Sendable, Equatable {
             d.progress = Dictionary(d.progress.map { (key($0.key), $0.value) },
                                     uniquingKeysWith: { $0.updatedAt >= $1.updatedAt ? $0 : $1 })
             d.readerOverrides = Dictionary(d.readerOverrides.map { (key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
+            if var b = d.browse {
+                b.libraries = Dictionary(b.libraries.map { (key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
+                b.dismissedContinueReading = Dictionary(b.dismissedContinueReading.map { (key($0.key), $0.value) },
+                                                        uniquingKeysWith: { max($0, $1) })
+                for i in b.caughtUp.indices {
+                    b.caughtUp[i].series.ref.serverID = server(b.caughtUp[i].series.ref.serverID)
+                }
+                d.browse = b
+            }
 
             let newID = UUID(uuidString: pid).map { profile($0).uuidString } ?? pid
             if var existing = newData[newID] {
@@ -128,6 +137,7 @@ public struct SyncRemap: Sendable, Equatable {
                 }
                 existing.progress.merge(d.progress) { $0.updatedAt >= $1.updatedAt ? $0 : $1 }
                 existing.readerOverrides.merge(d.readerOverrides) { a, _ in a }
+                if existing.browse == nil { existing.browse = d.browse }
                 newData[newID] = existing
             } else {
                 newData[newID] = d

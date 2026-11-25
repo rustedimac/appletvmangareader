@@ -26,6 +26,8 @@ public struct SyncKind: RawRepresentable, Hashable, Codable, Sendable, CustomStr
     public static let progress = SyncKind("progress")
     public static let readerDefaults = SyncKind("readerDefaults")
     public static let readerOverride = SyncKind("readerOverride")
+    /// Home layout, poster size, per-library sort and reading style.
+    public static let browse = SyncKind("browse")
 }
 
 /// One synced piece of state, e.g. one favorite or one series' progress.

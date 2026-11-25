@@ -11,6 +11,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     let authHeader: String?
     /// Category ids to show ("0" is Default); nil shows the whole library.
     public let categoryScope: Set<String>?
+    /// The last library grid category, shared by its pages.
+    let gridCache = SuwayomiGridCache()
 
     /// Suwayomi's built-in category for manga not put in any other.
     static let defaultCategoryID = "0"
@@ -110,23 +112,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
-        struct Response: Decodable {
-            struct Category: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
-            var category: Category
-        }
-        guard let id = Int(category.id) else { throw MangaError.notFound }
-        let r: Response = try await graphQL(
-            "query($id: Int!) { category(id: $id) { mangas { nodes { \(SuwayomiMangaDTO.fields) } } } }",
-            variables: ["id": .int(id)]
-        )
-        // Suwayomi returns a whole category at once; page it client-side.
-        let all = r.category.mangas.nodes
-            .filter { $0.inLibrary != false }
-            .naturallySorted(by: \.title)
-        let start = max(0, (page - 1) * pageSize)
-        guard start < all.count else { return Paged(items: [], hasMore: false) }
-        let end = min(all.count, start + pageSize)
-        return Paged(items: all[start..<end].map(summary), hasMore: end < all.count)
+        try await series(in: category, page: page, pageSize: pageSize, sort: .default)
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
