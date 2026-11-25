@@ -96,10 +96,12 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 `Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
 `SpreadGeometry` (both pages at one height, edge to edge, pixel-snapped) and
 each image is drawn to exactly its frame, so a printed spread split across
-two files reads as one picture. `PageImageLoader` downsamples to screen
-size, caches, coalesces requests and preloads ±2 spreads nearest first;
-sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
-correctly before the reader reaches a wide page.
+two files reads as one picture. Pages load through the shared
+`ImagePipeline` (`\.imagePipeline`), decoded to fit the screen in pixels;
+the reader prefetches ±2 spreads nearest first at that same target, so
+preloaded pages are memory-cache hits, and cancels prefetches that leave the
+window. Sizes learned while preloading feed `reportSize`, so Suwayomi
+chapters pair correctly before the reader reaches a wide page.
 
 ## Reader demo for UI tests
 
@@ -108,7 +110,22 @@ series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
 up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerDirection leftToRight`, `-readerLayout single`,
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
-tests can reuse it.
+tests can reuse it. The demo injects an `ImagePipeline` whose transport
+draws `demo://` pages, so it runs the real image path.
+
+## Live servers in the simulator
+
+`-uiTesting -liveServers` adds real servers from environment variables, so
+nothing has to be typed on the simulator keyboard and no key goes in the
+repo: `MR_KAVITA_OPDS` (a Kavita OPDS URL) and `MR_SUWAYOMI_URL` (plus
+optional `MR_SUWAYOMI_USER` / `MR_SUWAYOMI_PASS`). From a UI test, pass them
+through `app.launchEnvironment`; from `xcodebuild test`, prefix them with
+`TEST_RUNNER_`.
+
+ATS: the servers are plain HTTP on home hostnames, so the app sets
+`NSAllowsArbitraryLoads`. Don't add `NSAllowsLocalNetworking`: when it is
+present ATS ignores `NSAllowsArbitraryLoads` and only exempts `.local`
+names and IP addresses, which blocked hosts like `kavita.home`.
 
 ## Webtoon reader
 

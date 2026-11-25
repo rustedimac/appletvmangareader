@@ -52,7 +52,7 @@ struct ServerEditorView: View {
             Section {
                 switch draft.kind {
                 case .kavita:
-                    TextField("API key", text: $draft.apiKey)
+                    SecureField("API key", text: $draft.apiKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.apiKey")
