@@ -247,15 +247,32 @@ final class WebtoonEndView: UIView {
 
 /// Smooth remote-driven scrolling: clicks glide to a target (presses in a
 /// row add up), and holding a direction scrolls continuously, speeding up
-/// the longer it's held. Motion is timed by the clock, not by frame count,
-/// so a slow frame never shortens a step.
+/// the longer it's held. Also runs auto-scroll and game controller stick
+/// scrolling. Motion is timed by the clock, not by frame count, so a slow
+/// frame never shortens a step, and the position is tracked below a pixel
+/// so slow auto-scroll still moves smoothly.
 @MainActor
 final class WebtoonScrollDriver {
     weak var scrollView: UIScrollView?
     /// Largest offset in points.
     var maxOffset: () -> CGFloat = { 0 }
     var onMove: (() -> Void)?
+    /// Whether the strip has nothing more to load below; auto-scroll stops
+    /// at the bottom then, and otherwise waits there for the next chapter.
+    var atEnd: () -> Bool = { true }
+    /// Auto-scroll reached the end of the series and stopped.
+    var onAutoScrollEnded: (() -> Void)?
+    /// Auto-scroll speed level, or nil when auto-scroll is off.
+    var autoLevel: Int? {
+        didSet { if autoLevel != nil { start() } }
+    }
+    /// Game controller stick speed, in points per second (positive is down).
+    var stickVelocity: CGFloat = 0 {
+        didSet { if stickVelocity != 0 { start() } }
+    }
     private(set) var target: CGFloat?
+    /// The unrounded position; the scroll view gets it snapped to pixels.
+    private var exactY: CGFloat = 0
     private var glideFrom: CGFloat = 0
     private var glideStart: CFTimeInterval = 0
     private var holdDirection: CGFloat = 0
@@ -311,6 +328,8 @@ final class WebtoonScrollDriver {
         target = nil
         flingVelocity = 0
         holdDirection = 0
+        autoLevel = nil
+        stickVelocity = 0
         link?.invalidate()
         link = nil
     }
@@ -323,8 +342,9 @@ final class WebtoonScrollDriver {
     }
 
     private func start() {
-        lastTick = CACurrentMediaTime()
         guard link == nil else { return }
+        lastTick = CACurrentMediaTime()
+        exactY = scrollView?.contentOffset.y ?? 0
         let proxy = Proxy()
         proxy.driver = self
         let link = CADisplayLink(target: proxy, selector: #selector(Proxy.tick(_:)))
@@ -333,7 +353,7 @@ final class WebtoonScrollDriver {
     }
 
     private func stopIfIdle() {
-        if target == nil && holdDirection == 0 && flingVelocity == 0 {
+        if target == nil && holdDirection == 0 && flingVelocity == 0 && autoLevel == nil && stickVelocity == 0 {
             link?.invalidate()
             link = nil
         }
@@ -345,7 +365,9 @@ final class WebtoonScrollDriver {
         let dt = min(0.25, max(0, now - lastTick))
         lastTick = now
         let scale = max(1, scrollView.traitCollection.displayScale)
-        var y = scrollView.contentOffset.y
+        // Something else moved the strip (a swipe, a re-layout): follow it.
+        if abs(exactY - scrollView.contentOffset.y) >= 1 / scale { exactY = scrollView.contentOffset.y }
+        var y = exactY
         if holdDirection != 0, now - holdStart >= holdDelay {
             let speed = WebtoonScrolling.holdSpeed(heldFor: now - holdStart - holdDelay,
                                                    viewport: Double(scrollView.bounds.height))
@@ -369,14 +391,28 @@ final class WebtoonScrollDriver {
             y += flingVelocity * CGFloat(dt)
             flingVelocity *= CGFloat(pow(0.998, dt * 1000))
             if abs(flingVelocity) < 10 || y <= 0 || y >= maxOffset() { flingVelocity = 0 }
+        } else if stickVelocity != 0 || autoLevel != nil {
+            y += stickVelocity * CGFloat(dt)
+            if let level = autoLevel {
+                let next = WebtoonAutoScroll.advance(offset: Double(min(y, maxOffset())), dt: dt, level: level,
+                                                     viewport: Double(scrollView.bounds.height),
+                                                     maxOffset: Double(maxOffset()), atEnd: atEnd())
+                if let next {
+                    y = CGFloat(next)
+                } else {
+                    autoLevel = nil
+                    onAutoScrollEnded?()
+                }
+            }
         } else if holdDirection == 0 {
             stopIfIdle()
             return
         }
         y = min(max(0, y), maxOffset())
-        y = (y * scale).rounded() / scale
-        if y != scrollView.contentOffset.y {
-            scrollView.contentOffset.y = y
+        exactY = y
+        let snapped = (y * scale).rounded() / scale
+        if snapped != scrollView.contentOffset.y {
+            scrollView.contentOffset.y = snapped
         }
         onMove?()
         stopIfIdle()

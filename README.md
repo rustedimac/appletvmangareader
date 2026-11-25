@@ -34,6 +34,13 @@ xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
 
 CI runs both on every push and pull request (`.github/workflows/ci.yml`).
 
+## Game controllers
+
+Xbox, PlayStation and MFi controllers work everywhere the remote does
+(d-pad, A to select, B to go back). In the reader, the shoulder buttons
+turn pages, the triggers jump chapters, either stick scrolls the vertical
+reader, X starts or stops auto-scroll, and Y opens the reader menu.
+
 ## Connecting servers
 
 - **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.
@@ -41,5 +48,9 @@ CI runs both on every push and pull request (`.github/workflows/ci.yml`).
   address and API key from it. Each profile can use its own Kavita user.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if basic auth is enabled.
+
+After a successful connection test you pick which Kavita libraries or
+Suwayomi categories to import. Each profile has its own choice; change it
+later in the server's settings or with "Choose Libraries" on the Library tab.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

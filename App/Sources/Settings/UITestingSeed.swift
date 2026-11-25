@@ -35,3 +35,25 @@ enum UITestingSeed {
         return s
     }
 }
+
+extension AppModel {
+    /// `-uiTesting -liveServers`: adds real servers from environment
+    /// variables, so live checks need no typing on the simulator keyboard
+    /// and no secret ever lands in the repo.
+    ///
+    /// - `MR_KAVITA_OPDS`: a Kavita OPDS URL (`http://host/api/opds/<key>`).
+    /// - `MR_SUWAYOMI_URL`: a Suwayomi base URL.
+    /// - `MR_SUWAYOMI_USER` / `MR_SUWAYOMI_PASS`: optional basic auth.
+    func installLiveServersFromEnvironment() {
+        let env = ProcessInfo.processInfo.environment
+        if let opds = env["MR_KAVITA_OPDS"], let parsed = KavitaOPDS.parse(opds) {
+            saveServer(ServerConfig(kind: .kavita, name: "Kavita", baseURL: parsed.baseURL),
+                       credential: ServerCredential(apiKey: parsed.apiKey))
+        }
+        if let raw = env["MR_SUWAYOMI_URL"], let url = URL(string: raw) {
+            let user = env["MR_SUWAYOMI_USER"]
+            let credential = user.map { ServerCredential(username: $0, password: env["MR_SUWAYOMI_PASS"]) }
+            saveServer(ServerConfig(kind: .suwayomi, name: "Suwayomi", baseURL: url), credential: credential)
+        }
+    }
+}
