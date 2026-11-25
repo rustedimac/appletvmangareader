@@ -42,9 +42,12 @@ final class DiskImageCache: @unchecked Sendable {
         queue.async { [self] in
             try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
             let url = fileURL(key)
+            // Read the total before writing, or the first scan would count
+            // this file twice.
+            let before = currentTotal()
             let previous = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
             guard (try? data.write(to: url, options: .atomic)) != nil else { return }
-            var total = currentTotal() - previous + data.count
+            var total = before - previous + data.count
             if total > limit { total = trim(to: limit * 3 / 4) }
             totalSize = total
         }
