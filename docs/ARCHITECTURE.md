@@ -42,7 +42,9 @@
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
   persist. Caches may be purged at any time. Keep `AppState` compact.
-- **Profiles.** Favorites, local progress and reader settings belong to a
+- **Profiles.** On a multi-user Apple TV the Apple TV user *is* the
+  profile (see "Apple TV users" below); in-app profiles are the fallback.
+  Favorites, local progress and reader settings belong to a
   profile. Kavita progress syncs to that profile's Kavita user. Suwayomi has
   one progress per server, so by default only the profile that added the
   server syncs there and others keep progress locally
@@ -280,6 +282,46 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Apple TV users
+
+The app has the `com.apple.developer.user-management` entitlement with
+`runs-as-current-user-with-user-independent-keychain` (tvOS 16+). tvOS then
+gives every Apple TV user their own copy of the app's data (UserDefaults,
+the default keychain, containers), and the app is relaunched when the user
+changes.
+
+- **The Apple TV user is the profile.** Each user's `AppState` starts with
+  one profile of their own, which opens at launch with no "Who's reading?"
+  (`ProfileLaunch.decide`). Everything a profile owns (favorites, progress,
+  reader settings, library selection, logins, and later filters and PIN)
+  is therefore per Apple TV user with no extra keying: there is no user
+  identifier to store, because the data itself is per user. Settings shows
+  that profile for editing instead of Switch/Manage Profiles. State from
+  before user management with several profiles keeps them, opening the one
+  picked last (`AppState.rememberedProfileID`).
+- **Servers are added once.** `SharedServerDirectory` (servers, removed
+  server ids, and the login whoever added each server used) lives in the
+  user-independent keychain (`KeychainSharedServerStore`,
+  `kSecUseUserIndependentKeychain`). At launch `AppModel.adoptSharedServers`
+  merges it into this user's state (`AppState.adopt`), and every server
+  change is written back (`SharedServerDirectory.record`), so additions,
+  edits and removals reach every user. Adopted servers don't sync progress
+  for this user, because they'd be using someone else's login (and on
+  Suwayomi, its one shared progress). `SharedFallbackSecretStore` gives a
+  profile its own login when it has one, otherwise the shared one.
+- **Fallback.** In the simulator, without the entitlement, or on an Apple TV
+  with a single user, `TVUserManager.shouldStorePreferencesForCurrentUser`
+  is false and in-app profiles work as before: one set of profiles with
+  "Who's reading?" when there's more than one.
+- **Other platforms.** The only platform-specific piece is
+  `DeviceUserIdentity` (MangaCore). tvOS supplies `AppleTVUserIdentity`, the
+  one place `TVUserManager` is used. An iPhone or Mac app would pass
+  `SingleUserDevice` (in-app profiles) and reuse `AppState`, `SecretStore`
+  and the server clients unchanged. Profile data is plain Codable values, so
+  syncing it through iCloud/CloudKit later means syncing `ProfileData`.
+- UI tests: `-appleTVUserMode` (with `-uiTestingSharedServers` and
+  `-uiTestingRememberProfile <name>`), in `AppleTVUserUITests`.
 
 ## Bookmarks
 
