@@ -30,7 +30,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 // Bottom-aligned so the gap to the title is the same whatever
                 // the symbol's shape.
                 hero
-                    .frame(width: Size.heroSymbol, height: Size.heroSymbol, alignment: .bottom)
+                    .frame(maxWidth: Size.heroColumn, maxHeight: Size.heroSymbol, alignment: .bottom)
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.title3.weight(.semibold))
@@ -78,10 +78,12 @@ struct SettingsHeroSymbol: View {
     let systemImage: String
 
     var body: some View {
+        // Same height for every symbol (wide ones get wider, not shorter),
+        // so the gap to the title matches on every page.
         Image(systemName: systemImage)
             .resizable()
             .scaledToFit()
-            .frame(width: Size.heroSymbol, height: Size.heroSymbol)
+            .frame(maxWidth: Size.heroSymbol * 1.4, maxHeight: Size.heroSymbol * 0.75)
             .foregroundStyle(.secondary)
     }
 }
@@ -131,8 +133,9 @@ struct SettingsHeader: View {
     var body: some View {
         Text(title)
             .font(.callout.weight(.semibold))
-            // Brighter than .secondary, which is hard to read across a room.
-            .foregroundStyle(.primary.opacity(0.75))
+            // A concrete color: Form headers otherwise get the system's dim
+            // header style, which is hard to read across a room.
+            .foregroundColor(Color(uiColor: .label).opacity(0.8))
             .textCase(nil)
             .lineLimit(1)
             .padding(.top, Space.m)
