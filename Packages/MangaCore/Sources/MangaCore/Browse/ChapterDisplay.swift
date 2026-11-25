@@ -25,11 +25,17 @@ public extension Chapter {
         return .unread
     }
 
+    /// The row label. Books count sections, not pages.
+    var readLabel: String {
+        guard format?.isText == true, case .inProgress(let page, let count) = readState else { return readState.label }
+        return count.map { "Part \(page) of \($0)" } ?? "Part \(page)"
+    }
+
     /// The right-hand text of a chapter row: the read state, or the page
     /// count of an unread chapter when the server knows it.
     var rowDetail: String {
-        if readState == .unread, pageCount > 0 { return pageCount == 1 ? "1 page" : "\(pageCount) pages" }
-        return readState.label
+        if readState == .unread, pageCount > 0, format?.isText != true { return pageCount == 1 ? "1 page" : "\(pageCount) pages" }
+        return readLabel
     }
 }
 

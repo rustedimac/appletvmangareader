@@ -97,6 +97,7 @@ struct SeriesDetailView: View {
         var parts: [String] = []
         if !detail.authors.isEmpty { parts.append(detail.authors.joined(separator: ", ")) }
         if let status = detail.status, !status.isEmpty { parts.append(status) }
+        if let format = (detail.summary.format ?? series.format), format != .images { parts.append(format.displayName) }
         parts.append("\(detail.readCount) of \(detail.chapters.count) read")
         if let server = model.state.server(series.ref.serverID) { parts.append(server.name) }
         return parts.joined(separator: " · ")
@@ -236,6 +237,9 @@ private struct ChapterRow: View {
                     .lineLimit(1)
                     .foregroundStyle(chapter.isRead ? Color.secondary : Color.primary)
                 Spacer()
+                if let badge = chapter.format?.badge {
+                    FormatBadge(text: badge)
+                }
                 Text(chapter.rowDetail)
                     .font(.callout)
                     .foregroundStyle(.secondary)

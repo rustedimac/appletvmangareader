@@ -136,6 +136,8 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var unreadCount: Int?
     /// Kavita needs the library id when saving progress.
     public var libraryID: String?
+    /// File format, when the server says. Nil means page images.
+    public var format: ContentFormat?
     /// The Suwayomi categories the series is in ("0" is Default). Nil when
     /// unknown. Kavita uses `libraryID` instead.
     public var categoryIDs: [String]?
@@ -149,7 +151,8 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
-                categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil) {
+                categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil,
+                format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
@@ -159,6 +162,7 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
         self.pageCount = pageCount
         self.pagesRead = pagesRead
         self.chapterCount = chapterCount
+        self.format = format
     }
 
     /// The `MangaCategory` ids this series belongs to, or nil if unknown.
@@ -180,9 +184,14 @@ public struct Chapter: Codable, Hashable, Identifiable, Sendable {
     public var lastPageRead: Int
     public var isRead: Bool
     public var updatedAt: Date?
+    /// File format, when the server says. Nil means page images. For EPUB
+    /// and text, `pageCount` and `lastPageRead` count sections, not pages.
+    public var format: ContentFormat?
 
     public init(id: String, seriesRef: SeriesRef, volumeID: String? = nil, title: String, number: Double,
-                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil) {
+                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil,
+                format: ContentFormat? = nil) {
+        self.format = format
         self.id = id
         self.seriesRef = seriesRef
         self.volumeID = volumeID

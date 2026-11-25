@@ -84,6 +84,12 @@ struct SeriesPoster: View {
             PosterImage(url: series.coverURL, server: model.client(for: series.ref), title: series.title)
                 .frame(width: width, height: width * 1.5)
                 .clipped()
+                .overlay(alignment: .bottomLeading) {
+                    if let badge = series.format?.badge {
+                        // Above the progress bar.
+                        FormatBadge(text: badge).padding(10).padding(.bottom, badges.progress == nil ? 0 : 8)
+                    }
+                }
                 .overlay(alignment: .topTrailing) { corner(badges.corner) }
                 .overlay(alignment: .bottom) {
                     if let progress = badges.progress { ProgressBadge(fraction: progress) }
@@ -255,5 +261,22 @@ extension View {
     /// NavigationStack.
     func seriesNavigation() -> some View {
         navigationDestination(for: SeriesSummary.self) { SeriesDetailView(series: $0) }
+    }
+}
+
+/// A small "PDF" / "EPUB" tag, so non-comic content stands out in a grid
+/// of manga. Image content has no badge.
+struct FormatBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.bold())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 6))
+            .foregroundStyle(.white)
+            .accessibilityIdentifier("format.badge")
+            .accessibilityLabel(text)
     }
 }

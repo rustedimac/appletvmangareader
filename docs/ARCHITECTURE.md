@@ -14,6 +14,7 @@
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
+| `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
 | `App/Sources/Shared/Design` | Design tokens (`Space`, `Radius`, `Size`, `Grid`, `Layout`) and shared layout components (`SettingsPage`, `ActionRow`). Rules in `docs/DESIGN_GUIDE.md`. |
@@ -41,7 +42,9 @@
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
   persist. Caches may be purged at any time. Keep `AppState` compact.
-- **Profiles.** Favorites, local progress and reader settings belong to a
+- **Profiles.** On a multi-user Apple TV the Apple TV user *is* the
+  profile (see "Apple TV users" below); in-app profiles are the fallback.
+  Favorites, local progress and reader settings belong to a
   profile. Kavita progress syncs to that profile's Kavita user. Suwayomi has
   one progress per server, so by default only the profile that added the
   server syncs there and others keep progress locally
@@ -331,6 +334,72 @@ hold the accessors.
 
 UI tests: `LibraryBrowsingUITests` (`-uiTesting -demoServers`; add
 `-demoFinished 1` to mark Demo Kavita's series 1 read).
+
+## Books and PDFs
+
+See [BOOKS-AND-PDF.md](BOOKS-AND-PDF.md) for what each backend serves.
+
+- `ContentFormat` (`images`, `pdf`, `epub`, `text`) is on `SeriesSummary`
+  and `Chapter` (nil means images). Kavita maps its `MangaFormat`. Posters
+  and chapter rows show a `FormatBadge` for PDF/EPUB/TXT only.
+- PDFs read in the image readers: Kavita renders their pages
+  (`extractPdf=true`).
+- `ReaderView` hands chapters whose format `isText` to
+  `Reader/Book/BookReaderView`. The backend must conform to `BookProviding`
+  (`bookManifest(for:)`, `bookSection(_:of:)`); `KavitaClient` does, through
+  `api/Book/{chapterId}/book-info`, `/chapters` and `/book-page`.
+- `HTMLBookParser` / `PlainTextBookParser` (MangaCore/Book) turn a section
+  into `BookBlock`s. `BookLayoutEngine` builds attributed text and
+  paginates it with TextKit into one or two columns; `BookSectionLayout`
+  draws a page with the same layout manager. `BookCursor` (MangaCore, tested)
+  moves across pages and sections.
+- Settings (`BookSettings`) are per profile in `ProfileData.bookSettings`.
+  Progress: the section index goes to the server as the page; the place
+  inside the section is kept in `AppModel.bookPositions`.
+- UI tests: `BookReaderUITests` with `-uiTesting -readerDemo -readerBook`
+  (public-domain Alice in Wonderland, `Reader/Demo/DemoBook.swift`).
+  Identifiers: `book.page` (value `<section>.<page>`), `book.position`,
+  `book.edge`, `book.menu.<row>.<option>`, `book.toc.<n>`.
+
+## Apple TV users
+
+The app has the `com.apple.developer.user-management` entitlement with
+`runs-as-current-user-with-user-independent-keychain` (tvOS 16+). tvOS then
+gives every Apple TV user their own copy of the app's data (UserDefaults,
+the default keychain, containers), and the app is relaunched when the user
+changes.
+
+- **The Apple TV user is the profile.** Each user's `AppState` starts with
+  one profile of their own, which opens at launch with no "Who's reading?"
+  (`ProfileLaunch.decide`). Everything a profile owns (favorites, progress,
+  reader settings, library selection, logins, and later filters and PIN)
+  is therefore per Apple TV user with no extra keying: there is no user
+  identifier to store, because the data itself is per user. Settings shows
+  that profile for editing instead of Switch/Manage Profiles. State from
+  before user management with several profiles keeps them, opening the one
+  picked last (`AppState.rememberedProfileID`).
+- **Servers are added once.** `SharedServerDirectory` (servers, removed
+  server ids, and the login whoever added each server used) lives in the
+  user-independent keychain (`KeychainSharedServerStore`,
+  `kSecUseUserIndependentKeychain`). At launch `AppModel.adoptSharedServers`
+  merges it into this user's state (`AppState.adopt`), and every server
+  change is written back (`SharedServerDirectory.record`), so additions,
+  edits and removals reach every user. Adopted servers don't sync progress
+  for this user, because they'd be using someone else's login (and on
+  Suwayomi, its one shared progress). `SharedFallbackSecretStore` gives a
+  profile its own login when it has one, otherwise the shared one.
+- **Fallback.** In the simulator, without the entitlement, or on an Apple TV
+  with a single user, `TVUserManager.shouldStorePreferencesForCurrentUser`
+  is false and in-app profiles work as before: one set of profiles with
+  "Who's reading?" when there's more than one.
+- **Other platforms.** The only platform-specific piece is
+  `DeviceUserIdentity` (MangaCore). tvOS supplies `AppleTVUserIdentity`, the
+  one place `TVUserManager` is used. An iPhone or Mac app would pass
+  `SingleUserDevice` (in-app profiles) and reuse `AppState`, `SecretStore`
+  and the server clients unchanged. Profile data is plain Codable values, so
+  syncing it through iCloud/CloudKit later means syncing `ProfileData`.
+- UI tests: `-appleTVUserMode` (with `-uiTestingSharedServers` and
+  `-uiTestingRememberProfile <name>`), in `AppleTVUserUITests`.
 
 ## Bookmarks
 

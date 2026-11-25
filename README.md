@@ -69,4 +69,11 @@ After a successful connection test you pick which Kavita libraries or
 Suwayomi categories to import. Each profile has its own choice; change it
 later in the server's settings or with "Choose Libraries" on the Library tab.
 
+## iCloud sync and backup
+
+Profiles, servers (without logins), favorites, progress and reader settings
+can sync through iCloud once the app is signed with iCloud turned on; until
+then Settings → iCloud Sync and Backup offers a Wi‑Fi backup page you open
+from a phone or computer. See [docs/ICLOUD.md](docs/ICLOUD.md).
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

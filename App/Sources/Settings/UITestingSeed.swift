@@ -31,6 +31,7 @@ enum UITestingSeed {
         default:
             return nil
         }
+        applyAppleTVUserSeed(&s)
         return s
     }
 }
