@@ -117,6 +117,13 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 - Requests for the same URL share one download, which is cancelled only when
   every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
   go ahead of prefetches.
+- Downloads are resilient (`RetryPolicy.images`): each attempt has a
+  20 s limit, counted from when it gets a download slot so queueing never
+  times out, and timeouts, dropped connections, 408/429 and 5xx are retried
+  twice more after 0.75 s and 1.5 s. 401/403/404, bad image bytes and
+  cancellation fail at once. Nothing about a failure is cached, so a later
+  `load` (a Retry button) starts fresh. `PageLoadFailure.message(for:)`
+  turns the error into a short line for the reader.
 - `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
   size, which is how readers learn Suwayomi page sizes. Without a
   `targetSize` it only downloads and reads the header.
@@ -194,3 +201,22 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Sorting names
+
+`NaturalSort` (MangaCore/Sorting) is the one place names are ordered:
+series titles, chapter names, page and file names. Digit runs compare by
+value ("Ch 2" < "Ch 10", "10.5" between 10 and 11, any length, full-width
+and other Unicode digits), kanji numerals are read as numbers ("第二話" <
+"第十話"), text uses the locale's collation ignoring case, accents and
+width, and spaces/punctuation/brackets only separate runs. The
+`.fileName` option also skips digit-free tags like `[Group]` or
+`(Digital)` and the extension. Ties fall back to the exact characters, so
+the order never depends on input order. Use `naturallySorted(by:)`; don't
+sort names with `<` or `localizedStandardCompare`.
+
+`ChapterOrdering.readingOrder` orders a server's chapters: by the server's
+position when it has one (flipped if most neighbouring chapter numbers go
+down, so one odd number can't flip a series), else by number, else by
+natural name, with natural-name ties. Suwayomi uses it; Kavita keeps its
+own sort numbers and breaks ties by natural name.
