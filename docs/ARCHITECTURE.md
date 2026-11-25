@@ -10,7 +10,7 @@
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
-| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
+| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
@@ -294,6 +294,55 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Bookmarks
+
+A `Bookmark` is one page of one chapter, stored per profile in
+`ProfileData.bookmarks` with the series summary so it can be listed without
+the server. UI: in the reader, the menu's "Bookmark This Page" button (both
+modes) or a press up in the paged reader toggles the page on screen, with a
+ribbon in the corner while a bookmarked page shows; the menu's Bookmarks tab
+jumps to one. Series detail lists the series' bookmarks above the chapters,
+and the Bookmarks tab lists every bookmark grouped by series. Holding select
+on a bookmark offers Remove.
+
+Sync goes through `BookmarkSyncing`, a capability protocol beside
+`MangaServer` (`AppModel.bookmarkClient(for:)` casts to it), and only for
+profiles that sync progress to that server:
+
+- Kavita (`.page`): `GET api/Reader/series-bookmarks`, `POST
+  api/Reader/all-bookmarks` (FilterV2 body), `POST api/Reader/bookmark` and
+  `unbookmark` with `{page, volumeId, seriesId, chapterId}`. The Kavita user
+  needs the Bookmark role; failures leave the bookmark local.
+- Suwayomi (`.chapter`): `isBookmarked` on chapters. A page bookmark
+  bookmarks its chapter; the chapter is unbookmarked when its last page
+  bookmark goes. A chapter bookmarked elsewhere (Mihon) shows as page 1.
+
+New bookmarks start with `needsUpload` and are cleared once the server
+confirms. `BookmarkSync.merge` treats the server as the truth for confirmed
+bookmarks (gone from the server means removed elsewhere) and keeps pending
+ones, which the next sync uploads. Series detail merges that series on load;
+the Bookmarks tab merges whole servers. A removal that fails to reach the
+server comes back on the next merge.
+
+## Favorites sorting
+
+`FavoritesSort` (key + direction) is saved per profile in
+`ProfileData.favoritesSort`. Keys: date favorited, title, latest chapter
+("Updated"), last read (local progress time), unread chapters, server.
+Picking the selected key again, or the direction button, flips the order.
+Missing values sort last either way; ties go by title.
+
+"Updated" and "Unread" need server data, kept on `Favorite`
+(`latestChapterAt`, `unreadChapters`, `refreshedAt`). They refresh whenever
+series detail loads (`AppModel.didLoadSeriesDetail`) and, when the Favorites
+tab opens, for favorites not refreshed in the last hour (four at a time).
+`SeriesDetail.latestChapterDate` is Kavita's `lastChapterAdded` when present,
+else the newest chapter date.
+
+UI tests: `-uiTesting -demoServers -demoFavorites` seeds four favorites with
+distinct sort values and two bookmarks (`AppModel+DemoBookmarks.swift`), used
+by `FavoritesSortUITests` and `BookmarksUITests`.
 
 ## Mark as unread
 

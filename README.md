@@ -3,7 +3,9 @@
 A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com) and
 [Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) servers. Add as many
 servers as you like, read in a two-page spread reader or a seamless vertical
-(webtoon) scroll, keep favorites, and give each person their own profile.
+(webtoon) scroll, keep favorites (sortable by title, date favorited, latest
+chapter, last read, unread count or server), bookmark pages, and give each
+person their own profile.
 
 ## Building
 
@@ -57,6 +59,11 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
   address and API key from it. Each profile can use its own Kavita user.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if basic auth is enabled.
+
+Bookmarks sync to the server for profiles that sync progress there. Kavita
+bookmarks pages and needs the Kavita user to have the Bookmark role; Suwayomi
+bookmarks whole chapters, the same flag Mihon shows. Otherwise bookmarks stay
+on the Apple TV.
 
 After a successful connection test you pick which Kavita libraries or
 Suwayomi categories to import. Each profile has its own choice; change it

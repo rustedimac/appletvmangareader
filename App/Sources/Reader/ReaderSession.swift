@@ -63,8 +63,12 @@ final class ReaderSession {
     var isAutoScrolling = false
     /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
     private(set) var autoScrollLevel: Int
+    /// A short message shown over the page, such as "Bookmarked".
+    var notice: ReaderNotice?
+    /// Asks the webtoon strip to scroll to a page (opening a bookmark).
+    var pageJump: PageJump?
 
-    @ObservationIgnored private let model: AppModel
+    @ObservationIgnored let model: AppModel
     @ObservationIgnored private let initialPage: Int?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
