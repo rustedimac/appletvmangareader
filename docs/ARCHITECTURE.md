@@ -478,3 +478,34 @@ a vertical scroll view it lets rows slide over whatever sits above it.
 exception ends its line with `// pinned-header-ok: <reason>`), and
 `ReaderMenuUITests.testHeaderScrollsWithOptions` scrolls the menu down and
 back up.
+
+## Top Shelf
+
+`MangaReaderTopShelf` (a `tv-app-extension` target, sources in `TopShelf/`)
+shows two sections for the active profile: Continue Reading (local progress,
+newest first) and Favorites (favorites with new chapters first, labelled
+"· N new"; series already in Continue Reading aren't repeated).
+
+- The app does all the work. `TopShelfPublisher` (App/Sources/TopShelf)
+  watches `AppModel.stateObservers`, rebuilds `TopShelfSnapshot.make(from:)`
+  a few seconds after a change (so after progress saves), writes
+  `snapshot.json` and JPEG covers (800×1200 px) to the App Group
+  `group.com.rustedimac.MangaReader` (`TopShelfStore`), and calls
+  `TVTopShelfContentProvider.topShelfContentDidChange()`.
+- The extension only decodes that file and points at the cover files, so it
+  stays well inside its memory limit and never talks to a server. Cover file
+  names are SHA-256 hashes of the URL without `apiKey`, so no keys reach disk.
+- Titles and covers for Continue Reading come from
+  `ProfileData.recentSeries`, noted when the reader opens a series.
+  Favorites' new-chapter counts are `Favorite.unreadChapters` (see Favorites
+  sorting), refreshed by `refreshStaleFavorites()` when the app becomes
+  active and when the Favorites tab opens.
+- Items link back with `DeepLink` (`mangareader://series?…` for select,
+  `mangareader://read?…&chapter=…&page=…` for Play). `RootView.onOpenURL`
+  switches to the link's profile, closes "Who's reading?", and presents
+  `DeepLinkView` over the tabs.
+- Without the App Group (unsigned CI simulator builds) and in UI tests the
+  publisher is off. Per Apple TV user, the App Group is per user too, so each
+  user's Top Shelf shows their own profile.
+- UI tests: `TopShelfLinkUITests` with
+  `-uiTestingOpenLink series:<server>:<id>` or `read:<server>:<id>:<chapter>`.

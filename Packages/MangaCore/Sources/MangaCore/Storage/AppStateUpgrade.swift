@@ -144,6 +144,8 @@ struct SalvagedProfileData: Decodable {
         d.bookmarks = c.lossyArray(Bookmark.self, "bookmarks")
         d.favoritesSort = c.lossy(FavoritesSort.self, "favoritesSort") ?? .default
         d.webtoonAutoScrollLevel = c.lossy(Int.self, "webtoonAutoScrollLevel")
+        let recent = c.lossyDictionary(SeriesSummary.self, "recentSeries")
+        d.recentSeries = recent.isEmpty ? nil : recent
         d.browse = c.lossy(BrowsePreferences.self, "browse")
         data = d
     }
