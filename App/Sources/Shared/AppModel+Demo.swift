@@ -25,5 +25,11 @@ extension AppModel {
         where !servers.contains(where: { $0.name == name }) {
             saveServer(ServerConfig(kind: kind, name: name, baseURL: base), credential: nil)
         }
+        // `-demoFinished 1` marks Demo Kavita's series 1 fully read.
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-demoFinished"), i + 1 < args.count,
+           let server = servers.first(where: { $0.name == "Demo Kavita" }) {
+            (client(for: server) as? SampleLibraryServer)?.markAllRead(seriesID: args[i + 1])
+        }
     }
 }

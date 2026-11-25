@@ -9,6 +9,7 @@ struct MangaReaderApp: App {
     @State private var cloudSync: CloudSyncController
 
     init() {
+        AudioSessionSetup.configure()
         let model = AppModel.live()
         let cloudSync = CloudSyncController(model: model)
         model.onStateChange = { [weak cloudSync] in cloudSync?.stateDidChange() }

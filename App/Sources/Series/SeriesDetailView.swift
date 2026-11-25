@@ -201,6 +201,7 @@ struct SeriesDetailView: View {
             let firstLoad = detail == nil
             let loaded = try await model.seriesDetail(series.ref)
             detail = loaded
+            model.noteSeriesDetail(loaded, summary: summary)
             errorMessage = nil
             if firstLoad { focus = .primary }
             await model.didLoadSeriesDetail(loaded)
@@ -239,7 +240,7 @@ private struct ChapterRow: View {
                 if let badge = chapter.format?.badge {
                     FormatBadge(text: badge)
                 }
-                Text(chapter.readLabel)
+                Text(chapter.rowDetail)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 if let date = chapter.updatedAt {
