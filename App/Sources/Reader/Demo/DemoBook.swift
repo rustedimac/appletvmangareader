@@ -65,6 +65,8 @@ struct DemoBookServer: MangaServer, BookProviding {
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail { throw MangaError.notFound }
     func pages(for chapter: Chapter) async throws -> [PageDescriptor] { [] }
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
+    func markUnread(chapters: [Chapter]) async throws {}
+    func markSeriesUnread(_ seriesID: String) async throws {}
     func authorize(_ request: URLRequest) -> URLRequest { request }
 
     func bookManifest(for chapter: Chapter) async throws -> BookManifest {
