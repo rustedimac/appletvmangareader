@@ -15,6 +15,7 @@ struct ReaderDefaultsView: View {
 
     var body: some View {
         Form {
+            ScreenTitle("Default Reader Settings")
             Section("Reading") {
                 Picker("Mode", selection: settings.mode) {
                     ForEach(ReadingMode.allCases) { Text($0.title).tag($0) }
@@ -61,7 +62,6 @@ struct ReaderDefaultsView: View {
                 Text("Changes made while reading are saved for that series and win over these defaults.")
             }
         }
-        .navigationTitle("Default Reader Settings")
     }
 
     /// Preset values, plus the current one if it isn't a preset, so the

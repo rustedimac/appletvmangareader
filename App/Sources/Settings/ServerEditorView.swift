@@ -21,6 +21,7 @@ struct ServerEditorView: View {
 
     var body: some View {
         Form {
+            ScreenTitle(editing?.name ?? "Add Server")
             if editing == nil {
                 Section {
                     Picker("Type", selection: $draft.kind) {
@@ -124,7 +125,6 @@ struct ServerEditorView: View {
                 }
             }
         }
-        .navigationTitle(editing?.name ?? "Add Server")
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in
             // A pasted OPDS URL (Continuity Keyboard) splits right away.
