@@ -11,9 +11,8 @@ struct LibraryOptionsView: View {
 
     var body: some View {
         let options = model.libraryOptions(server, category)
-        List {
-            ScreenTitle("\(category.name): Sort & View")
-            Section("Sort By") {
+        Form {
+            Section(settingsHeader: "Sort By") {
                 ForEach(LibrarySort.allCases) { sort in
                     ChoiceRow(title: sort.title, isSelected: (options.sort ?? .default) == sort,
                               identifier: "libraryOptions.sort.\(sort.rawValue)") {
@@ -34,7 +33,7 @@ struct LibraryOptionsView: View {
                     }
                 }
             } header: {
-                Text("Reading Direction")
+                SettingsHeader("Reading Direction")
             } footer: {
                 Text("Series in \(category.name) open this way, unless you change a series' settings in the reader.")
             }
@@ -47,7 +46,7 @@ struct LibraryOptionsView: View {
                     }
                 }
             } header: {
-                Text("Grid Order")
+                SettingsHeader("Grid Order")
             } footer: {
                 Text("Right to left puts the first series at the top right, the way manga shelves read.")
             }
@@ -60,11 +59,12 @@ struct LibraryOptionsView: View {
                     }
                 }
             } header: {
-                Text("Poster Size")
+                SettingsHeader("Poster Size")
             } footer: {
                 Text("Small fits more series on screen. Applies to every library and to Favorites.")
             }
         }
+        .settingsPage("\(category.name): Sort & View", systemImage: "arrow.up.arrow.down")
     }
 
     private func set<V>(_ keyPath: WritableKeyPath<LibraryOptions, V>, _ value: V) {

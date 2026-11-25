@@ -10,7 +10,6 @@ struct BrowseSettingsView: View {
         let layout = model.homeLayout
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 24) {
-                ScreenTitle("Customize Home")
                 Text("Home Rows")
                     .font(.headline)
                     .foregroundStyle(.secondary)
@@ -49,10 +48,10 @@ struct BrowseSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: 1200, alignment: .leading)
-            .padding(60)
-            .frame(maxWidth: .infinity)
+            .padding(.vertical, 40)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .settingsPage("Customize Home", systemImage: "house")
     }
 }
 
@@ -78,7 +77,7 @@ private struct HomeRowEditor: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                .frame(width: 700)
+                .frame(width: 560)
             }
             .accessibilityIdentifier("homeLayout.toggle.\(kind.rawValue)")
             .accessibilityValue(hidden ? "hidden" : "shown")
