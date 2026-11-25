@@ -70,3 +70,22 @@ page on screen. See `SpreadLayoutTests` for the exact rules.
 - Menu: `session.updateSettings(_:)` applies live and saves for the series.
 - Progress goes through `AppModel.recordProgress`, two seconds after the
   last page turn, on chapter change, and on close.
+
+## Paged reader
+
+`Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
+`SpreadGeometry` (both pages at one height, edge to edge, pixel-snapped) and
+each image is drawn to exactly its frame, so a printed spread split across
+two files reads as one picture. `PageImageLoader` downsamples to screen
+size, caches, coalesces requests and preloads ±2 spreads nearest first;
+sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
+correctly before the reader reaches a wide page.
+
+## Reader demo for UI tests
+
+Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
+series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
+up front, one with sizes learned on load, pages drawn on device. Options:
+`-readerDirection leftToRight`, `-readerLayout single`,
+`-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
+tests can reuse it.
