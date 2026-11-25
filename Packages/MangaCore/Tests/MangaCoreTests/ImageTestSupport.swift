@@ -24,6 +24,8 @@ final class ImageTransport: HTTPTransport, @unchecked Sendable {
     private(set) var requests: [URLRequest] = []
     /// Delay before each response, to test overlapping requests.
     var delay: UInt64 = 0
+    private var active = 0
+    private(set) var maxActive = 0
 
     func serve(_ url: String, status: Int = 200, data: Data) {
         lock.lock(); responses[url] = (status, data); lock.unlock()
@@ -39,7 +41,10 @@ final class ImageTransport: HTTPTransport, @unchecked Sendable {
         requests.append(request)
         let hit = responses[request.url!.absoluteString]
         let delay = self.delay
+        active += 1
+        maxActive = max(maxActive, active)
         lock.unlock()
+        defer { lock.lock(); active -= 1; lock.unlock() }
         if delay > 0 { try await Task.sleep(nanoseconds: delay) }
         let (status, data) = hit ?? (404, Data())
         return (data, HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
