@@ -154,6 +154,7 @@ final class ReaderSession {
     func start() async {
         guard !started else { return }
         started = true
+        model.noteReading(series)
         await load(chapter: chapter, startPage: initialPage)
     }
 
