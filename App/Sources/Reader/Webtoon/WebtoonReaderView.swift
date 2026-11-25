@@ -60,11 +60,13 @@ struct StripState: Equatable {
     var pageCount: Int
     var settings: ReaderSettings
     var menuPresented: Bool
+    var jump: PageJump?
     var autoScrolling: Bool
     var autoScrollLevel: Int
 
     @MainActor
     init(session: ReaderSession) {
+        jump = session.pageJump
         chapterID = session.chapter.id
         loadState = session.loadState
         pageCount = session.pageCount
