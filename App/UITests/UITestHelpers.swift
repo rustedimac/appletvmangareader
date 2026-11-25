@@ -37,11 +37,12 @@ func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPr
         }
     }
     let ok = isFocused(element)
+    var detail = "none"
     if !ok {
-        let focused = XCUIApplication().descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
-        print("Focused element: \(focused.exists ? focused.debugDescription : "none")")
+        let all = XCUIApplication().descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).allElementsBoundByIndex
+        detail = all.map { "[\($0.elementType.rawValue) id=\($0.identifier) label=\($0.label) frame=\($0.frame)]" }.joined(separator: " ")
     }
-    XCTAssertTrue(ok, "Couldn't focus \(element)", file: file, line: line)
+    XCTAssertTrue(ok, "Couldn't focus \(element) frame=\(element.frame). Focused: \(detail)", file: file, line: line)
     return ok
 }
 
@@ -49,6 +50,11 @@ func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPr
 /// the focus lands on the cell, not on the button inside it.
 func isFocused(_ element: XCUIElement) -> Bool {
     if element.hasFocus { return true }
+    if !element.identifier.isEmpty,
+       XCUIApplication().descendants(matching: .any)
+           .matching(NSPredicate(format: "hasFocus == true AND identifier == %@", element.identifier)).count > 0 {
+        return true
+    }
     let focused = XCUIApplication().descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
     guard focused.exists else { return false }
     let f = focused.frame, e = element.frame
