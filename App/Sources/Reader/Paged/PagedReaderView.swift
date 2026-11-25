@@ -96,11 +96,11 @@ struct PagedReaderView: View {
         pipeline.cancelPrefetch(Array(preloading.subtracting(wanted)))
         preloading = wanted
         let chapterID = session.chapter.id
-        let session = self.session
-        pipeline.prefetch(urls, server: session.server, targetSize: screenPixels) { url, size in
+        let reader = session
+        pipeline.prefetch(urls, server: reader.server, targetSize: screenPixels) { url, size in
             Task { @MainActor in
-                guard session.chapter.id == chapterID, let index = byURL[url] else { return }
-                session.reportSize(size, forPage: index)
+                guard reader.chapter.id == chapterID, let index = byURL[url] else { return }
+                reader.reportSize(size, forPage: index)
             }
         }
     }
