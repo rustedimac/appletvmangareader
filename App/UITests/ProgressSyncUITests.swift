@@ -78,7 +78,8 @@ final class ProgressSyncUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Who's reading?"].waitForExistence(timeout: 10))
         select(app.element("profilePicker.Kid"), .right)
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["shelf.Demo Suwayomi.recentlyUpdated"].waitForExistence(timeout: 15))
+        // Home is lazy: Demo Suwayomi's rows sit below Demo Kavita's.
+        XCTAssertTrue(scrollHome(to: app.staticTexts["shelf.Demo Suwayomi.recentlyUpdated"]))
         XCTAssertFalse(app.staticTexts["shelf.Demo Suwayomi.continueReading"].exists)
 
         // Library → Demo Suwayomi → a series → Start Reading → turn a page.
@@ -108,11 +109,21 @@ final class ProgressSyncUITests: XCTestCase {
 
         remote.press(.menu)
         selectTab("Home")
-        XCTAssertTrue(app.staticTexts["shelf.Demo Suwayomi.continueReading"].waitForExistence(timeout: 15),
+        XCTAssertTrue(scrollHome(to: app.staticTexts["shelf.Demo Suwayomi.continueReading"]),
                       "Kid's own Continue Reading row")
     }
 
     // MARK: Helpers
+
+    /// Moves down Home's rows until `element` is loaded.
+    private func scrollHome(to element: XCUIElement, maxPresses: Int = 10) -> Bool {
+        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        for _ in 0..<maxPresses {
+            if element.waitForExistence(timeout: 1.5) { return true }
+            remote.press(.down)
+        }
+        return element.waitForExistence(timeout: 3)
+    }
 
     private var focusedPoster: XCUIElement {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true")).firstMatch
