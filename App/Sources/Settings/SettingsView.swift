@@ -8,6 +8,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                ScreenTitle("Settings")
                 Section("Profile") {
                     Button {
                         model.isPickingProfile = true
@@ -76,7 +77,6 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
         }
     }
 }
