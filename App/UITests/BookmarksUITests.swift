@@ -33,16 +33,24 @@ final class BookmarksUITests: XCTestCase {
     /// Moves focus by geometry until `target` has it, then clicks.
     private func choose(_ target: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(target.waitForExistence(timeout: 8), "\(target) missing", file: file, line: line)
+        var stuck = false
         for _ in 0..<25 {
             if isFocused(target) { break }
             let current = focused
             guard current.exists else { remote.press(.down); Thread.sleep(forTimeInterval: 0.35); continue }
             let a = current.frame, b = target.frame
-            if b.midY > a.maxY { remote.press(.down) }
-            else if b.midY < a.minY { remote.press(.up) }
-            else if b.midX > a.midX { remote.press(.right) }
-            else { remote.press(.left) }
+            let vertical = b.midY > a.maxY || b.midY < a.minY
+            // When a vertical move goes nowhere (no control straight above or
+            // below), slide sideways toward the target first.
+            if vertical && !stuck {
+                remote.press(b.midY > a.maxY ? .down : .up)
+            } else if b.midX > a.midX {
+                remote.press(.right)
+            } else {
+                remote.press(.left)
+            }
             Thread.sleep(forTimeInterval: 0.35)
+            stuck = vertical && !stuck && focused.frame == a
         }
         XCTAssertTrue(isFocused(target), "Couldn't focus \(target). Focus: \(focusedDescription())", file: file, line: line)
         remote.press(.select)
