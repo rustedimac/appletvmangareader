@@ -20,6 +20,10 @@ public protocol MangaServer: Sendable {
     /// Series in a category, `page` starting at 1.
     func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary>
 
+    /// Series in a category in `sort` order. Servers that can't sort keep
+    /// their own order (the default implementation).
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary>
+
     /// A home-screen row.
     func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary]
 
@@ -39,6 +43,10 @@ public protocol MangaServer: Sendable {
 }
 
 public extension MangaServer {
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize)
+    }
+
     func imageRequest(_ url: URL) -> URLRequest {
         var request = URLRequest(url: url)
         request.timeoutInterval = 60

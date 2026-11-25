@@ -24,6 +24,13 @@ public extension Chapter {
         if lastPageRead > 0 { return .inProgress(page: lastPageRead + 1, pageCount: pageCount > 0 ? pageCount : nil) }
         return .unread
     }
+
+    /// The right-hand text of a chapter row: the read state, or the page
+    /// count of an unread chapter when the server knows it.
+    var rowDetail: String {
+        if readState == .unread, pageCount > 0 { return pageCount == 1 ? "1 page" : "\(pageCount) pages" }
+        return readState.label
+    }
 }
 
 /// The main button on series detail.

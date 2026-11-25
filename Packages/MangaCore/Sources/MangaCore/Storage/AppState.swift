@@ -42,17 +42,22 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Home layout, library sorts and reading styles, poster size. Nil
+    /// until changed (see `AppState+Browse.swift`).
+    public var browse: BrowsePreferences?
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
                 progress: [String: SeriesProgress] = [:],
                 defaultReaderSettings: ReaderSettings = .default,
-                readerOverrides: [String: ReaderSettings] = [:]) {
+                readerOverrides: [String: ReaderSettings] = [:],
+                browse: BrowsePreferences? = nil) {
         self.serverSettings = serverSettings
         self.favorites = favorites
         self.progress = progress
         self.defaultReaderSettings = defaultReaderSettings
         self.readerOverrides = readerOverrides
+        self.browse = browse
     }
 }
 
@@ -158,6 +163,7 @@ public struct AppState: Codable, Hashable, Sendable {
             data.favorites.removeAll { $0.series.ref.serverID == id }
             data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
             data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
+            data.browse?.removeServer(id)
             profileData[key] = data
         }
     }

@@ -5,6 +5,10 @@ import MangaCore
 struct MangaReaderApp: App {
     @State private var model = AppModel.live()
 
+    init() {
+        AudioSessionSetup.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {

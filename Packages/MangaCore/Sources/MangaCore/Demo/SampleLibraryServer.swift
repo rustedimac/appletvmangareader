@@ -55,6 +55,15 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         SampleLibraryServer(copying: self, categoryScope: scope)
     }
 
+    /// Marks every chapter of a series read, as if the user had finished
+    /// it (UI tests for the Caught Up row).
+    public func markAllRead(seriesID: String) {
+        guard let n = Int(seriesID), (1...seriesCount).contains(n) else { return }
+        store.lock.withLock {
+            for c in 1...Self.chapterCount(for: n) { store.progress["\(n)-\(c)"] = (page: 19, completed: true) }
+        }
+    }
+
     public static func title(for n: Int) -> String {
         "\(words[(n - 1) % words.count]) Chronicles \(n)"
     }
@@ -66,7 +75,8 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
                              title: Self.title(for: n), coverURL: nil,
                              unreadCount: Self.chapterCount(for: n) - read, libraryID: "all",
-                             categoryIDs: n % 3 == 0 ? ["all", "short"] : ["all"])
+                             categoryIDs: n % 3 == 0 ? ["all", "short"] : ["all"],
+                             chapterCount: Self.chapterCount(for: n))
     }
 
     private func chapters(_ n: Int) -> [Chapter] {
@@ -104,8 +114,25 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: .default)
+    }
+
+    /// Title sorts use the titles' natural order (all "Ember" series, then
+    /// "Harbor", ...); added and updated are newest id first; read is most
+    /// recently read first, then by title.
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
         try await wait()
-        let ids = Array(1...seriesCount).filter { category.id != "short" || $0 % 3 == 0 }
+        let inCategory = Array(1...seriesCount).filter { category.id != "short" || $0 % 3 == 0 }
+        let byTitle = inCategory.sorted { Self.title(for: $0).localizedStandardCompare(Self.title(for: $1)) == .orderedAscending }
+        let ids: [Int]
+        switch sort {
+        case .titleAscending: ids = byTitle
+        case .titleDescending: ids = byTitle.reversed()
+        case .recentlyAdded, .recentlyUpdated: ids = inCategory.sorted(by: >)
+        case .recentlyRead:
+            let read = store.lock.withLock { store.lastReadSeries }.compactMap { Int($0) }.filter { inCategory.contains($0) }
+            ids = read + byTitle.filter { !read.contains($0) }
+        }
         let start = max(0, (page - 1) * pageSize)
         guard start < ids.count else { return Paged(items: [], hasMore: false) }
         let end = min(ids.count, start + pageSize)

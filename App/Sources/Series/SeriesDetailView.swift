@@ -151,7 +151,9 @@ struct SeriesDetailView: View {
     private func load() async {
         do {
             let firstLoad = detail == nil
-            detail = try await model.seriesDetail(series.ref)
+            let loaded = try await model.seriesDetail(series.ref)
+            detail = loaded
+            model.noteSeriesDetail(loaded, summary: summary)
             errorMessage = nil
             if firstLoad { focus = .primary }
         } catch {
@@ -183,7 +185,7 @@ private struct ChapterRow: View {
                     .lineLimit(1)
                     .foregroundStyle(chapter.isRead ? Color.secondary : Color.primary)
                 Spacer()
-                Text(chapter.readState.label)
+                Text(chapter.rowDetail)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 if let date = chapter.updatedAt {

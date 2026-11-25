@@ -85,17 +85,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
-        var filter = KavitaFilterV2()
-        filter.statements = [.init(comparison: KavitaFilterV2.Comparison.equal,
-                                   field: KavitaFilterV2.Field.libraries,
-                                   value: category.id)]
-        filter.sortOptions = .init(sortField: KavitaFilterV2.Sort.sortName, isAscending: true)
-        let items: [KavitaSeriesDTO] = try await withAuth {
-            try await $0.post("api/Series/v2",
-                              query: ["libraryId": category.id, "pageNumber": String(page), "pageSize": String(pageSize)],
-                              body: filter)
-        }
-        return Paged(items: items.map(summary), hasMore: items.count >= pageSize)
+        try await series(in: category, page: page, pageSize: pageSize, sort: .default)
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
@@ -207,7 +197,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }()
         let title = (dto.localizedName?.isEmpty == false ? dto.localizedName : nil) ?? dto.name
         return SeriesSummary(ref: ref(dto.id), title: title, coverURL: coverURL(seriesID: dto.id),
-                             unreadCount: unread, libraryID: dto.libraryId.map(String.init))
+                             unreadCount: unread, libraryID: dto.libraryId.map(String.init),
+                             pageCount: dto.pages, pagesRead: dto.pagesRead)
     }
 
     func coverURL(seriesID: Int) -> URL? {
