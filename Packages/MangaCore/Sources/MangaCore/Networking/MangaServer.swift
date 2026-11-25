@@ -55,7 +55,9 @@ public extension MangaServer {
     }
 
     func imageRequest(_ url: URL) -> URLRequest {
-        var request = URLRequest(url: url)
+        // Images follow the address API requests settled on (see
+        // `ServerAddressRouter`).
+        var request = URLRequest(url: ServerAddressRouter.shared.rewrite(url, for: config))
         request.timeoutInterval = 60
         return authorize(request)
     }
@@ -65,8 +67,15 @@ public extension MangaServer {
 public enum MangaServerFactory {
     /// `categoryScope` limits the client to these library/category ids
     /// (`ProfileServerSettings.selectedCategoryIDs`); nil means everything.
+    ///
+    /// A server with several addresses gets a `FailoverTransport`, so the
+    /// client reaches it through whichever address answers.
     public static func make(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>? = nil,
-                            transport: HTTPTransport = URLSessionTransport()) -> MangaServer {
+                            transport: HTTPTransport = URLSessionTransport(),
+                            router: ServerAddressRouter = .shared) -> MangaServer {
+        let transport: HTTPTransport = config.hasAlternateAddresses
+            ? FailoverTransport(inner: transport, config: config, router: router)
+            : transport
         switch config.kind {
         case .kavita:
             return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", categoryScope: categoryScope,

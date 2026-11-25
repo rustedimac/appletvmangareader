@@ -55,6 +55,7 @@ final class AppModel {
     static func live() -> AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
             let store = StateStore(backing: InMemoryKeyValueStore())
+            ServerAddressRouter.shared.reset(store: InMemoryKeyValueStore())
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore(),
                                  identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
@@ -124,7 +125,7 @@ final class AppModel {
     /// the libraries/categories that profile imports.
     func client(for server: ServerConfig) -> MangaServer {
         let scope = selectedCategories(for: server)
-        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)|\(Self.scopeKey(scope))"
+        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.addresses.map(\.absoluteString).joined(separator: ","))|\(Self.scopeKey(scope))"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: activeProfile.id, server: server.id)
         let client = makeClient(server, credential, scope, transport)
@@ -161,8 +162,14 @@ final class AppModel {
     }
 
     /// Checks a server and login without saving them.
+    /// With several addresses, says which one answered.
     func testConnection(_ server: ServerConfig, credential: ServerCredential?) async throws -> String {
-        try await makeClient(server, credential, nil, transport).validate()
+        let message = try await makeClient(server, credential, nil, transport).validate()
+        guard server.hasAlternateAddresses else { return message }
+        let used = ServerAddressRouter.shared.currentAddress(for: server)
+        let which = used == server.baseURL ? "the first address" : (used.host ?? used.absoluteString)
+        let lead = message.hasSuffix(".") ? String(message.dropLast()) : message
+        return lead + ". Connected through \(which)."
     }
 
     /// Every library/category on a server, selected or not, for the picker.
@@ -191,6 +198,7 @@ final class AppModel {
     }
 
     func removeServer(_ server: ServerConfig) {
+        ServerAddressRouter.shared.forget(server.id)
         secrets.removeCredentials(server: server.id, profiles: state.profiles.map(\.id))
         if server.kind == .freeLibrary {
             update { $0.removeFreeLibrary() }

@@ -14,6 +14,9 @@ struct ServerEditorView: View {
     @State private var test: TestState = .idle
     @State private var confirmingRemove = false
     @State private var categories: CategoryLoad = .idle
+    /// The id a new server gets, kept for the whole visit so connection
+    /// tests and the save use the same one.
+    @State private var newServerID = UUID()
 
     enum TestState: Equatable {
         case idle, running, success(String), failure(String)
@@ -21,6 +24,19 @@ struct ServerEditorView: View {
 
     var body: some View {
         Form {
+            Section {
+                NavigationLink {
+                    PhoneSetupView(context: PhoneSetupHTTP.Context(draft: draft, kindLocked: editing != nil),
+                                   saveLabel: editing == nil ? "Add Server" : "Save",
+                                   receive: receiveFromPhone)
+                } label: {
+                    Label("Set Up from Your Phone", systemImage: "qrcode")
+                }
+                .accessibilityIdentifier("serverEditor.phoneSetup")
+            } footer: {
+                Text("Scan a code with your phone and type the address and login there instead of with the remote.")
+            }
+
             if editing == nil {
                 Section(settingsHeader: "Server Type") {
                     Picker("Type", selection: $draft.kind) {
@@ -51,6 +67,30 @@ struct ServerEditorView: View {
                 if draft.kind == .kavita {
                     Text("Paste the OPDS URL from Kavita → User Settings → 3rd Party Clients. It fills in the API key for you.")
                 }
+            }
+
+            Section {
+                ForEach(Array(draft.alternateAddresses.indices), id: \.self) { index in
+                    TextField("Address \(index + 2), e.g. https://manga.example.com", text: alternateBinding(index))
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.altAddress.\(index)")
+                        .settingsTextFieldRow()
+                }
+                if draft.canAddAlternateAddress {
+                    Button {
+                        draft.alternateAddresses.append("")
+                    } label: {
+                        Label("Add Another Address", systemImage: "plus")
+                    }
+                    .accessibilityIdentifier("serverEditor.addAddress")
+                }
+            } header: {
+                SettingsHeader("Other Addresses")
+            } footer: {
+                Text("For when the first address doesn't answer, such as a remote or reverse-proxy address for when you're away from home. The app uses the first one that answers, in this order. Clear an address to remove it.")
             }
 
             Section {
@@ -156,6 +196,7 @@ struct ServerEditorView: View {
             connectionChanged()
         }
         .onChange(of: draft.kind) { _, _ in connectionChanged() }
+        .onChange(of: draft.alternateAddresses) { _, _ in connectionChanged() }
         .onChange(of: draft.apiKey) { _, _ in connectionChanged() }
         .onChange(of: draft.username) { _, _ in connectionChanged() }
         .onChange(of: draft.password) { _, _ in connectionChanged() }
@@ -253,12 +294,13 @@ struct ServerEditorView: View {
     @State private var pendingSelection: Set<String>??
 
     private var connectionKey: String {
-        [draft.kind.rawValue, draft.resolvedURL?.absoluteString ?? "", draft.resolvedAPIKey,
+        [draft.kind.rawValue, draft.resolvedURL?.absoluteString ?? "",
+         draft.resolvedAlternateURLs.map(\.absoluteString).joined(separator: ","), draft.resolvedAPIKey,
          draft.username, draft.password].joined(separator: "|")
     }
 
     private func loadCategories() {
-        guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+        guard let config = draft.config(id: serverID) else { return }
         let credential = draft.credential
         let saved: Set<String>?
         if let selection = categories.selection {
@@ -278,13 +320,13 @@ struct ServerEditorView: View {
                 categories = .loaded(CategorySelection(available: available, saved: saved))
             } catch {
                 guard !Task.isCancelled else { return }
-                categories = .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                categories = .failed(ConnectionErrorText.message(for: error))
             }
         }
     }
 
     private func runTest() {
-        guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+        guard let config = draft.config(id: serverID) else { return }
         let credential = draft.credential
         test = .running
         Task {
@@ -293,13 +335,34 @@ struct ServerEditorView: View {
                 test = .success(message)
                 loadCategories()
             } catch {
-                test = .failure(error.localizedDescription)
+                test = .failure(ConnectionErrorText.message(for: error))
             }
         }
     }
 
+    private var serverID: UUID { editing?.id ?? newServerID }
+
+    /// One "other address" field. Guards the index so a field that's being
+    /// removed never reads past the end.
+    private func alternateBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { index < draft.alternateAddresses.count ? draft.alternateAddresses[index] : "" },
+            set: { if index < draft.alternateAddresses.count { draft.alternateAddresses[index] = $0 } })
+    }
+
+    /// The phone sent the form: fill it in here and test it, so the user
+    /// only has to check it and save.
+    private func receiveFromPhone(_ submission: PhoneSetupHTTP.Submission) {
+        submission.apply(to: &draft, kindLocked: editing != nil)
+        Task {
+            // After the field changes above have reset the last test.
+            try? await Task.sleep(for: .milliseconds(400))
+            if draft.isValid { runTest() }
+        }
+    }
+
     private func save() {
-        guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+        guard let config = draft.config(id: serverID) else { return }
         // Without a loaded checklist, keep what was saved (all, for a new server).
         let selected = categories.selection.map(\.storedValue)
             ?? editing.flatMap { model.selectedCategories(for: $0) }

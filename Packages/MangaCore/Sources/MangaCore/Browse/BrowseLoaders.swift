@@ -135,5 +135,5 @@ public enum CrossServerSearch {
 }
 
 func userMessage(_ error: Error) -> String {
-    (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+    ConnectionErrorText.message(for: error)
 }

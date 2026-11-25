@@ -10,16 +10,21 @@ public struct ServerDraft: Equatable, Sendable {
     public var name: String
     /// Server address, or (Kavita) a pasted OPDS URL.
     public var address: String
+    /// Other addresses of the same server (remote, reverse proxy), tried in
+    /// order when `address` doesn't answer. Empty entries are dropped.
+    public var alternateAddresses: [String]
     public var apiKey: String
     public var username: String
     public var password: String
     public var syncProgress: Bool
 
     public init(kind: ServerKind = .kavita, name: String = "", address: String = "", apiKey: String = "",
-                username: String = "", password: String = "", syncProgress: Bool = true) {
+                username: String = "", password: String = "", syncProgress: Bool = true,
+                alternateAddresses: [String] = []) {
         self.kind = kind
         self.name = name
         self.address = address
+        self.alternateAddresses = alternateAddresses
         self.apiKey = apiKey
         self.username = username
         self.password = password
@@ -30,7 +35,27 @@ public struct ServerDraft: Equatable, Sendable {
     public init(editing config: ServerConfig, credential: ServerCredential?, syncProgress: Bool) {
         self.init(kind: config.kind, name: config.name, address: config.baseURL.absoluteString,
                   apiKey: credential?.apiKey ?? "", username: credential?.username ?? "",
-                  password: credential?.password ?? "", syncProgress: syncProgress)
+                  password: credential?.password ?? "", syncProgress: syncProgress,
+                  alternateAddresses: config.alternateURLs.map(\.absoluteString))
+    }
+
+    /// The most other addresses the form offers.
+    public static let maxAlternateAddresses = 4
+
+    /// Whether the form can offer one more address field.
+    public var canAddAlternateAddress: Bool { alternateAddresses.count < Self.maxAlternateAddresses }
+
+    /// The other addresses to save: parsed like `address` (a Kavita OPDS URL
+    /// counts as its server address), empty and repeated ones dropped.
+    public var resolvedAlternateURLs: [URL] {
+        var seen = Set([resolvedURL?.absoluteString ?? ""])
+        return alternateAddresses.compactMap { parseAddress($0) }
+            .filter { seen.insert($0.absoluteString).inserted }
+    }
+
+    private func parseAddress(_ text: String) -> URL? {
+        if kind == .kavita, let parsed = KavitaOPDS.parse(text) { return parsed.baseURL }
+        return Self.normalizedURL(text, keepQuery: kind == .opds)
     }
 
     /// If `address` is a Kavita OPDS URL, splits it into the server address
@@ -59,6 +84,10 @@ public struct ServerDraft: Equatable, Sendable {
     public var validationMessage: String? {
         if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the server address." }
         guard resolvedURL != nil else { return "That doesn't look like a web address." }
+        for (index, other) in alternateAddresses.enumerated()
+        where !other.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && parseAddress(other) == nil {
+            return "Address \(index + 2) doesn't look like a web address."
+        }
         if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
@@ -103,7 +132,7 @@ public struct ServerDraft: Equatable, Sendable {
     /// The config to save. Pass the existing id when editing.
     public func config(id: UUID = UUID()) -> ServerConfig? {
         guard isValid, let url = resolvedURL else { return nil }
-        return ServerConfig(id: id, kind: kind, name: resolvedName, baseURL: url)
+        return ServerConfig(id: id, kind: kind, name: resolvedName, baseURL: url, alternateURLs: resolvedAlternateURLs)
     }
 
     /// Parses a typed address. Accepts `host`, `host:port`, or a full URL.

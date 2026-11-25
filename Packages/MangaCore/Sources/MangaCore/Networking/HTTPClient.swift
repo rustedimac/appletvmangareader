@@ -11,6 +11,8 @@ public enum MangaError: Error, LocalizedError, Equatable, Sendable {
     case graphQL([String])
     case missingCredential
     case notFound
+    /// None of a server's addresses answered (`FailoverTransport`).
+    case unreachable(server: String, addresses: Int)
 
     public var errorDescription: String? {
         switch self {
@@ -23,6 +25,8 @@ public enum MangaError: Error, LocalizedError, Equatable, Sendable {
         case .graphQL(let messages): return messages.joined(separator: "\n")
         case .missingCredential: return "This server needs a login for the current profile."
         case .notFound: return "Not found."
+        case .unreachable(let server, let addresses):
+            return "Couldn't reach \(server) at any of its \(addresses) addresses. Check that the server is running, and that the Apple TV is on the same network for a home address."
         }
     }
 }

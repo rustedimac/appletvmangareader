@@ -34,6 +34,49 @@ Limits today: PDF and EPUB files from OPDS catalogs don't open yet (they
 will once the PDF/ebook reader lands), CBR/RAR archives aren't supported,
 and OPDS has no standard way to write progress back.
 
+## Several addresses per server
+
+A server can have more than one address, e.g. `http://192.168.1.10:5000` at
+home and `https://manga.example.com` through a reverse proxy or tunnel when
+the Apple TV is elsewhere. Add them in the server editor under **Other
+Addresses**; clear a field to remove it.
+
+- The app uses the **first address in the list that answers**. On the first
+  request of a launch (and again every 10 minutes, or as soon as the address
+  in use stops answering) it checks every address at once with a plain GET
+  of the address, 5 seconds each. Any HTTP answer counts, even a 401: the
+  check only asks "is this the way in?".
+- Clients always build URLs from the main address (`ServerConfig.baseURL`).
+  `FailoverTransport` (added by `MangaServerFactory.make` when a server has
+  more than one address) rewrites each request to the chosen address and,
+  when a request can't connect, checks again and retries once on the next
+  one. `MangaServer.imageRequest` rewrites covers and pages the same way.
+  URLs a server hands out with one of its other addresses (OPDS links) are
+  rewritten too.
+- The chosen address per server is remembered in UserDefaults
+  (`mangareader.serverAddresses.lastGood`), so images go to the right place
+  right after launch. That memory is per device and isn't synced.
+- When none answers, the error says so in plain words
+  (`MangaError.unreachable`); other network errors go through
+  `ConnectionErrorText` instead of raw `NSURLErrorDomain` codes.
+- The addresses are part of the server record, so they sync through iCloud
+  and Wi‑Fi backups with the server (no new `SyncMapper` domain: same
+  `server/<id>` record, one more field, written only when there are extra
+  addresses so older builds read the same JSON). An older build that edits
+  the server would drop the extra addresses.
+
+## Set up from your phone
+
+The server editor's first row, **Set Up from Your Phone**, opens a screen
+with a QR code. While it's open, the Apple TV serves a small form at
+`http://<tv-address>:8791/<six-digit code>/` (code new on every visit, any
+other path is a 404). The phone fills in type, name, addresses and the
+login, and **Send** fills the Apple TV's form and starts a connection test.
+Nothing is saved until the user presses Add Server or Save on the TV, and
+nothing leaves the local network. The page never shows a saved key or
+password. Code: `MangaCore/Pairing/PhoneSetup.swift` (shares
+`LocalHTTPServer` with the Wi‑Fi backup), `App/Sources/Settings/PhoneSetupView.swift`.
+
 ## Worth adding next, ranked
 
 Value weighs how many people run the server and whether the OPDS type

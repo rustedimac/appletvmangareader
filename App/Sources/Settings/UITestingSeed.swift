@@ -6,6 +6,7 @@ import MangaCore
 ///
 /// - `-uiTestingSeed profiles`: two profiles, so the picker shows at launch.
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
+/// - `-uiTestingSeed multiAddress`: a Kavita server with a home and a remote address.
 /// - `-uiTestingTab settings`: start on the Settings tab.
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
@@ -28,6 +29,9 @@ enum UITestingSeed {
         case "servers":
             s.addServer(ServerConfig(kind: .kavita, name: "Test Kavita", baseURL: URL(string: "http://kavita.test")!))
             s.addServer(ServerConfig(kind: .suwayomi, name: "Test Suwayomi", baseURL: URL(string: "http://suwayomi.test")!))
+        case "multiAddress":
+            s.addServer(ServerConfig(kind: .kavita, name: "Home Kavita", baseURL: URL(string: "http://kavita.test")!,
+                                     alternateURLs: [URL(string: "https://kavita-remote.test")!]))
         default:
             return nil
         }
