@@ -1,0 +1,38 @@
+[
+ {
+  "id": 4,
+  "title": "Summer Picks",
+  "summary": "",
+  "promoted": false,
+  "ageRating": 0,
+  "coverImage": null,
+  "primaryColor": null,
+  "secondaryColor": null,
+  "coverImageLocked": false,
+  "itemCount": 5,
+  "owner": "john",
+  "lastSyncUtc": "0001-01-01T00:00:00",
+  "source": 0,
+  "sourceUrl": null,
+  "totalSourceCount": 0,
+  "missingSeriesFromSource": null
+ },
+ {
+  "id": 2,
+  "title": "Empty List",
+  "summary": "",
+  "promoted": false,
+  "ageRating": 0,
+  "coverImage": null,
+  "primaryColor": null,
+  "secondaryColor": null,
+  "coverImageLocked": false,
+  "itemCount": 0,
+  "owner": "john",
+  "lastSyncUtc": "0001-01-01T00:00:00",
+  "source": 0,
+  "sourceUrl": null,
+  "totalSourceCount": 0,
+  "missingSeriesFromSource": null
+ }
+]

@@ -1,0 +1,64 @@
+[
+ {
+  "lastScanned": "2026-11-25T00:02:40.6727091",
+  "coverImage": null,
+  "folderWatching": true,
+  "includeInDashboard": true,
+  "includeInRecommended": true,
+  "manageCollections": true,
+  "manageReadingLists": true,
+  "includeInSearch": true,
+  "allowScrobbling": true,
+  "folders": [
+   "/books/manga"
+  ],
+  "collapseSeriesRelationships": false,
+  "libraryFileTypes": [
+   1,
+   2,
+   3
+  ],
+  "excludePatterns": [
+   ""
+  ],
+  "allowMetadataMatching": true,
+  "enableMetadata": true,
+  "removePrefixForSortName": false,
+  "inheritWebLinksFromFirstChapter": false,
+  "defaultLanguage": "",
+  "metadataProvider": 3,
+  "id": 1,
+  "name": "Manga Library",
+  "type": 0
+ },
+ {
+  "lastScanned": "2026-11-25T00:02:40.6727091",
+  "coverImage": null,
+  "folderWatching": true,
+  "includeInDashboard": true,
+  "includeInRecommended": true,
+  "manageCollections": true,
+  "manageReadingLists": true,
+  "includeInSearch": true,
+  "allowScrobbling": true,
+  "folders": [
+   "/books/webtoons"
+  ],
+  "collapseSeriesRelationships": false,
+  "libraryFileTypes": [
+   1
+  ],
+  "excludePatterns": [
+   ""
+  ],
+  "allowMetadataMatching": true,
+  "enableMetadata": true,
+  "removePrefixForSortName": false,
+  "inheritWebLinksFromFirstChapter": false,
+  "defaultLanguage": "",
+  "metadataProvider": 3,
+  "id": 3,
+  "name": "Webtoons",
+  "type": 0
+ }
+]

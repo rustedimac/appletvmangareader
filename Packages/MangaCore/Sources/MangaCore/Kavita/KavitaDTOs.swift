@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 // Minimal subsets of Kavita's API DTOs. Every field is optional where the
 // server might omit it, so version drift doesn't break decoding.
@@ -26,6 +29,29 @@ struct KavitaSeriesDTO: Decodable {
     var libraryName: String?
     var created: Date?
     var lastChapterAdded: Date?
+}
+
+/// Kavita's `Pagination` response header, a JSON object like
+/// `{"currentPage":1,"itemsPerPage":20,"totalItems":143,"totalPages":8}`.
+struct KavitaPaginationHeader: Decodable, Equatable {
+    var currentPage: Int
+    var itemsPerPage: Int
+    var totalItems: Int
+    var totalPages: Int
+
+    var hasMore: Bool { currentPage < totalPages }
+
+    static func parse(_ response: HTTPURLResponse) -> KavitaPaginationHeader? {
+        guard let raw = response.value(forHTTPHeaderField: "Pagination"), let data = raw.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(KavitaPaginationHeader.self, from: data)
+    }
+}
+
+/// Kavita 0.8+ collection (`AppUserCollectionDto`).
+struct KavitaCollectionDTO: Decodable {
+    var id: Int
+    var title: String
+    var itemCount: Int?
 }
 
 struct KavitaRecentlyUpdatedDTO: Decodable {
@@ -117,6 +143,7 @@ struct KavitaFilterV2: Encodable {
     var limitTo: Int = 0
 
     enum Field {
+        static let collectionTags = 7
         static let libraries = 19
     }
 

@@ -76,16 +76,36 @@ public struct ProfileServerSettings: Codable, Hashable, Sendable {
     }
 }
 
-/// A grouping of series on a server: a Kavita library or a Suwayomi category.
+/// A grouping of series on a server: a Kavita library or collection, or a
+/// Suwayomi category.
 public struct MangaCategory: Codable, Hashable, Identifiable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable {
+        /// Kavita library or Suwayomi category.
+        case library
+        /// Kavita collection (a user-curated list that spans libraries).
+        case collection
+    }
+
     public var id: String
     public var name: String
     public var order: Int
+    public var kind: Kind
 
-    public init(id: String, name: String, order: Int = 0) {
+    public init(id: String, name: String, order: Int = 0, kind: Kind = .library) {
         self.id = id
         self.name = name
         self.order = order
+        self.kind = kind
+    }
+
+    enum CodingKeys: String, CodingKey { case id, name, order, kind }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        order = try c.decodeIfPresent(Int.self, forKey: .order) ?? 0
+        kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .library
     }
 }
 
@@ -190,14 +210,22 @@ public struct PageDescriptor: Hashable, Sendable {
 public struct PageSize: Codable, Hashable, Sendable {
     public var width: Double
     public var height: Double
+    /// The server's own wide-page flag (Kavita's `isWide`), kept only when it
+    /// disagrees with the aspect ratio. Nil means "use the aspect ratio".
+    public var wideOverride: Bool?
 
-    public init(width: Double, height: Double) {
+    public init(width: Double, height: Double, wideOverride: Bool? = nil) {
         self.width = width
         self.height = height
+        self.wideOverride = wideOverride
     }
 
-    /// A page wider than it is tall is treated as a two-page spread.
-    public var isWide: Bool { height > 0 && width / height > 1.0 }
+    /// Wider than tall by aspect ratio alone.
+    public var isWideByRatio: Bool { height > 0 && width / height > 1.0 }
+
+    /// A page wider than it is tall is treated as a two-page spread, unless
+    /// the server says otherwise.
+    public var isWide: Bool { wideOverride ?? isWideByRatio }
 }
 
 /// Rows on a server's home screen.

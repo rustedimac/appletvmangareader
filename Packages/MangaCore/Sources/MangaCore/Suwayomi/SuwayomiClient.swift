@@ -52,28 +52,55 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             .trimmingCharacters(in: .whitespaces)
     }
 
+    /// Suwayomi's built-in "Default" category. It holds library manga that
+    /// are in no other category, and is hidden when empty.
+    static let defaultCategoryID = 0
+
     public func categories() async throws -> [MangaCategory] {
         struct Response: Decodable {
-            struct Category: Decodable { var id: Int; var name: String; var order: Int? }
+            struct Count: Decodable { var totalCount: Int? }
+            struct Category: Decodable { var id: Int; var name: String; var order: Int?; var mangas: Count? }
             var categories: Nodes<Category>
         }
-        let r: Response = try await graphQL("query { categories { nodes { id name order } } }")
+        let r: Response = try await graphQL("query { categories { nodes { id name order mangas { totalCount } } } }")
         return r.categories.nodes
+            .filter { $0.id != Self.defaultCategoryID || ($0.mangas?.totalCount ?? 1) > 0 }
             .sorted { ($0.order ?? 0, $0.id) < ($1.order ?? 0, $1.id) }
             .map { MangaCategory(id: String($0.id), name: $0.name, order: $0.order ?? 0) }
     }
 
+    /// Pages on the server. `category.mangas` takes no arguments, so this
+    /// uses the top-level `mangas` query filtered by category id. The Default
+    /// category (id 0) isn't a real category row, so it is listed whole and
+    /// paged here.
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
+        guard let id = Int(category.id) else { throw MangaError.notFound }
+        if id == Self.defaultCategoryID { return try await defaultCategorySeries(page: page, pageSize: pageSize) }
+        struct Response: Decodable {
+            struct PageInfo: Decodable { var hasNextPage: Bool }
+            struct Mangas: Decodable { var totalCount: Int?; var pageInfo: PageInfo?; var nodes: [SuwayomiMangaDTO] }
+            var mangas: Mangas
+        }
+        let offset = max(0, page - 1) * pageSize
+        let r: Response = try await graphQL(
+            "query($ids: [Int!], $first: Int!, $offset: Int!) { mangas(condition: {categoryIds: $ids, inLibrary: true}, orderBy: TITLE, orderByType: ASC, first: $first, offset: $offset) { totalCount pageInfo { hasNextPage } nodes { \(SuwayomiMangaDTO.fields) } } }",
+            variables: ["ids": .array([.int(id)]), "first": .int(pageSize), "offset": .int(offset)]
+        )
+        let hasMore = r.mangas.pageInfo?.hasNextPage
+            ?? r.mangas.totalCount.map { offset + r.mangas.nodes.count < $0 }
+            ?? (r.mangas.nodes.count >= pageSize)
+        return Paged(items: r.mangas.nodes.map(summary), hasMore: hasMore)
+    }
+
+    func defaultCategorySeries(page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
         struct Response: Decodable {
             struct Category: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
             var category: Category
         }
-        guard let id = Int(category.id) else { throw MangaError.notFound }
         let r: Response = try await graphQL(
             "query($id: Int!) { category(id: $id) { mangas { nodes { \(SuwayomiMangaDTO.fields) } } } }",
-            variables: ["id": .int(id)]
+            variables: ["id": .int(Self.defaultCategoryID)]
         )
-        // Suwayomi returns a whole category at once; page it client-side.
         let all = r.category.mangas.nodes
             .filter { $0.inLibrary != false }
             .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
@@ -147,13 +174,15 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                 var status: String?
                 var thumbnailUrl: String?
                 var unreadCount: Int?
-                var chapters: Nodes<SuwayomiChapterDTO>
             }
             var manga: Manga
+            var chapters: Nodes<SuwayomiChapterDTO>
         }
         guard let id = Int(seriesID) else { throw MangaError.notFound }
+        // `manga.chapters` takes no arguments, so ask for the chapters with
+        // the top-level query, in source order (ascending = oldest first).
         let r: Response = try await graphQL(
-            "query($id: Int!) { manga(id: $id) { id title description author artist genre status thumbnailUrl unreadCount chapters { nodes { \(SuwayomiChapterDTO.fields) } } } }",
+            "query($id: Int!) { manga(id: $id) { id title description author artist genre status thumbnailUrl unreadCount } chapters(condition: {mangaId: $id}, orderBy: SOURCE_ORDER, orderByType: ASC) { nodes { \(SuwayomiChapterDTO.fields) } } }",
             variables: ["id": .int(id)]
         )
         let m = r.manga
@@ -167,7 +196,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             authors: uniqueAuthors,
             genres: m.genre ?? [],
             status: m.status.map { $0.capitalized },
-            chapters: Self.chapters(from: m.chapters.nodes, seriesRef: ref)
+            chapters: Self.chapters(from: r.chapters.nodes, seriesRef: ref)
         )
     }
 
@@ -221,12 +250,16 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                       coverURL: resolve(m.thumbnailUrl), unreadCount: m.unreadCount)
     }
 
-    /// Orders chapters oldest to newest. Suwayomi's `sourceOrder` follows
-    /// the source's list; we check the chapter numbers to pick the direction.
+    /// Orders chapters oldest to newest by `sourceOrder` (Suwayomi numbers the
+    /// source's list so that ascending is oldest first). If the known chapter
+    /// numbers clearly run the other way, the list is reversed. A
+    /// `chapterNumber` of -1 means the source gave no number.
     static func chapters(from nodes: [SuwayomiChapterDTO], seriesRef: SeriesRef) -> [Chapter] {
-        var sorted = nodes.sorted { ($0.sourceOrder ?? 0) < ($1.sourceOrder ?? 0) }
-        let numbered = sorted.compactMap { $0.chapterNumber }.filter { $0 >= 0 }
-        if let first = numbered.first, let last = numbered.last, first > last {
+        var sorted = nodes.enumerated()
+            .sorted { ($0.element.sourceOrder ?? $0.offset, $0.offset) < ($1.element.sourceOrder ?? $1.offset, $1.offset) }
+            .map(\.element)
+        let numbered = sorted.compactMap(\.knownNumber)
+        if numbered.count >= 2, let first = numbered.first, let last = numbered.last, first > last {
             sorted.reverse()
         }
         return sorted.enumerated().map { index, c in
@@ -235,7 +268,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                 id: String(c.id),
                 seriesRef: seriesRef,
                 volumeID: nil,
-                title: c.name ?? "Chapter \(c.chapterNumber.map { String(format: "%g", $0) } ?? String(index + 1))",
+                title: Self.title(for: c, position: index + 1),
                 number: Double(index + 1),
                 pageCount: pageCount,
                 lastPageRead: max(0, c.lastPageRead ?? 0),
@@ -243,6 +276,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                 updatedAt: (c.uploadDate?.value).flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0 > 1e11 ? $0 / 1000 : $0) : nil }
             )
         }
+    }
+
+    static func title(for c: SuwayomiChapterDTO, position: Int) -> String {
+        if let name = c.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
+        if let number = c.knownNumber { return "Chapter \(String(format: "%g", number))" }
+        return "Chapter \(position)"
     }
 }
 
@@ -265,6 +304,12 @@ struct SuwayomiChapterDTO: Decodable {
     var lastPageRead: Int?
     var pageCount: Int?
     var uploadDate: FlexibleNumber?
+
+    /// The chapter number, or nil when the source gave none (-1).
+    var knownNumber: Double? {
+        guard let n = chapterNumber, n >= 0 else { return nil }
+        return n
+    }
 }
 
 struct Nodes<T: Decodable>: Decodable {
@@ -287,6 +332,7 @@ public enum JSONValue: Encodable, Hashable, Sendable {
     case double(Double)
     case string(String)
     case bool(Bool)
+    case array([JSONValue])
     case null
 
     public func encode(to encoder: Encoder) throws {
@@ -296,6 +342,7 @@ public enum JSONValue: Encodable, Hashable, Sendable {
         case .double(let v): try c.encode(v)
         case .string(let v): try c.encode(v)
         case .bool(let v): try c.encode(v)
+        case .array(let v): try c.encode(v)
         case .null: try c.encodeNil()
         }
     }

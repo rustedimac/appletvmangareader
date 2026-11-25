@@ -1,0 +1,44 @@
+{
+ "data": {
+  "categories": {
+   "nodes": [
+    {
+     "id": 2,
+     "name": "KR",
+     "order": 1,
+     "default": true,
+     "mangas": {
+      "totalCount": 702
+     }
+    },
+    {
+     "id": 0,
+     "name": "Default",
+     "order": 0,
+     "default": true,
+     "mangas": {
+      "totalCount": 0
+     }
+    },
+    {
+     "id": 4,
+     "name": "EN",
+     "order": 3,
+     "default": false,
+     "mangas": {
+      "totalCount": 172
+     }
+    },
+    {
+     "id": 3,
+     "name": "JP",
+     "order": 2,
+     "default": false,
+     "mangas": {
+      "totalCount": 29
+     }
+    }
+   ]
+  }
+ }
+}

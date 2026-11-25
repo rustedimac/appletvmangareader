@@ -1,0 +1,25 @@
+{
+ "id": 1,
+ "oidcId": null,
+ "username": "john",
+ "email": "",
+ "roles": [
+  "Admin"
+ ],
+ "token": "jwt-1",
+ "refreshToken": "refresh",
+ "apiKey": "KEY",
+ "preferences": {},
+ "ageRestriction": {
+  "ageRating": 0,
+  "includeUnknowns": true
+ },
+ "kavitaVersion": "0.9.1.4",
+ "identityProvider": 0,
+ "created": "2026-10-01T14:00:00.0000000",
+ "createdUtc": "2026-10-01T18:00:00.0000000",
+ "authKeys": [],
+ "coverImage": null,
+ "primaryColor": null,
+ "secondaryColor": null
+}

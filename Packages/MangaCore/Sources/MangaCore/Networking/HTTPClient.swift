@@ -126,9 +126,15 @@ public struct HTTPClient: Sendable {
 
     @discardableResult
     public func send(_ request: URLRequest) async throws -> Data {
+        try await sendWithResponse(request).0
+    }
+
+    /// Like `send`, but also returns the response so callers can read
+    /// headers such as Kavita's `Pagination`.
+    public func sendWithResponse(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, response) = try await transport.send(request)
         switch response.statusCode {
-        case 200..<300: return data
+        case 200..<300: return (data, response)
         case 401, 403: throw MangaError.unauthorized
         case 404: throw MangaError.notFound
         default: throw MangaError.http(status: response.statusCode, body: String(decoding: data, as: UTF8.self))
@@ -143,6 +149,12 @@ public struct HTTPClient: Sendable {
     public func post<T: Decodable, B: Encodable>(_ path: String, query: [String: String?] = [:], body: B, as type: T.Type = T.self) async throws -> T {
         let data = try await send(try request("POST", path, query: query, body: Self.encoder.encode(body)))
         return try Self.decode(T.self, from: data)
+    }
+
+    /// POST that also returns the HTTP response (for paging headers).
+    public func postWithResponse<T: Decodable, B: Encodable>(_ path: String, query: [String: String?] = [:], body: B, as type: T.Type = T.self) async throws -> (T, HTTPURLResponse) {
+        let (data, response) = try await sendWithResponse(try request("POST", path, query: query, body: Self.encoder.encode(body)))
+        return (try Self.decode(T.self, from: data), response)
     }
 
     public func postIgnoringResponse<B: Encodable>(_ path: String, query: [String: String?] = [:], body: B) async throws {

@@ -1,0 +1,20 @@
+{
+ "data": {
+  "mangas": {
+   "totalCount": 702,
+   "pageInfo": {
+    "hasNextPage": false,
+    "hasPreviousPage": true
+   },
+   "nodes": [
+    {
+     "id": 30001,
+     "title": "Zephyr Line",
+     "thumbnailUrl": "/api/v1/manga/30001/thumbnail",
+     "unreadCount": 0,
+     "inLibrary": true
+    }
+   ]
+  }
+ }
+}

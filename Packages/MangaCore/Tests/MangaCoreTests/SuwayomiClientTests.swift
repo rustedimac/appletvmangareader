@@ -41,32 +41,79 @@ final class SuwayomiClientTests: XCTestCase {
         }
     }
 
-    func testCategoriesSorted() async throws {
-        mock.onGraphQL("categories", body: #"{"data":{"categories":{"nodes":[{"id":2,"name":"Reading","order":2},{"id":0,"name":"Default","order":0},{"id":1,"name":"Webtoon","order":1}]}}}"#)
+    func testCategoriesSortedAndEmptyDefaultHidden() async throws {
+        mock.onGraphQL("categories", body: fixture("suwayomi-categories"))
         let cats = try await client.categories()
-        XCTAssertEqual(cats.map(\.name), ["Default", "Webtoon", "Reading"])
+        XCTAssertEqual(cats.map(\.name), ["KR", "JP", "EN"])
+        XCTAssertEqual(cats.map(\.id), ["2", "3", "4"])
+        XCTAssertTrue(graphQLQuery(mock, "categories").contains("totalCount"))
     }
 
-    func testCategorySeriesPagedClientSide() async throws {
+    func testDefaultCategoryShownWhenItHasManga() async throws {
+        mock.onGraphQL("categories", body: #"{"data":{"categories":{"nodes":[{"id":0,"name":"Default","order":0,"mangas":{"totalCount":4}},{"id":1,"name":"Webtoon","order":1,"mangas":{"totalCount":9}}]}}}"#)
+        let cats = try await client.categories()
+        XCTAssertEqual(cats.map(\.name), ["Default", "Webtoon"])
+    }
+
+    func testCategorySeriesPagedOnServer() async throws {
+        mock.onGraphQL(all: ["mangas(condition", "\"offset\":2"], body: fixture("suwayomi-category-page"))
+        mock.onGraphQL(all: ["mangas(condition", "\"offset\":700"], body: fixture("suwayomi-category-last-page"))
+        let cat = MangaCategory(id: "2", name: "KR")
+        let p2 = try await client.series(in: cat, page: 2, pageSize: 2)
+        XCTAssertEqual(p2.items.map(\.title), ["Harbor Lights", "Iron Orchard"])
+        XCTAssertEqual(p2.items.map(\.unreadCount), [8, 12])
+        XCTAssertEqual(p2.items[0].coverURL?.absoluteString, "http://suwayomi.local:4567/api/v1/manga/16109/thumbnail")
+        XCTAssertTrue(p2.hasMore)
+        let vars = graphQLVariables(mock, "\"offset\":2")
+        XCTAssertEqual(vars["ids"] as? [Int], [2])
+        XCTAssertEqual(vars["first"] as? Int, 2)
+        XCTAssertEqual(vars["offset"] as? Int, 2)
+        let query = graphQLQuery(mock, "\"offset\":2")
+        XCTAssertTrue(query.contains("categoryIds: $ids"), query)
+        XCTAssertTrue(query.contains("orderBy: TITLE"), query)
+        XCTAssertFalse(query.contains("category(id"), "category.mangas takes no paging arguments")
+
+        let last = try await client.series(in: cat, page: 351, pageSize: 2)
+        XCTAssertEqual(last.items.map(\.title), ["Zephyr Line"])
+        XCTAssertFalse(last.hasMore)
+    }
+
+    func testServerPagingFallsBackToTotalCount() async throws {
+        mock.onGraphQL("mangas(condition", body: #"{"data":{"mangas":{"totalCount":3,"nodes":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}}}"#)
+        let page = try await client.series(in: MangaCategory(id: "5", name: "X"), page: 1, pageSize: 2)
+        XCTAssertTrue(page.hasMore)
+    }
+
+    func testDefaultCategoryPagedClientSide() async throws {
         mock.onGraphQL("category(id", body: """
         {"data":{"category":{"mangas":{"nodes":[
-          {"id":3,"title":"Chainsaw Man","thumbnailUrl":"/api/v1/manga/3/thumbnail","unreadCount":2,"inLibrary":true},
-          {"id":1,"title":"Berserk","thumbnailUrl":"/api/v1/manga/1/thumbnail","unreadCount":0,"inLibrary":true},
-          {"id":2,"title":"Akira","thumbnailUrl":null,"unreadCount":0,"inLibrary":false}
+          {"id":3,"title":"Copper Kettle","thumbnailUrl":"/api/v1/manga/3/thumbnail","unreadCount":2,"inLibrary":true},
+          {"id":1,"title":"Amber Road","thumbnailUrl":"/api/v1/manga/1/thumbnail","unreadCount":0,"inLibrary":true},
+          {"id":2,"title":"Blue Ferry","thumbnailUrl":null,"unreadCount":0,"inLibrary":false}
         ]}}}}
         """)
-        let cat = MangaCategory(id: "1", name: "Manga")
+        let cat = MangaCategory(id: "0", name: "Default")
         let p1 = try await client.series(in: cat, page: 1, pageSize: 1)
-        XCTAssertEqual(p1.items.map(\.title), ["Berserk"])
+        XCTAssertEqual(p1.items.map(\.title), ["Amber Road"])
         XCTAssertTrue(p1.hasMore)
-        XCTAssertEqual(p1.items[0].coverURL?.absoluteString, "http://suwayomi.local:4567/api/v1/manga/1/thumbnail")
         let p2 = try await client.series(in: cat, page: 2, pageSize: 1)
-        XCTAssertEqual(p2.items.map(\.title), ["Chainsaw Man"])
+        XCTAssertEqual(p2.items.map(\.title), ["Copper Kettle"])
         XCTAssertFalse(p2.hasMore)
         let p3 = try await client.series(in: cat, page: 3, pageSize: 1)
         XCTAssertTrue(p3.items.isEmpty)
-        let vars = jsonBody(mock.lastRequest(containing: "category(id"))["variables"] as? [String: Any]
-        XCTAssertEqual(vars?["id"] as? Int, 1)
+        XCTAssertEqual(graphQLVariables(mock, "category(id")["id"] as? Int, 0)
+    }
+
+    func testOldPagingErrorSurfaces() async {
+        // What the live server says if paging args are put on category.mangas.
+        mock.onGraphQL("mangas(condition", body: fixture("suwayomi-category-error"))
+        do {
+            _ = try await client.series(in: MangaCategory(id: "2", name: "KR"), page: 1, pageSize: 2)
+            XCTFail("expected error")
+        } catch {
+            guard case .graphQL(let messages)? = error as? MangaError else { return XCTFail("\(error)") }
+            XCTAssertTrue(messages.first?.contains("UnknownArgument") ?? false)
+        }
     }
 
     func testChapterFeedsDedupeAndFilterUnread() async throws {
@@ -97,23 +144,37 @@ final class SuwayomiClientTests: XCTestCase {
         XCTAssertEqual(items.map(\.title), ["New One"])
     }
 
-    func testSeriesDetailChapterOrder() async throws {
-        // sourceOrder ascending is oldest first here; numbers confirm it.
-        mock.onGraphQL("manga(id", body: """
-        {"data":{"manga":{"id":4,"title":"Frieren","description":"Elf.","author":"Yamada","artist":"Abe","genre":["Fantasy"],"status":"ONGOING","thumbnailUrl":"/api/v1/manga/4/thumbnail","unreadCount":1,
-         "chapters":{"nodes":[
-           {"id":12,"name":"Chapter 2","chapterNumber":2,"sourceOrder":2,"isRead":false,"lastPageRead":3,"pageCount":-1,"uploadDate":"1700000000000"},
-           {"id":11,"name":"Chapter 1","chapterNumber":1,"sourceOrder":1,"isRead":true,"lastPageRead":0,"pageCount":18,"uploadDate":"1690000000000"}
-         ]}}}}
-        """)
-        let d = try await client.seriesDetail("4")
-        XCTAssertEqual(d.chapters.map(\.id), ["11", "12"])
-        XCTAssertEqual(d.chapters[1].pageCount, 0) // -1 means "not fetched yet"
-        XCTAssertEqual(d.chapters[1].lastPageRead, 3)
-        XCTAssertEqual(d.chapters[0].updatedAt, Date(timeIntervalSince1970: 1_690_000_000))
-        XCTAssertEqual(d.authors, ["Yamada", "Abe"])
+    func testSeriesDetailUsesSourceOrder() async throws {
+        mock.onGraphQL("manga(id", body: fixture("suwayomi-manga-detail"))
+        let d = try await client.seriesDetail("16109")
+        let query = graphQLQuery(mock, "manga(id")
+        XCTAssertTrue(query.contains("chapters(condition: {mangaId: $id}, orderBy: SOURCE_ORDER, orderByType: ASC)"), query)
+        XCTAssertEqual(d.summary.title, "Harbor Lights")
+        XCTAssertEqual(d.chapters.map(\.id), ["93233", "93234", "93235"])
+        XCTAssertEqual(d.chapters.map(\.title), ["Chapter 1", "Chapter 2", "Chapter 3"])
+        XCTAssertEqual(d.chapters[2].pageCount, 0) // -1 means "not fetched yet"
+        XCTAssertEqual(d.chapters[1].lastPageRead, 8)
+        XCTAssertFalse(d.chapters[1].isRead) // lastPageRead > 0 while unread is normal
+        XCTAssertEqual(d.chapters[0].updatedAt, Date(timeIntervalSince1970: 1_572_580_800))
+        XCTAssertEqual(d.authors, ["Mina Ro"])
+        XCTAssertEqual(d.genres, ["Drama", "Slice of Life"])
         XCTAssertEqual(d.status, "Ongoing")
-        XCTAssertEqual(d.continueChapter?.id, "12")
+        XCTAssertEqual(d.continueChapter?.id, "93234")
+    }
+
+    func testUnnumberedChaptersFollowSourceOrder() async throws {
+        // chapterNumber -1 everywhere; ids run the opposite way to sourceOrder.
+        mock.onGraphQL("manga(id", body: fixture("suwayomi-unnumbered-chapters"))
+        let d = try await client.seriesDetail("10")
+        XCTAssertEqual(d.chapters.map(\.id), ["16", "11", "10"])
+        XCTAssertEqual(d.chapters.map(\.title), ["Side Story", "Prologue", "Chapter 3"])
+        XCTAssertEqual(d.chapters.map(\.number), [1, 2, 3])
+    }
+
+    func testChapterTitleFallbacks() {
+        XCTAssertEqual(SuwayomiClient.title(for: SuwayomiChapterDTO(id: 1, name: "  ", chapterNumber: 12.5), position: 4), "Chapter 12.5")
+        XCTAssertEqual(SuwayomiClient.title(for: SuwayomiChapterDTO(id: 1, name: nil, chapterNumber: -1), position: 4), "Chapter 4")
+        XCTAssertEqual(SuwayomiClient.title(for: SuwayomiChapterDTO(id: 1, name: "Ep. 7", chapterNumber: -1), position: 4), "Ep. 7")
     }
 
     func testChapterOrderReversedWhenSourceIsNewestFirst() {
@@ -124,6 +185,17 @@ final class SuwayomiClientTests: XCTestCase {
             SuwayomiChapterDTO(id: 3, name: "Ch 1", chapterNumber: 1, sourceOrder: 2),
         ]
         XCTAssertEqual(SuwayomiClient.chapters(from: nodes, seriesRef: ref).map(\.title), ["Ch 1", "Ch 2", "Ch 3"])
+    }
+
+    func testUnknownNumbersDoNotFlipOrder() {
+        // A -1 extra between numbered chapters must not trigger a reversal.
+        let ref = SeriesRef(serverID: config.id, seriesID: "1")
+        let nodes = [
+            SuwayomiChapterDTO(id: 1, name: "Ch 1", chapterNumber: 1, sourceOrder: 1),
+            SuwayomiChapterDTO(id: 2, name: "Extra", chapterNumber: -1, sourceOrder: 2),
+            SuwayomiChapterDTO(id: 3, name: "Ch 2", chapterNumber: 2, sourceOrder: 3),
+        ]
+        XCTAssertEqual(SuwayomiClient.chapters(from: nodes, seriesRef: ref).map(\.title), ["Ch 1", "Extra", "Ch 2"])
     }
 
     func testPagesResolveRelativeURLs() async throws {
