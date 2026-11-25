@@ -110,6 +110,42 @@ up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
 tests can reuse it.
 
+## Webtoon reader
+
+`Reader/Webtoon/WebtoonReaderView` is a continuous vertical strip. The
+layout math lives in MangaCore (`WebtoonLayout`, tested in
+`WebtoonLayoutTests`) and works in whole device pixels: the column width
+keeps the screen's parity so it centers exactly, and each page's height is
+`round(column × height / width)`, so every page starts on the pixel where
+the previous one ends. Unknown sizes use the chapter's median aspect until
+the image arrives.
+
+- **No jumps.** Every re-layout (a size arrives, a chapter joins or is
+  dropped, the width changes) captures a `WebtoonAnchor` (the item at the top
+  of the screen and the offset into it) and restores it afterwards.
+  Sizes for pages a few screens ahead are fetched early so they are right
+  before they come into view.
+- **Big pages.** `WebtoonTilePlan` decodes at the column width (never above
+  the source size) and splits strips taller than 4096 decoded rows into
+  tiles that each map to whole display pixels, within a 48 MB budget per
+  page.
+- **Chapters.** `WebtoonStrip` holds up to three chapters. The next chapter
+  joins below when the reader is two screens from the end, the previous one
+  above when scrolling near the top, with a divider between them. Crossing
+  into another chapter calls `ReaderSession.adopt(chapter:pages:sizes:page:)`
+  so the session switches without a loading state.
+- **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
+  swipes; click up/down glides `webtoonScrollStep` of a screen; holding
+  scrolls continuously and speeds up; left/right snaps to the previous/next
+  page; select or Play/Pause opens the menu; Menu passes through to
+  `ReaderView`.
+- Only views within a screen above and two below the top exist; the rest are
+  recycled.
+
+UI tests: `WebtoonReaderUITests`, launched with
+`-uiTesting -readerDemo -readerMode webtoon` (optionally
+`-readerWebtoonWidth 1.0`).
+
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in

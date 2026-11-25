@@ -9,6 +9,7 @@ import MangaCore
 /// Extra launch arguments (read through UserDefaults' argument domain):
 /// - `-readerDirection leftToRight|rightToLeft`
 /// - `-readerLayout single|double`
+/// - `-readerMode paged|webtoon` and `-readerWebtoonWidth <0.3...1.0>`
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
 enum ReaderDemo {
     static var isEnabled: Bool { ProcessInfo.processInfo.arguments.contains("-readerDemo") }
@@ -42,6 +43,12 @@ enum ReaderDemo {
                 }
                 if let l = defaults.string(forKey: "readerLayout").flatMap(PageLayout.init(rawValue:)) {
                     settings.layout = l
+                }
+                if let m = defaults.string(forKey: "readerMode").flatMap(ReadingMode.init(rawValue:)) {
+                    settings.mode = m
+                }
+                if let w = Double(defaults.string(forKey: "readerWebtoonWidth") ?? "") {
+                    settings.webtoonWidth = w
                 }
                 model.setReaderSettings(settings, for: DemoMangaServer.series.ref)
                 ready = true
