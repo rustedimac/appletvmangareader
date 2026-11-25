@@ -77,3 +77,22 @@ func select(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down,
         XCUIRemote.shared.press(.select)
     }
 }
+
+/// Moves focus down onto the first poster that takes it, opens it, waits
+/// for the series screen and returns the series id (without "poster.").
+@discardableResult
+func openFocusedPoster(_ app: XCUIApplication, maxPresses: Int = 6,
+                       file: StaticString = #filePath, line: UInt = #line) -> String {
+    let focused = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true")).firstMatch
+    var presses = 0
+    while !focused.exists && presses < maxPresses {
+        XCUIRemote.shared.press(.down)
+        Thread.sleep(forTimeInterval: 0.5)
+        presses += 1
+    }
+    XCTAssertTrue(focused.exists, "no poster took focus", file: file, line: line)
+    let id = String(focused.identifier.dropFirst("poster.".count))
+    XCUIRemote.shared.press(.select)
+    XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10), file: file, line: line)
+    return id
+}

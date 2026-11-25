@@ -1,0 +1,16 @@
+{
+    "id": "0SB719DFNC2R1",
+    "email": "admin@example.org",
+    "roles": [
+        "ADMIN",
+        "FILE_DOWNLOAD",
+        "KOBO_SYNC",
+        "KOREADER_SYNC",
+        "PAGE_STREAMING",
+        "USER"
+    ],
+    "sharedAllLibraries": true,
+    "sharedLibrariesIds": [],
+    "labelsAllow": [],
+    "labelsExclude": []
+}
