@@ -7,8 +7,14 @@ struct MangaReaderApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(model)
+            Group {
+                if ReaderDemo.isEnabled {
+                    ReaderDemo.RootView()
+                } else {
+                    RootView()
+                }
+            }
+            .environment(model)
         }
     }
 }
