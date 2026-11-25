@@ -61,6 +61,26 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     public static func chapterCount(for n: Int) -> Int { 3 + n % 12 }
 
+    /// Genres for content-filter tests: every series is "Adventure",
+    /// multiples of 4 are also "Mystery", multiples of 5 also "Horror".
+    public static func genres(for n: Int) -> [String] {
+        var g = ["Adventure"]
+        if n % 4 == 0 { g.append("Mystery") }
+        if n % 5 == 0 { g.append("Horror") }
+        return g
+    }
+
+    /// Multiples of 6 are tagged "Cliffhanger".
+    public static func tags(for n: Int) -> [String] { n % 6 == 0 ? ["Cliffhanger"] : [] }
+
+    /// Age ratings (demo Kavita only): multiples of 7 are Mature 17+,
+    /// multiples of 11 unrated, the rest Everyone.
+    public static func ageRating(for n: Int) -> AgeRating {
+        if n % 7 == 0 { return .mature17Plus }
+        if n % 11 == 0 { return .unknown }
+        return .everyone
+    }
+
     private func summary(_ n: Int) -> SeriesSummary {
         let read = chapters(n).filter(\.isRead).count
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
@@ -139,7 +159,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         let n = try number(seriesID)
         return SeriesDetail(summary: summary(n),
                             synopsis: "A generated demo series used to try out the app without a server. Number \(n) of \(seriesCount).",
-                            authors: ["Demo Author"], genres: ["Adventure", "Demo"],
+                            authors: ["Demo Author"], genres: Self.genres(for: n) + ["Demo"],
                             status: n % 2 == 0 ? "Ongoing" : "Completed", chapters: chapters(n))
     }
 
@@ -160,4 +180,22 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public func authorize(_ request: URLRequest) -> URLRequest { request }
+
+    public func contentFacets() async throws -> ContentFacets {
+        try await wait()
+        return ContentFacets(genres: ["Adventure", "Demo", "Horror", "Mystery"],
+                             tags: config.kind == .kavita ? ["Cliffhanger"] : [],
+                             supportsAgeRating: config.kind == .kavita)
+    }
+
+    /// Like the real clients: Suwayomi matches genres only.
+    public func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
+        guard filter.isActive else { return [] }
+        try await wait()
+        let kavita = config.kind == .kavita
+        return Set((1...seriesCount).filter { n in
+            filter.hides(genres: Self.genres(for: n) + ["Demo"], tags: kavita ? Self.tags(for: n) : [],
+                         ageRating: kavita ? Self.ageRating(for: n) : nil, supportsAgeRating: kavita)
+        }.map(String.init))
+    }
 }

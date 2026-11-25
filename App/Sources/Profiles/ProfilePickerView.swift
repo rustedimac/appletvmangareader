@@ -7,6 +7,8 @@ struct ProfilePickerView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var focused: UUID?
     @State private var showingManage = false
+    /// The profile waiting for its PIN before it opens.
+    @State private var unlocking: Profile?
 
     var body: some View {
         NavigationStack {
@@ -18,11 +20,23 @@ struct ProfilePickerView: View {
                     HStack(spacing: 60) {
                         ForEach(model.state.profiles) { profile in
                             Button {
-                                model.switchProfile(profile.id)
-                                model.isPickingProfile = false
+                                if model.needsPINToOpen(profile.id) {
+                                    unlocking = profile
+                                } else {
+                                    open(profile)
+                                }
                             } label: {
                                 VStack(spacing: 24) {
                                     ProfileAvatarView(profile: profile, size: 220)
+                                        .overlay(alignment: .bottomTrailing) {
+                                            if model.requiresPINToOpen(profile.id) && model.hasPIN(profile.id) {
+                                                Image(systemName: "lock.fill")
+                                                    .font(.title3)
+                                                    .padding(12)
+                                                    .background(.thinMaterial, in: Circle())
+                                                    .padding(10)
+                                            }
+                                        }
                                     Text(profile.name)
                                         .font(.headline)
                                         .lineLimit(1)
@@ -49,6 +63,21 @@ struct ProfilePickerView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear { focused = model.activeProfile.id }
+            .navigationDestination(item: $unlocking) { profile in
+                PINPadView(title: "Enter \(profile.name)'s PIN") { pin in
+                    let result = model.attemptPIN(pin, candidates: [profile.id])
+                    if case .unlocked = result {
+                        unlocking = nil
+                        open(profile)
+                    }
+                    return PINGate<EmptyView>.feedback(result)
+                }
+            }
         }
+    }
+
+    private func open(_ profile: Profile) {
+        model.switchProfile(profile.id)
+        model.isPickingProfile = false
     }
 }

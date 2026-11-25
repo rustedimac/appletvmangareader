@@ -77,6 +77,8 @@ struct HomeView: View {
         let sources = model.servers.map {
             HomeSource(server: model.client(for: $0), includeContinueReading: model.syncsProgress(to: $0.id))
         }
+        // Filtered clients cache the hidden ids, so the feeds reuse them.
+        await model.refreshHiddenSeries()
         let loaded = await HomeLoader.load(sources)
         guard !Task.isCancelled else { return }
         sections = loaded

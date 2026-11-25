@@ -3,8 +3,9 @@ import MangaCore
 
 extension AppModel {
     /// The active profile's favorites across every server, newest first,
-    /// leaving out libraries/categories the profile doesn't import.
-    var favorites: [Favorite] { state.visibleFavorites(profile: activeProfile.id) }
+    /// leaving out libraries/categories the profile doesn't import and
+    /// anything its content filter hides.
+    var favorites: [Favorite] { state.visibleFavorites(profile: activeProfile.id, hidden: hiddenSeries) }
 }
 
 struct FavoritesView: View {
@@ -24,5 +25,6 @@ struct FavoritesView: View {
             }
             .seriesNavigation()
         }
+        .task(id: model.contentFilter.cacheKey) { await model.refreshHiddenSeries() }
     }
 }

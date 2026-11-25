@@ -36,9 +36,29 @@ public protocol MangaServer: Sendable {
     /// Adds any auth headers the server needs to fetch an image URL it
     /// returned (covers and pages).
     func authorize(_ request: URLRequest) -> URLRequest
+
+    /// The genres and tags used on the server, for the content filter
+    /// settings. Not limited by `categoryScope`.
+    func contentFacets() async throws -> ContentFacets
+
+    /// Ids of the library series `filter` hides (genres, tags, age rating).
+    /// Empty when the filter is inactive. Throws rather than guessing, so
+    /// callers can fail closed. `ContentFilteredServer` uses this to filter
+    /// every list.
+    func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String>
 }
 
 public extension MangaServer {
+    /// Backends without genre data offer nothing to filter on.
+    func contentFacets() async throws -> ContentFacets { ContentFacets() }
+
+    /// A backend that can't tell what a filter hides fails closed: with an
+    /// active filter it shows nothing rather than everything.
+    func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
+        guard filter.isActive else { return [] }
+        throw MangaError.decoding("This server can't apply content filters.")
+    }
+
     func imageRequest(_ url: URL) -> URLRequest {
         var request = URLRequest(url: url)
         request.timeoutInterval = 60
@@ -50,8 +70,17 @@ public extension MangaServer {
 public enum MangaServerFactory {
     /// `categoryScope` limits the client to these library/category ids
     /// (`ProfileServerSettings.selectedCategoryIDs`); nil means everything.
+    /// An active `contentFilter` wraps the client in `ContentFilteredServer`.
     public static func make(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>? = nil,
+                            contentFilter: ContentFilter = .none,
                             transport: HTTPTransport = URLSessionTransport()) -> MangaServer {
+        let client = makeUnfiltered(config: config, credential: credential, categoryScope: categoryScope,
+                                    transport: transport)
+        return ContentFilteredServer.wrapping(client, filter: contentFilter)
+    }
+
+    static func makeUnfiltered(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>?,
+                               transport: HTTPTransport) -> MangaServer {
         switch config.kind {
         case .kavita:
             return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", categoryScope: categoryScope,

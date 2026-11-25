@@ -35,12 +35,31 @@ struct SettingsView: View {
                         Label("Default Reader Settings", systemImage: "book")
                     }
                     .accessibilityIdentifier("settings.readerDefaults")
+
+                    NavigationLink {
+                        PINGate(kind: .profile(model.activeProfile.id),
+                                reason: "Enter the PIN to change what this profile can see.") {
+                            ContentSettingsView()
+                        }
+                    } label: {
+                        HStack {
+                            Label("Content & PIN", systemImage: model.hasPIN(model.activeProfile.id) ? "lock.fill" : "lock.open")
+                            Spacer()
+                            Text(model.contentFilter.isActive ? "Filtered" : "Everything shown")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("settings.content")
                 }
 
                 Section {
                     ForEach(model.servers) { server in
                         NavigationLink {
-                            ServerEditorView(editing: server)
+                            PINGate(kind: .profile(model.activeProfile.id),
+                                    reason: "Enter the PIN to change servers.") {
+                                ServerEditorView(editing: server)
+                            }
                         } label: {
                             ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
                                       hasLogin: model.credential(for: server) != nil,
@@ -49,7 +68,10 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.server.\(server.name)")
                     }
                     NavigationLink {
-                        ServerEditorView(editing: nil)
+                        PINGate(kind: .profile(model.activeProfile.id),
+                                reason: "Enter the PIN to add a server.") {
+                            ServerEditorView(editing: nil)
+                        }
                     } label: {
                         Label("Add Server", systemImage: "plus")
                     }

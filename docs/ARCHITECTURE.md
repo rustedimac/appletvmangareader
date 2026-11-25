@@ -10,6 +10,7 @@
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
+| `MangaCore/ContentFilter` | `ContentFilter` (per-profile hidden genres/tags and age limit), `ContentFilteredServer` (wraps a client so every list leaves hidden series out), `ContentVisibility` (the same rule for local lists). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
@@ -64,6 +65,42 @@ the server's categories all follow it. Favorites are filtered with
 
 Every client also drops anything outside the selection after the server
 answers, as a safety net.
+
+## Content filters and profile PINs
+
+Each profile can hide content three ways. Libraries and categories come
+from the import selection above. Genres, tags and an age limit live in
+`ProfileData.contentFilter` (`ContentFilter`), edited in Settings →
+Content & PIN (`ContentSettingsView`).
+
+- **Where it applies.** `AppModel.client(for:)` wraps every client in
+  `ContentFilteredServer` when the filter is on. The wrapper asks the
+  backend once for the ids it hides (`MangaServer.hiddenSeriesIDs(for:)`,
+  cached five minutes) and drops them from feeds, library pages, search
+  and series detail (which reads as not found). Lists built from saved
+  data go through `AppModel.visibleSeries(_:)` / `ContentVisibility`:
+  Favorites now, and **Top Shelf must too**. Both fail closed: if the
+  hidden ids can't be loaded, nothing from that server shows.
+- **Kavita**: one FilterV2 query, `combination` 0 (or): `Genres contains`
+  and `Tags contains` with ids from `api/Metadata/genres` / `tags`,
+  `AgeRating > limit`, and optionally `AgeRating <= 1` for unrated. Paged
+  500 at a time. Genre and tag names match ignoring case and accents.
+- **Suwayomi** has genres only (`MangaType.genre`), read for the whole
+  library in one query. Age limits and tags don't apply there.
+- Backends that don't implement the two methods get defaults that offer
+  no facets and fail closed when a filter is on.
+
+PINs: four digits, optional per profile. Only a salted PBKDF2-SHA256 hash
+is kept, in the Keychain (`KeychainPINStore`, this device only), never in
+`AppState`. `ProfileLocks` tracks which profiles were unlocked this session
+(all lock again when the app goes to the background) and throttles wrong
+PINs: five tries, then 30 s doubling up to 15 min. A profile's PIN guards
+its Content & PIN screen, its profile editor, server changes and library
+picks while it's active; adding a profile needs any profile's PIN once one
+exists. `AppState.requiresPINToOpen` also asks for it on the profile
+picker, so a parent can lock a child's settings without locking the child
+out. Views use `PINGate(kind:)` around a destination and `PINPadView` for
+the keypad (`pin.key.<n>`).
 
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 

@@ -5,9 +5,19 @@ import MangaCore
 /// workstream; replace the placeholder views there.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = UITestingSeed.initialTab ?? "home"
 
     var body: some View {
+        content
+            // PINs are asked for again after the app has been away.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background { model.lockAll() }
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if model.isPickingProfile {
             ProfilePickerView()
         } else {
