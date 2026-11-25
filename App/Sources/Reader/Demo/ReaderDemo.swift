@@ -117,6 +117,8 @@ struct DemoMangaServer: MangaServer {
     }
 
     func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
+    func markUnread(chapters: [Chapter]) async throws {}
+    func markSeriesUnread(_ seriesID: String) async throws {}
     func authorize(_ request: URLRequest) -> URLRequest { request }
 }
 
