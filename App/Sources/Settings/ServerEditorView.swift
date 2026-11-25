@@ -22,7 +22,7 @@ struct ServerEditorView: View {
     var body: some View {
         Form {
             if editing == nil {
-                Section {
+                Section(settingsHeader: "Server Type") {
                     Picker("Type", selection: $draft.kind) {
                         ForEach(ServerKind.allCases) { Text($0.displayName).tag($0) }
                     }
@@ -44,7 +44,7 @@ struct ServerEditorView: View {
                     .onSubmit { draft.absorbOPDS() }
                     .accessibilityIdentifier("serverEditor.address")
             } header: {
-                Text("\(draft.kind.displayName) Server")
+                SettingsHeader("\(draft.kind.displayName) Server")
             } footer: {
                 if draft.kind == .kavita {
                     Text("Paste the OPDS URL from Kavita → User Settings → 3rd Party Clients. It fills in the API key for you.")
@@ -69,7 +69,7 @@ struct ServerEditorView: View {
                         .accessibilityIdentifier("serverEditor.password")
                 }
             } header: {
-                Text("Login for \(model.activeProfile.name)")
+                SettingsHeader("Login for \(model.activeProfile.name)")
             } footer: {
                 Text(draft.kind == .kavita
                      ? "Each profile can sign in as its own Kavita user."
@@ -87,7 +87,7 @@ struct ServerEditorView: View {
                 Section {
                     CategoryChecklist(kind: draft.kind, load: $categories, retry: { loadCategories() })
                 } header: {
-                    Text("\(draft.kind.categoryNoun) to Import")
+                    SettingsHeader("\(draft.kind.categoryNoun) to Import")
                 } footer: {
                     if let footer = CategoryChecklist.footer(kind: draft.kind, load: categories) { Text(footer) }
                 }

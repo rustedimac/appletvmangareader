@@ -15,7 +15,7 @@ struct ReaderDefaultsView: View {
 
     var body: some View {
         Form {
-            Section("Reading") {
+            Section(settingsHeader: "Reading") {
                 Picker("Mode", selection: settings.mode) {
                     ForEach(ReadingMode.allCases) { Text($0.title).tag($0) }
                 }
@@ -36,12 +36,12 @@ struct ReaderDefaultsView: View {
                 .accessibilityIdentifier("readerDefaults.layout")
                 Toggle("Show first page alone", isOn: settings.firstPageAlone)
             } header: {
-                Text("Paged")
+                SettingsHeader("Paged")
             } footer: {
                 Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly.")
             }
 
-            Section("Vertical Scroll") {
+            Section(settingsHeader: "Vertical Scroll") {
                 Picker("Column width", selection: settings.webtoonWidth) {
                     ForEach(Self.options(Self.widths, current: model.defaultReaderSettings.webtoonWidth), id: \.self) {
                         Text(Self.percent($0)).tag($0)

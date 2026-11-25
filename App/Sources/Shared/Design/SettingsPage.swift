@@ -114,3 +114,33 @@ struct SettingsRowLabelStyle: LabelStyle {
 extension LabelStyle where Self == SettingsRowLabelStyle {
     static var settingsRow: SettingsRowLabelStyle { SettingsRowLabelStyle() }
 }
+
+/// A section header in a settings form. The same size, case and spacing on
+/// every page, whether the screen is a `Form` or a `List`: `Space.m` above
+/// it, so sections are clearly apart, and `Space.s` below, so the header
+/// sits with its own rows.
+struct SettingsHeader: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(nil)
+            .lineLimit(1)
+            .padding(.top, Space.m)
+            .padding(.bottom, Space.s)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension Section where Parent == SettingsHeader, Footer == EmptyView, Content: View {
+    /// `Section(settingsHeader: "Reading") { … }`
+    init(settingsHeader title: String, @ViewBuilder content: () -> Content) {
+        self.init(content: content, header: { SettingsHeader(title) })
+    }
+}

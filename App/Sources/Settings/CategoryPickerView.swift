@@ -99,7 +99,7 @@ struct CategorySelectionView: View {
             Section {
                 CategoryChecklist(kind: server.kind, load: $load, retry: { Task { await fetch() } })
             } header: {
-                Text("\(server.kind.categoryNoun) to Import for \(model.activeProfile.name)")
+                SettingsHeader("\(server.kind.categoryNoun) to Import for \(model.activeProfile.name)")
             } footer: {
                 if let footer = CategoryChecklist.footer(kind: server.kind, load: load) { Text(footer) }
             }

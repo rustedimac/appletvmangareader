@@ -114,7 +114,7 @@ capsule or circular shapes for standalone buttons).
 | `Size.readableText` | 1,100 | Max line length of long text |
 | `Size.messageText` | 900 | Max width of empty-state and error messages |
 | `Size.icon` | 50 | Width reserved for leading row icons, so labels line up |
-| `Size.avatarRow` | 64 | Profile avatar inside a row |
+| `Size.avatarRow` | 52 | Profile avatar and the icon column inside a row (keeps every row the same height) |
 
 ### Poster grid
 
@@ -142,8 +142,16 @@ the server editor and category picker) uses the tvOS Settings layout:
   anchor and the form isn't stretched across the whole TV.
 - The form column scrolls by itself. Its rows keep the system look (rounded
   platter, white when focused).
-- Section headers come from `Section("Title")`; footers explain consequences
-  in one or two short sentences.
+- Use `Form` (not `List`) so every settings page has the same row and
+  section rhythm.
+- Every section has a header, and headers use `SettingsHeader` (or
+  `Section(settingsHeader:)`): `.callout` semibold, secondary, title case,
+  24 pt above and 16 pt below. Don't use `Section("Title")`: on tvOS its
+  size and case differ between `List` and `Form`.
+- Row icons go through `Label`; `SettingsPage` applies `.settingsRow`, which
+  puts the icon in a 52 pt column with 24 pt before the text, so icon rows
+  and avatar rows line up.
+- Footers explain consequences in one or two short sentences.
 - Order inside a form: what it is (name, type) → how to reach it (address,
   login) → options → actions. Destructive actions last, in their own section,
   with `role: .destructive` and a confirmation dialog.

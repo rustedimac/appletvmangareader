@@ -61,8 +61,9 @@ enum Size {
     static let messageText: CGFloat = 900
     /// Width reserved for a leading row icon so labels line up.
     static let icon: CGFloat = 50
-    /// Profile avatar inside a row.
-    static let avatarRow: CGFloat = 64
+    /// Profile avatar and icon column inside a row. Small enough that a row
+    /// with an avatar is no taller than a two-line text row.
+    static let avatarRow: CGFloat = 52
 }
 
 /// The HIG seven-column grid: 217 pt items, 40 pt apart, across the

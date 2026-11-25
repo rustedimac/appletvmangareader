@@ -6,7 +6,7 @@ struct ProfilesListView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        List {
+        Form {
             Section {
                 ForEach(model.state.profiles) { profile in
                     NavigationLink {

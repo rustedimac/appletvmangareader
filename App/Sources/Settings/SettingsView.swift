@@ -7,8 +7,8 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Profile") {
+            Form {
+                Section(settingsHeader: "Profile") {
                     Button {
                         model.isPickingProfile = true
                     } label: {
@@ -55,7 +55,7 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.addServer")
                 } header: {
-                    Text("Servers")
+                    SettingsHeader("Servers")
                 } footer: {
                     if model.servers.isEmpty {
                         Text("Add a Kavita or Suwayomi server to start reading.")
