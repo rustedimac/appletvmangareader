@@ -14,6 +14,7 @@ struct ContentSettingsView: View {
 
     var body: some View {
         List {
+            ScreenTitle("Content & PIN")
             pinSection
             ageSection
             listSection(title: "Hidden Genres", names: facets?.genres, kind: "genre",
@@ -51,7 +52,6 @@ struct ContentSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Content & PIN")
         .task { facets = await model.contentFacets() }
     }
 
