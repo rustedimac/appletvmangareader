@@ -176,5 +176,11 @@ public final class FreeLibraryClient: MangaServer {
 
     public func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {}
 
+    // Progress lives only in AppState for the Free Library, so there is
+    // nothing to clear on a server.
+    public func markUnread(chapters: [Chapter]) async throws {}
+
+    public func markSeriesUnread(_ seriesID: String) async throws {}
+
     public func authorize(_ request: URLRequest) -> URLRequest { request }
 }
