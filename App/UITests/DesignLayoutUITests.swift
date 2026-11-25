@@ -55,25 +55,38 @@ final class DesignLayoutUITests: XCTestCase {
     }
 
     /// Settings pages keep their title in the left column, so scrolling the
-    /// form never leaves the title on top of the rows.
+    /// form never leaves the title on top of the rows, and scrolling back up
+    /// brings the first row into view again.
     func testSettingsTitleNeverOverlapsRows() {
         let app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.readerDefaults"))
-        let first = app.element("readerDefaults.mode")
-        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        checkTitleBesideForm(app, "settings-reader-defaults",
+                             first: app.element("readerDefaults.mode"), last: app.element("readerDefaults.reset"))
+    }
+
+    func testServerEditorTitleNeverOverlapsRows() {
+        let app = XCUIApplication.launched(seed: "servers", tab: "settings")
+        select(app.element("settings.server.Test Kavita"))
+        checkTitleBesideForm(app, "settings-edit-server",
+                             first: app.element("serverEditor.name"), last: app.element("serverEditor.remove"))
+    }
+
+    private func checkTitleBesideForm(_ app: XCUIApplication, _ name: String, first: XCUIElement, last: XCUIElement,
+                                      file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(first.waitForExistence(timeout: 5), file: file, line: line)
         let title = app.element("settingsPage.title")
-        XCTAssertTrue(title.exists, "Default Reader Settings has no settings page title")
+        XCTAssertTrue(title.exists, "\(name) has no settings page title", file: file, line: line)
 
         for step in ["top", "bottom", "back-to-top"] {
-            if step == "bottom" { focus(app.element("readerDefaults.reset")) }
-            if step == "back-to-top" { focus(first, .up) }
+            if step == "bottom" { focus(last, maxPresses: 14) }
+            if step == "back-to-top" { focus(first, .up, maxPresses: 14) }
             Thread.sleep(forTimeInterval: 0.8)
-            audit(app, "settings-reader-defaults-\(step)")
+            audit(app, "\(name)-\(step)", file: file, line: line)
             let form = app.element("settingsPage.form").frame
             XCTAssertLessThanOrEqual(title.frame.maxX, form.minX,
-                                     "[\(step)] title \(title.frame) runs into the form \(form)")
+                                     "[\(step)] title \(title.frame) runs into the form \(form)", file: file, line: line)
         }
-        XCTAssertTrue(first.frame.minY > 0, "The first row didn't scroll back into view")
+        XCTAssertTrue(first.frame.minY > 0, "The first row didn't scroll back into view", file: file, line: line)
     }
 
     func testBrowseTabs() {
