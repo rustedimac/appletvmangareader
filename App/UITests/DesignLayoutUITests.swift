@@ -125,7 +125,9 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(app.element("reader.paged").waitForExistence(timeout: 15))
         remote.press(.down)
         XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
-        select(app.element("reader.menu.browsePages"), .up)
+        // Pages sits beside Bookmark This Page at the top of the menu.
+        focus(app.element("reader.menu.bookmark"), .up)
+        select(app.element("reader.menu.browsePages"), .right)
         XCTAssertTrue(app.element("reader.scrubber").waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.8)
         // The strip scrolls to the screen edges, so only sizes and overlaps

@@ -385,6 +385,11 @@ struct ReaderMenu: View {
                 .font(.callout)
                 .focused($focus, equals: "picture.reset")
                 .accessibilityIdentifier("reader.menu.picture.reset")
+                // A full-width section, so pressing down from any option
+                // above (even the right-most) lands here rather than on
+                // the defaults buttons further down.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusSection()
         }
     }
 
