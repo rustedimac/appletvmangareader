@@ -58,6 +58,7 @@ final class AppModel {
                                  identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
                                  sharedServers: InMemorySharedServerStore(UITestingSeed.sharedServers()))
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             return model
