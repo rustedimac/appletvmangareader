@@ -18,6 +18,9 @@ struct ScreenTitle: View {
 
     init(_ text: String) { self.text = text }
 
+    /// Scroll target for bringing the title back into view (`ScrollViewReader`).
+    static let scrollID = "screen.title"
+
     var body: some View {
         Section {
         } header: {
@@ -29,6 +32,7 @@ struct ScreenTitle: View {
                 .padding(.vertical, 12)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("screen.title")
+                .id(ScreenTitle.scrollID)
         }
     }
 }

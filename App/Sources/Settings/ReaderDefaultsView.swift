@@ -13,13 +13,29 @@ struct ReaderDefaultsView: View {
         Binding(get: { model.defaultReaderSettings }, set: { model.setDefaultReaderSettings($0) })
     }
 
+    /// Focus on the first row. tvOS only scrolls far enough to show the
+    /// focused row, so on this long form the title would stay hidden when
+    /// focus comes back to the top; scroll it back explicitly.
+    @FocusState private var firstRowFocused: Bool
+
     var body: some View {
+        ScrollViewReader { proxy in
+            form
+                .onChange(of: firstRowFocused) { _, focused in
+                    guard focused else { return }
+                    withAnimation { proxy.scrollTo(ScreenTitle.scrollID, anchor: .top) }
+                }
+        }
+    }
+
+    private var form: some View {
         Form {
             ScreenTitle("Default Reader Settings")
             Section("Reading") {
                 Picker("Mode", selection: settings.mode) {
                     ForEach(ReadingMode.allCases) { Text($0.title).tag($0) }
                 }
+                .focused($firstRowFocused)
                 .accessibilityIdentifier("readerDefaults.mode")
                 Picker("Direction", selection: settings.direction) {
                     ForEach(ReadingDirection.allCases) { Text($0.title).tag($0) }
