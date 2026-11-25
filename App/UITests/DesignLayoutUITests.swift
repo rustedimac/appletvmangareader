@@ -116,17 +116,17 @@ final class DesignLayoutUITests: XCTestCase {
                     XCTFail("[\(state)] \(id): found no value and chevron in \(frame)")
                     continue
                 }
-                let gap = (row.last.minX - row.previous.maxX) / scale
+                let gap = (row.last.lowerBound - row.previous.upperBound) / scale
                 XCTAssertLessThanOrEqual(gap, 30, "[\(state)] \(id): \(Int(gap)) pt between the value and the chevron")
                 XCTAssertGreaterThanOrEqual(gap, 8, "[\(state)] \(id): the value touches the chevron (\(Int(gap)) pt)")
-                chevronEnds.append(row.last.maxX / scale)
+                chevronEnds.append(row.last.upperBound / scale)
             }
 
             if state == "direction-focused" {
                 // The toggle's On/Off lines up with the chevrons above it.
                 let toggle = app.element("readerDefaults.firstPageAlone")
                 if toggle.exists, let row = trailingInk(pixels, frame: toggle.frame, scale: scale) {
-                    let offset = abs(row.last.maxX / scale - chevronEnds[chevronEnds.count - 2])
+                    let offset = abs(row.last.upperBound / scale - chevronEnds[chevronEnds.count - 2])
                     XCTAssertLessThanOrEqual(offset, 8, "The toggle's value ends \(Int(offset)) pt away from the chevrons")
                 }
             }
