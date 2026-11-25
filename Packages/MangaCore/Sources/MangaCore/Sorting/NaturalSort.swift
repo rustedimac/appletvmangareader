@@ -63,10 +63,10 @@ public enum NaturalSort {
             if options.contains(.ignoringExtension) { source = NaturalSort.droppingExtension(source) }
             if options.contains(.ignoringBracketedTags) {
                 let stripped = NaturalSort.droppingTags(source)
-                let stripTokens = NaturalSort.tokenize(stripped)
-                tokens = stripTokens.isEmpty ? NaturalSort.tokenize(source) : stripTokens
+                let stripTokens = NaturalSort.tokenize(stripped, locale: locale)
+                tokens = stripTokens.isEmpty ? NaturalSort.tokenize(source, locale: locale) : stripTokens
             } else {
-                tokens = NaturalSort.tokenize(source)
+                tokens = NaturalSort.tokenize(source, locale: locale)
             }
         }
 
@@ -79,10 +79,8 @@ public enum NaturalSort {
                 return tokens.count < other.tokens.count ? .orderedAscending : .orderedDescending
             }
             if original == other.original { return .orderedSame }
-            // Ties ("Ch 1" vs "ch-01"): case-insensitive first, then exact
-            // characters, so the result never depends on input order.
-            let folded = original.compare(other.original, options: [.caseInsensitive, .widthInsensitive])
-            if folded != .orderedSame { return folded }
+            // Ties ("Ch 1" vs "ch-01"): the exact characters decide, so the
+            // result never depends on input order.
             return original < other.original ? .orderedAscending : .orderedDescending
         }
 
@@ -105,8 +103,13 @@ public enum NaturalSort {
             case (.text, .number):
                 return .orderedDescending
             case (.text(let a), .text(let b)):
-                let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive, .widthInsensitive]
-                return a.compare(b, options: options, range: nil, locale: locale)
+                // Already folded (case, accents, width) when tokenized:
+                // passing those as compare options together with a locale
+                // isn't reliably honoured, which made the order intransitive.
+                if a == b { return .orderedSame }
+                let r = a.compare(b, options: [], range: nil, locale: locale)
+                if r != .orderedSame { return r }
+                return a < b ? .orderedAscending : .orderedDescending
             }
         }
     }
@@ -145,14 +148,19 @@ public enum NaturalSort {
         }
     }
 
-    static func tokenize(_ string: String) -> [Token] {
+    /// Text runs come out folded (lowercased, accents and width removed).
+    static func tokenize(_ string: String, locale: Locale? = nil) -> [Token] {
         let chars = Array(string)
         var tokens: [Token] = []
         var text = ""
         var i = 0
 
         func flushText() {
-            if !text.isEmpty { tokens.append(.text(text)); text = "" }
+            if !text.isEmpty {
+                tokens.append(.text(text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+                                                 locale: locale)))
+                text = ""
+            }
         }
 
         while i < chars.count {
