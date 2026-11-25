@@ -6,15 +6,14 @@ struct ProfilesListView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        List {
-            ScreenTitle("Profiles")
+        Form {
             Section {
                 ForEach(model.state.profiles) { profile in
                     NavigationLink {
                         ProfileEditorView(editing: profile)
                     } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: profile, size: 64)
+                        HStack(spacing: Space.m) {
+                            ProfileAvatarView(profile: profile, size: Size.avatarRow)
                             Text(profile.name)
                             Spacer()
                             if profile.id == model.activeProfile.id {
@@ -37,5 +36,6 @@ struct ProfilesListView: View {
                 .accessibilityIdentifier("profiles.add")
             }
         }
+        .settingsPage("Profiles", systemImage: "person.2")
     }
 }
