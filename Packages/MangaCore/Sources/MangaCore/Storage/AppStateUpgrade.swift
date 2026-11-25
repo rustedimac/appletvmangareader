@@ -140,6 +140,10 @@ struct SalvagedProfileData: Decodable {
         d.progress = c.lossyDictionary(SeriesProgress.self, "progress")
         d.defaultReaderSettings = c.lossy(ReaderSettings.self, "defaultReaderSettings") ?? .default
         d.readerOverrides = c.lossyDictionary(ReaderSettings.self, "readerOverrides")
+        // Keep the filter and PIN rule, so a damaged save never unlocks
+        // a profile or shows what it hid.
+        d.contentFilter = c.lossy(ContentFilter.self, "contentFilter")
+        d.requiresPINToOpen = c.lossy(Bool.self, "requiresPINToOpen")
         data = d
     }
 }
