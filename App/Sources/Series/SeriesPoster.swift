@@ -194,6 +194,10 @@ struct SeriesShelf: View {
             .scrollClipDisabled()
         }
         .focusSection()
+        // Lets UI tests find a poster within one shelf: the same series id
+        // can be on two servers' shelves.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("shelfRow.\(identifier ?? title)")
     }
 }
 
