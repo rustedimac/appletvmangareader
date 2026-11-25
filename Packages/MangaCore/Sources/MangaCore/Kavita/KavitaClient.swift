@@ -10,6 +10,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     public let config: ServerConfig
     let apiKey: String
     let transport: HTTPTransport
+    /// Library ids to show; nil shows every library.
+    public let categoryScope: Set<String>?
     private let tokenCache = TokenCache()
 
     public static let pluginName = "AppleTVMangaReader"
@@ -18,10 +20,16 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     static let looseLeafVolumeNumber: Double = -100_000
     static let specialVolumeNumber: Double = 100_000
 
-    public init(config: ServerConfig, apiKey: String, transport: HTTPTransport) {
+    public init(config: ServerConfig, apiKey: String, categoryScope: Set<String>? = nil, transport: HTTPTransport) {
         self.config = config
         self.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.categoryScope = categoryScope
         self.transport = transport
+    }
+
+    /// The selected library ids as numbers, sorted, or nil for all.
+    var scopedLibraryIDs: [Int]? {
+        categoryScope.map { $0.compactMap(Int.init).sorted() }
     }
 
     private var anonymous: HTTPClient { HTTPClient(baseURL: config.baseURL, transport: transport) }
@@ -71,9 +79,9 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
 
     public func categories() async throws -> [MangaCategory] {
         let libraries: [KavitaLibraryDTO] = try await withAuth { try await $0.get("api/Library/libraries") }
-        return libraries.enumerated().map { index, lib in
-            MangaCategory(id: String(lib.id), name: lib.name, order: index)
-        }
+        return libraries.enumerated()
+            .map { index, lib in MangaCategory(id: String(lib.id), name: lib.name, order: index) }
+            .filter { categoryScope?.contains($0.id) ?? true }
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
@@ -91,47 +99,53 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
+        let libraries = scopedLibraryIDs
+        if libraries?.isEmpty == true { return [] }
         switch feed {
         case .continueReading:
+            // On Deck filters by one library (0 = all). With several picked,
+            // ask for more and drop the rest.
+            let single = libraries?.count == 1 ? libraries![0] : 0
+            let fetch = libraries == nil || single != 0 ? limit : limit * 4
             let items: [KavitaSeriesDTO] = try await withAuth {
                 try await $0.post("api/Series/on-deck",
-                                  query: ["pageNumber": "1", "pageSize": String(limit), "libraryId": "0"],
+                                  query: ["pageNumber": "1", "pageSize": String(fetch), "libraryId": String(single)],
                                   body: EmptyBody())
             }
-            return items.map(summary)
+            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
         case .newlyAdded:
+            var filter = KavitaFilterV2()
+            if let libraries { filter.statements = [KavitaFilterV2.libraries(libraries)] }
             let items: [KavitaSeriesDTO] = try await withAuth {
                 try await $0.post("api/Series/recently-added-v2",
                                   query: ["pageNumber": "1", "pageSize": String(limit)],
-                                  body: KavitaFilterV2())
+                                  body: filter)
             }
-            return items.map(summary)
+            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
+            // Kavita returns a fixed-size list with no library filter.
             let items: [KavitaRecentlyUpdatedDTO] = try await withAuth {
                 try await $0.post("api/Series/recently-updated-series", body: EmptyBody())
             }
-            var seen = Set<Int>()
-            var result: [SeriesSummary] = []
-            for item in items where seen.insert(item.seriesId).inserted {
-                result.append(SeriesSummary(ref: ref(item.seriesId), title: item.seriesName ?? "Untitled",
-                                            coverURL: coverURL(seriesID: item.seriesId),
-                                            libraryID: item.libraryId.map(String.init)))
-                if result.count >= limit { break }
+            let all = items.map {
+                SeriesSummary(ref: ref($0.seriesId), title: $0.seriesName ?? "Untitled",
+                              coverURL: coverURL(seriesID: $0.seriesId), libraryID: $0.libraryId.map(String.init))
             }
-            return result
+            return Array(all.scoped(to: categoryScope).prefix(limit))
         }
     }
 
     public func search(_ query: String) async throws -> [SeriesSummary] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
+        guard !trimmed.isEmpty, scopedLibraryIDs?.isEmpty != true else { return [] }
         let group: KavitaSearchResultGroupDTO = try await withAuth {
             try await $0.get("api/Search/search", query: ["queryString": trimmed, "includeChapterAndFiles": "false"])
         }
+        // Kavita's search has no library filter.
         return (group.series ?? []).map {
             SeriesSummary(ref: ref($0.seriesId), title: $0.name, coverURL: coverURL(seriesID: $0.seriesId),
                           libraryID: $0.libraryId.map(String.init))
-        }
+        }.scoped(to: categoryScope)
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
