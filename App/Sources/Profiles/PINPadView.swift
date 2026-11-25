@@ -57,7 +57,7 @@ struct PINPadView: View {
                 .accessibilityIdentifier("pin.message")
                 .opacity(error == nil ? 0 : 1)
 
-            Grid(horizontalSpacing: 28, verticalSpacing: 28) {
+            SwiftUI.Grid(horizontalSpacing: 28, verticalSpacing: 28) {
                 GridRow { key(1); key(2); key(3) }
                 GridRow { key(4); key(5); key(6) }
                 GridRow { key(7); key(8); key(9) }
