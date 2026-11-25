@@ -15,6 +15,9 @@ final class AppModel {
     @ObservationIgnored let pins: PINStore
     /// Which PIN-protected profiles are unlocked this session.
     private(set) var locks = ProfileLocks()
+    /// Bumped whenever a PIN is set or removed. The Keychain isn't
+    /// observable, so views that read `hasPIN` depend on this instead.
+    private(set) var pinRevision = 0
     /// For each server, the series the active profile's content filter
     /// hides there. Used for lists built from local data (Favorites, Top
     /// Shelf). A server missing here hides all of its favorites while a
@@ -94,6 +97,7 @@ final class AppModel {
         guard state.profiles.count > 1 else { return }
         for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
         pins.setPIN(nil, profile: id)
+        pinRevision += 1
         locks.lock(id)
         update { $0.removeProfile(id) }
         clientCache.removeAll()
@@ -290,7 +294,10 @@ final class AppModel {
 
     // MARK: Profile PINs
 
-    func hasPIN(_ profile: UUID) -> Bool { pins.hasPIN(profile: profile) }
+    func hasPIN(_ profile: UUID) -> Bool {
+        _ = pinRevision
+        return pins.hasPIN(profile: profile)
+    }
 
     /// True when the profile has a PIN that hasn't been entered this session.
     func isLocked(_ profile: UUID) -> Bool { !locks.isUnlocked(profile, store: pins) }
@@ -309,6 +316,7 @@ final class AppModel {
     /// Sets a new PIN (the profile stays unlocked) or removes it with nil.
     func setPIN(_ pin: String?, for profile: UUID) {
         pins.setPIN(pin, profile: profile)
+        pinRevision += 1
         if pin == nil {
             setRequiresPINToOpen(false, profile: profile)
             locks.lock(profile)
