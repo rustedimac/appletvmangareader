@@ -1,21 +1,111 @@
 import SwiftUI
 import MangaCore
 
-/// Continuous vertical strip reader. Placeholder until workstream F lands;
-/// it owns this folder. Drive `session.reportVisiblePage(_:)` and
-/// `session.reportSize(_:forPage:)`; open the menu with
-/// `session.isMenuPresented = true`.
+/// Continuous vertical strip reader for webtoons and long-strip manga.
+///
+/// Pages are stacked in a centered column (`settings.webtoonWidth` of the
+/// screen) with no gap: every page's height is a whole number of device
+/// pixels worked out from the column width and the page's aspect ratio, so
+/// one page's bottom edge is exactly the next one's top edge. Until a page's
+/// real size is known it gets an estimated height, and when the size arrives
+/// the strip re-lays out around what's on screen so nothing jumps.
+///
+/// Siri Remote:
+/// - Swipe on the touch surface to scroll, with momentum.
+/// - Click up or down to move `settings.webtoonScrollStep` of a screen;
+///   hold to scroll continuously (it speeds up the longer you hold).
+/// - Click left or right to snap to the previous or next page.
+/// - Click the center or press Play/Pause to open the reader menu.
+/// - Menu closes the reader (handled by `ReaderView`).
+///
+/// The next chapter joins the bottom of the strip as you near the end, and
+/// the previous one the top as you scroll up, with a divider between them.
+/// Only views near the screen exist and far chapters are dropped, so
+/// 200-page chapters and long binges stay light on memory.
 struct WebtoonReaderView: View {
     let session: ReaderSession
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Vertical scroll is coming soon.").font(.title3)
-            Text("Switch to Paged in the reader menu.").foregroundStyle(.secondary)
+        ZStack(alignment: .bottom) {
+            WebtoonStripRepresentable(session: session, state: StripState(session: session))
+                .ignoresSafeArea()
+            if session.loadState == .loaded, session.pageCount > 0 {
+                WebtoonIndicator(session: session)
+            }
         }
-        .focusable()
-        .onPlayPauseCommand { session.isMenuPresented = true }
-        .onMoveCommand { if $0 == .down { session.isMenuPresented = true } }
+        .ignoresSafeArea()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.webtoon")
+    }
+}
+
+/// The session values the strip reacts to. Reading them in `body` makes
+/// SwiftUI call `updateUIView` whenever one changes.
+struct StripState: Equatable {
+    var chapterID: String
+    var loadState: ReaderSession.LoadState
+    var pageCount: Int
+    var settings: ReaderSettings
+    var menuPresented: Bool
+
+    @MainActor
+    init(session: ReaderSession) {
+        chapterID = session.chapter.id
+        loadState = session.loadState
+        pageCount = session.pageCount
+        settings = session.settings
+        menuPresented = session.isMenuPresented
+    }
+}
+
+private struct WebtoonStripRepresentable: UIViewRepresentable {
+    let session: ReaderSession
+    let state: StripState
+
+    func makeCoordinator() -> WebtoonStripController {
+        WebtoonStripController(session: session)
+    }
+
+    func makeUIView(context: Context) -> WebtoonContainerView {
+        let controller = context.coordinator
+        controller.onMenu = { [weak session] in session?.isMenuPresented = true }
+        controller.sync()
+        return controller.container
+    }
+
+    func updateUIView(_ view: WebtoonContainerView, context: Context) {
+        let controller = context.coordinator
+        controller.sync()
+        if !state.menuPresented {
+            // Take focus back when the menu closes.
+            // Wait a moment so the menu's buttons are gone first.
+            for delay in [0.1, 0.4, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { view.requestFocus() }
+            }
+        }
+    }
+
+    static func dismantleUIView(_ view: WebtoonContainerView, coordinator: WebtoonStripController) {
+        coordinator.teardown()
+    }
+}
+
+/// "Chapter 3 · 12 / 40" at the bottom of the screen.
+private struct WebtoonIndicator: View {
+    let session: ReaderSession
+
+    var body: some View {
+        let text = "\(session.chapter.title) · \(session.currentPage + 1) / \(session.pageCount)"
+        Text(text)
+            .font(.caption)
+            .monospacedDigit()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(.black.opacity(0.45), in: Capsule())
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.bottom, 24)
+            .allowsHitTesting(false)
+            .accessibilityIdentifier("reader.webtoon.indicator")
+            .accessibilityLabel(text)
     }
 }

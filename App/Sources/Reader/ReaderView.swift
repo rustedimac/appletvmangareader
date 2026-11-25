@@ -58,16 +58,21 @@ private struct ReaderContent: View {
 
     var body: some View {
         ZStack {
-            switch session.settings.mode {
-            case .paged:
-                PagedReaderView(session: session)
-            case .webtoon:
-                WebtoonReaderView(session: session)
+            Group {
+                switch session.settings.mode {
+                case .paged:
+                    PagedReaderView(session: session)
+                case .webtoon:
+                    WebtoonReaderView(session: session)
+                }
             }
+            // Keep focus inside the menu while it's open; the reader takes
+            // focus back when it closes.
+            .disabled(session.isMenuPresented)
             ReaderLoadStateView(session: session)
             if session.isMenuPresented {
                 ReaderMenu(session: session)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)

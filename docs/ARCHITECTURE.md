@@ -10,6 +10,7 @@
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
+| `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
 | `App/Sources/<Tab>` | One folder per tab: Home, Library, Favorites, Search, Settings. |
@@ -78,6 +79,25 @@ page on screen. See `SpreadLayoutTests` for the exact rules.
 - Progress goes through `AppModel.recordProgress`, two seconds after the
   last page turn, on chapter change, and on close.
 
+## Images
+
+Every cover and page goes through `ImagePipeline.shared` (the SwiftUI
+environment's `\.imagePipeline`). Pass `targetSize` in **pixels**; a side of
+0 or infinity is unconstrained, so the webtoon reader can pass only a width.
+Images are decoded at that size, never upscaled, and capped at 16,384 px.
+
+- Memory: `NSCache`, 256 MB of decoded bitmaps, cleared on memory warnings.
+  Target sizes are rounded up to 64 px so small layout changes reuse a decode.
+- Disk: encoded bytes in `Caches/ImagePipeline`, 512 MB, oldest-first trim,
+  SHA-256 file names. Only bytes ImageIO can read are stored.
+- Cache keys drop Kavita's `apiKey`, so keys never reach disk and profiles share entries.
+- Requests for the same URL share one download, which is cancelled only when
+  every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
+  go ahead of prefetches.
+- `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
+  size, which is how readers learn Suwayomi page sizes. Without a
+  `targetSize` it only downloads and reads the header.
+
 ## Paged reader
 
 `Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
@@ -96,3 +116,58 @@ up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerDirection leftToRight`, `-readerLayout single`,
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
 tests can reuse it.
+
+## Webtoon reader
+
+`Reader/Webtoon/WebtoonReaderView` is a continuous vertical strip. The
+layout math lives in MangaCore (`WebtoonLayout`, tested in
+`WebtoonLayoutTests`) and works in whole device pixels: the column width
+keeps the screen's parity so it centers exactly, and each page's height is
+`round(column × height / width)`, so every page starts on the pixel where
+the previous one ends. Unknown sizes use the chapter's median aspect until
+the image arrives.
+
+- **No jumps.** Every re-layout (a size arrives, a chapter joins or is
+  dropped, the width changes) captures a `WebtoonAnchor` (the item at the top
+  of the screen and the offset into it) and restores it afterwards.
+  Sizes for pages a few screens ahead are fetched early so they are right
+  before they come into view.
+- **Big pages.** `WebtoonTilePlan` decodes at the column width (never above
+  the source size) and splits strips taller than 4096 decoded rows into
+  tiles that each map to whole display pixels, within a 48 MB budget per
+  page.
+- **Chapters.** `WebtoonStrip` holds up to three chapters. The next chapter
+  joins below when the reader is two screens from the end, the previous one
+  above when scrolling near the top, with a divider between them. Crossing
+  into another chapter calls `ReaderSession.adopt(chapter:pages:sizes:page:)`
+  so the session switches without a loading state.
+- **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
+  swipes; click up/down glides `webtoonScrollStep` of a screen; holding
+  scrolls continuously and speeds up; left/right snaps to the previous/next
+  page; select or Play/Pause opens the menu; Menu passes through to
+  `ReaderView`.
+- Only views within a screen above and two below the top exist; the rest are
+  recycled.
+
+UI tests: `WebtoonReaderUITests`, launched with
+`-uiTesting -readerDemo -readerMode webtoon` (optionally
+`-readerWebtoonWidth 1.0`).
+
+## Reader menu
+
+`Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
+view and changes show behind it as they're made. Swipe down or Play/Pause
+opens it; Menu or Play/Pause closes it. While it's open the reader under it
+is disabled so focus can't leave the drawer. Two tabs:
+
+- Settings: one row per setting, options side by side. Which rows show
+  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
+  in two-page layout first page alone and "Shift by one"; vertical: column
+  width). Every change goes through `session.updateSettings(_:)` and is
+  saved for the series. "Set as Default" copies the settings to the
+  profile default; "Reset to Default" brings the series back to it.
+- Chapters: the series' chapters with the open one focused; picking one
+  opens it.
+
+Control identifiers are `reader.menu.<row>.<option>` (for example
+`reader.menu.layout.single`), used by `ReaderMenuUITests`.

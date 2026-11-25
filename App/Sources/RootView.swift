@@ -5,19 +5,31 @@ import MangaCore
 /// workstream; replace the placeholder views there.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @State private var tab = UITestingSeed.initialTab ?? "home"
 
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem { Label("Home", systemImage: "house") }
-            LibraryView()
-                .tabItem { Label("Library", systemImage: "books.vertical") }
-            FavoritesView()
-                .tabItem { Label("Favorites", systemImage: "heart") }
-            SearchView()
-                .tabItem { Label("Search", systemImage: "magnifyingglass") }
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gear") }
+        if model.isPickingProfile {
+            ProfilePickerView()
+        } else {
+            TabView(selection: $tab) {
+                HomeView()
+                    .tabItem { Label("Home", systemImage: "house") }
+                    .tag("home")
+                LibraryView()
+                    .tabItem { Label("Library", systemImage: "books.vertical") }
+                    .tag("library")
+                FavoritesView()
+                    .tabItem { Label("Favorites", systemImage: "heart") }
+                    .tag("favorites")
+                SearchView()
+                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                    .tag("search")
+                SettingsView()
+                    .tabItem { Label("Settings", systemImage: "gear") }
+                    .tag("settings")
+            }
+            // Rebuild every tab for the newly picked profile.
+            .id(model.activeProfile.id)
         }
     }
 }
