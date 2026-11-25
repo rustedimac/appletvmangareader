@@ -15,7 +15,10 @@ final class PagedReaderUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-readerDemo"] + extra
         app.launch()
-        XCTAssertTrue(app.descendants(matching: .any)["reader.paged"].waitForExistence(timeout: 15))
+        let reader = app.descendants(matching: .any)["reader.paged"]
+        if !reader.waitForExistence(timeout: 15) {
+            XCTFail("Reader did not appear. Hierarchy:\n\(app.debugDescription)")
+        }
     }
 
     private var indicator: XCUIElement { app.staticTexts["reader.pageIndicator"] }
@@ -27,7 +30,7 @@ final class PagedReaderUITests: XCTestCase {
         let exp = XCTNSPredicateExpectation(predicate: predicate, object: indicator)
         let result = XCTWaiter().wait(for: [exp], timeout: 10)
         XCTAssertEqual(result, .completed,
-                       "Expected page indicator \"\(text)\", got \"\(indicator.exists ? indicator.label : "<missing>")\"",
+                       "Expected page indicator \"\(text)\", got \"\(indicator.exists ? indicator.label : "<missing>")\"\n\(app.debugDescription)",
                        file: file, line: line)
     }
 
