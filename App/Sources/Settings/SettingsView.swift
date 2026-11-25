@@ -43,7 +43,7 @@ struct SettingsView: View {
                             ServerEditorView(editing: server)
                         } label: {
                             ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
-                                      hasLogin: model.credential(for: server) != nil)
+                                      credential: model.credential(for: server))
                         }
                         .accessibilityIdentifier("settings.server.\(server.name)")
                     }
@@ -71,7 +71,7 @@ struct SettingsView: View {
 private struct ServerRow: View {
     let server: ServerConfig
     let syncs: Bool
-    let hasLogin: Bool
+    let credential: ServerCredential?
 
     var body: some View {
         HStack(spacing: 30) {
@@ -84,11 +84,18 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind == .kavita && !hasLogin {
-                Text("No API key").font(.caption).foregroundStyle(.orange)
-            } else if !syncs {
-                Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 4) {
+                if server.kind == .kavita && credential == nil {
+                    Text("Not signed in").font(.caption).foregroundStyle(.orange)
+                } else if let user = credential?.username {
+                    Text(user).font(.caption).foregroundStyle(.secondary)
+                }
+                if !syncs {
+                    Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
+                }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings.serverStatus.\(server.name)")
         }
     }
 }

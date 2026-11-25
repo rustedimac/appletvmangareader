@@ -8,9 +8,11 @@ struct ServerEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     let editing: ServerConfig?
-    @State private var draft = ServerDraft()
+    @State private var draft = ServerDraft(kavitaMethod: .password)
     @State private var loaded = false
     @State private var test: TestState = .idle
+    @State private var saving = false
+    @State private var saveError: String?
     @State private var confirmingRemove = false
 
     enum TestState: Equatable {
@@ -52,10 +54,26 @@ struct ServerEditorView: View {
             Section {
                 switch draft.kind {
                 case .kavita:
-                    TextField("API key", text: $draft.apiKey)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("serverEditor.apiKey")
+                    Picker("Sign in with", selection: $draft.kavitaMethod) {
+                        ForEach(ServerDraft.KavitaSignInMethod.allCases) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("serverEditor.kavitaMethod")
+                    if draft.kavitaMethod == .password {
+                        TextField("Kavita username", text: $draft.username)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("serverEditor.username")
+                        SecureField(draft.existing?.username == nil ? "Password" : "Password (to sign in again)",
+                                    text: $draft.password)
+                            .textContentType(.password)
+                            .accessibilityIdentifier("serverEditor.password")
+                    } else {
+                        TextField("API key", text: $draft.apiKey)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("serverEditor.apiKey")
+                    }
                 case .suwayomi:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
@@ -69,9 +87,8 @@ struct ServerEditorView: View {
             } header: {
                 Text("Login for \(model.activeProfile.name)")
             } footer: {
-                Text(draft.kind == .kavita
-                     ? "Each profile can sign in as its own Kavita user."
-                     : "Only needed if basic authentication is turned on in Suwayomi.")
+                Text(loginFooter)
+                    .accessibilityIdentifier("serverEditor.loginFooter")
             }
 
             Section {
@@ -91,12 +108,19 @@ struct ServerEditorView: View {
                         testStatus
                     }
                 }
-                .disabled(!draft.isValid || test == .running)
+                .disabled(!draft.isValid || test == .running || saving)
                 .accessibilityIdentifier("serverEditor.test")
 
-                Button(editing == nil ? "Add Server" : "Save") { save() }
-                    .disabled(!draft.isValid)
-                    .accessibilityIdentifier("serverEditor.save")
+                Button {
+                    save()
+                } label: {
+                    HStack {
+                        Text(editing == nil ? "Add Server" : "Save")
+                        if saving { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(!draft.isValid || saving)
+                .accessibilityIdentifier("serverEditor.save")
 
                 if editing != nil {
                     Button("Remove Server", role: .destructive) { confirmingRemove = true }
@@ -105,6 +129,9 @@ struct ServerEditorView: View {
             } footer: {
                 if let message = draft.validationMessage, !draft.address.isEmpty {
                     Text(message)
+                } else if let saveError {
+                    Text(saveError).foregroundStyle(.red)
+                        .accessibilityIdentifier("serverEditor.error")
                 } else if case .failure(let message) = test {
                     Text(message).foregroundStyle(.red)
                 } else if case .success(let message) = test {
@@ -119,10 +146,11 @@ struct ServerEditorView: View {
             if draft.kind == .kavita, KavitaOPDS.parse(draft.address) != nil { draft.absorbOPDS() }
             test = .idle
         }
-        .onChange(of: draft.kind) { _, _ in test = .idle }
-        .onChange(of: draft.apiKey) { _, _ in test = .idle }
-        .onChange(of: draft.username) { _, _ in test = .idle }
-        .onChange(of: draft.password) { _, _ in test = .idle }
+        .onChange(of: draft.kind) { _, _ in resetStatus() }
+        .onChange(of: draft.apiKey) { _, _ in resetStatus() }
+        .onChange(of: draft.username) { _, _ in resetStatus() }
+        .onChange(of: draft.password) { _, _ in resetStatus() }
+        .onChange(of: draft.kavitaMethod) { _, _ in resetStatus() }
         .confirmationDialog("Remove \(editing?.name ?? "server")?", isPresented: $confirmingRemove,
                             titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
@@ -141,6 +169,20 @@ struct ServerEditorView: View {
         case .running: ProgressView()
         case .success: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
         case .failure: Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+        }
+    }
+
+    private var loginFooter: String {
+        switch draft.kind {
+        case .kavita:
+            if let user = draft.existing?.username, draft.keepsExistingLogin || draft.kavitaMethod == .apiKey {
+                return "Signed in as \(user). Each profile can sign in as its own Kavita user."
+            }
+            return draft.kavitaMethod == .password
+                ? "Sign in as an existing Kavita user. Progress, read state and Continue Reading follow that user. The password isn't saved; the app keeps an \"\(KavitaClient.authKeyName)\" auth key, which you can revoke in Kavita."
+                : "Each profile can sign in as its own Kavita user."
+        case .suwayomi:
+            return "Only needed if the server asks for a login."
         }
     }
 
@@ -170,13 +212,22 @@ struct ServerEditorView: View {
         }
     }
 
+    private func resetStatus() {
+        test = .idle
+        saveError = nil
+    }
+
     private func runTest() {
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
-        let credential = draft.credential
+        let draft = self.draft
         test = .running
         Task {
             do {
-                let message = try await model.testConnection(config, credential: credential)
+                let credential = try await model.resolveCredential(draft, for: config)
+                var message = try await model.testConnection(config, credential: credential)
+                if let user = await model.suwayomiUser(config, credential: credential) {
+                    message += ". Signed in as \(user), with progress of your own."
+                }
                 test = .success(message)
             } catch {
                 test = .failure(error.localizedDescription)
@@ -186,8 +237,25 @@ struct ServerEditorView: View {
 
     private func save() {
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
-        model.saveServer(config, credential: draft.credential)
-        model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.syncProgress), for: config)
-        dismiss()
+        let draft = self.draft
+        saving = true
+        saveError = nil
+        Task {
+            defer { saving = false }
+            do {
+                let credential = try await model.resolveCredential(draft, for: config)
+                var sync = draft.syncProgress
+                // A Suwayomi server with user accounts keeps this login's
+                // progress apart from everyone else's, so it can sync.
+                if credential != draft.existing, await model.suwayomiUser(config, credential: credential) != nil {
+                    sync = true
+                }
+                model.saveServer(config, credential: credential)
+                model.setServerSettings(ProfileServerSettings(syncProgressToServer: sync), for: config)
+                dismiss()
+            } catch {
+                saveError = error.localizedDescription
+            }
+        }
     }
 }

@@ -31,18 +31,36 @@ public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// Credentials one profile uses for one server. Kavita uses an API key
-/// (each Kavita user has their own); Suwayomi uses optional basic auth.
+/// Credentials one profile uses for one server.
+///
+/// Kavita: `apiKey` is an auth key of the profile's Kavita user (made at
+/// sign-in, or pasted from an OPDS URL); `username` is who it belongs to,
+/// for display. The Kavita password is never stored.
+///
+/// Suwayomi: optional `username` and `password`. `suwayomiLogin` records
+/// whether the server takes them through its `login` mutation (UI_LOGIN,
+/// Bearer tokens) or as HTTP basic auth.
 public struct ServerCredential: Codable, Hashable, Sendable {
     public var apiKey: String?
     public var username: String?
     public var password: String?
+    public var suwayomiLogin: SuwayomiLoginMode?
 
-    public init(apiKey: String? = nil, username: String? = nil, password: String? = nil) {
+    public init(apiKey: String? = nil, username: String? = nil, password: String? = nil,
+                suwayomiLogin: SuwayomiLoginMode? = nil) {
         self.apiKey = apiKey
         self.username = username
         self.password = password
+        self.suwayomiLogin = suwayomiLogin
     }
+}
+
+/// How a Suwayomi server takes a username and password.
+public enum SuwayomiLoginMode: String, Codable, Hashable, Sendable {
+    /// HTTP basic auth (`BASIC_AUTH` mode).
+    case basic
+    /// `login` mutation and Bearer tokens (`UI_LOGIN` mode).
+    case token
 }
 
 /// A person using the Apple TV. Favorites, local progress and server
@@ -132,9 +150,13 @@ public struct Chapter: Codable, Hashable, Identifiable, Sendable {
     public var lastPageRead: Int
     public var isRead: Bool
     public var updatedAt: Date?
+    /// When the server last saw progress on this chapter, for this user.
+    /// Nil when it was never read. Used to resolve sync conflicts.
+    public var lastReadAt: Date?
 
     public init(id: String, seriesRef: SeriesRef, volumeID: String? = nil, title: String, number: Double,
-                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil) {
+                pageCount: Int, lastPageRead: Int = 0, isRead: Bool = false, updatedAt: Date? = nil,
+                lastReadAt: Date? = nil) {
         self.id = id
         self.seriesRef = seriesRef
         self.volumeID = volumeID
@@ -144,6 +166,7 @@ public struct Chapter: Codable, Hashable, Identifiable, Sendable {
         self.lastPageRead = lastPageRead
         self.isRead = isRead
         self.updatedAt = updatedAt
+        self.lastReadAt = lastReadAt
     }
 }
 
@@ -166,10 +189,25 @@ public struct SeriesDetail: Codable, Hashable, Sendable {
         self.chapters = chapters
     }
 
-    /// The chapter to open when the user presses "Continue": the first
-    /// unread chapter, or the first chapter if all are read.
+    /// The chapter to open when the user presses "Continue", following
+    /// Kavita's continue-point rule:
+    /// 1. the unfinished chapter with progress that was read most recently;
+    /// 2. else the first unread chapter after the last read one;
+    /// 3. else the first unread chapter, or the first chapter if all are read.
     public var continueChapter: Chapter? {
-        chapters.first(where: { !$0.isRead }) ?? chapters.first
+        var latest: Chapter?
+        for chapter in chapters where !chapter.isRead && chapter.lastPageRead > 0 {
+            // Ties (or no dates) go to the later chapter in reading order.
+            if latest == nil || (chapter.lastReadAt ?? .distantPast) >= (latest?.lastReadAt ?? .distantPast) {
+                latest = chapter
+            }
+        }
+        if let latest { return latest }
+        if let lastRead = chapters.lastIndex(where: \.isRead),
+           let next = chapters[(lastRead + 1)...].first(where: { !$0.isRead }) {
+            return next
+        }
+        return chapters.first(where: { !$0.isRead }) ?? chapters.first
     }
 }
 

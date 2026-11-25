@@ -23,12 +23,46 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
     public var page: Int
     public var updatedAt: Date
     public var readChapterIDs: Set<String>
+    /// Enough to draw the series on a local Continue Reading row (no
+    /// secrets, see `SeriesSummary.withoutSecrets`).
+    public var series: SeriesSummary?
+    /// Changes not yet confirmed by the server, oldest first.
+    public var pending: [PendingProgress]
 
-    public init(chapterID: String, page: Int, updatedAt: Date = Date(), readChapterIDs: Set<String> = []) {
+    public init(chapterID: String, page: Int, updatedAt: Date = Date(), readChapterIDs: Set<String> = [],
+                series: SeriesSummary? = nil, pending: [PendingProgress] = []) {
         self.chapterID = chapterID
         self.page = page
         self.updatedAt = updatedAt
         self.readChapterIDs = readChapterIDs
+        self.series = series
+        self.pending = pending
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case chapterID, page, updatedAt, readChapterIDs, series, pending
+    }
+
+    // Older saved state has no series or pending fields.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        chapterID = try c.decode(String.self, forKey: .chapterID)
+        page = try c.decode(Int.self, forKey: .page)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        readChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .readChapterIDs) ?? []
+        series = try c.decodeIfPresent(SeriesSummary.self, forKey: .series)
+        pending = try c.decodeIfPresent([PendingProgress].self, forKey: .pending) ?? []
+    }
+
+    // Skip empty optional fields to keep AppState small.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(chapterID, forKey: .chapterID)
+        try c.encode(page, forKey: .page)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(readChapterIDs, forKey: .readChapterIDs)
+        try c.encodeIfPresent(series, forKey: .series)
+        if !pending.isEmpty { try c.encode(pending, forKey: .pending) }
     }
 }
 
@@ -195,13 +229,16 @@ public struct AppState: Codable, Hashable, Sendable {
         profileData[profile.uuidString]?.progress[ref.storageKey]
     }
 
+    /// Records where the profile is. `series` (when given) is kept, minus
+    /// secrets, for the local Continue Reading row.
     public mutating func recordProgress(_ ref: SeriesRef, chapterID: String, page: Int, completed: Bool,
-                                        profile: UUID, now: Date = Date()) {
+                                        profile: UUID, now: Date = Date(), series: SeriesSummary? = nil) {
         mutateData(profile) { data in
             var p = data.progress[ref.storageKey] ?? SeriesProgress(chapterID: chapterID, page: page, updatedAt: now)
             p.chapterID = chapterID
             p.page = page
             p.updatedAt = now
+            if let series { p.series = series.withoutSecrets }
             if completed { p.readChapterIDs.insert(chapterID) }
             data.progress[ref.storageKey] = p
         }

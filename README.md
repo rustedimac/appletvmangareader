@@ -36,10 +36,17 @@ CI runs both on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Connecting servers
 
-- **Kavita**: paste your OPDS URL (User Settings → 3rd Party Clients), e.g.
-  `http://kavita.local:5000/api/opds/<api-key>`. The app extracts the server
-  address and API key from it. Each profile can use its own Kavita user.
+- **Kavita**: the server address and your Kavita username and password.
+  Each profile signs in as its own Kavita user, and reading progress,
+  read state and Continue Reading sync with that user. The app keeps an
+  auth key named "Apple TV Manga Reader" (revocable under Kavita's Manage
+  Auth Keys), never the password. Pasting an OPDS URL
+  (`http://kavita.local:5000/api/opds/<api-key>`) works too.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
-  username and password if basic auth is enabled.
+  username and password if the server asks for one (basic auth or UI login).
+  Suwayomi keeps one progress per server, so one profile syncs there and the
+  others keep progress on the Apple TV, unless the server has user accounts.
+
+See [docs/PROGRESS_SYNC.md](docs/PROGRESS_SYNC.md) for how syncing works.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

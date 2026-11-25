@@ -27,6 +27,11 @@ public enum MangaError: Error, LocalizedError, Equatable, Sendable {
     }
 }
 
+extension MangaError {
+    /// The server turned the login down (or it expired).
+    var isAuthFailure: Bool { self == .unauthorized }
+}
+
 /// Abstracts the network so clients can be unit-tested with canned responses.
 public protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)

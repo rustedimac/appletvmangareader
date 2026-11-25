@@ -32,12 +32,17 @@ public struct HomeSource: Sendable {
     public var server: MangaServer
     /// False when this profile doesn't sync progress to the server. The
     /// server's "Continue Reading" then belongs to someone else (Suwayomi
-    /// has one progress per server), so the row is left out.
+    /// has one progress per server), so `localContinueReading` is shown
+    /// instead.
     public var includeContinueReading: Bool
+    /// The profile's own Continue Reading for this server, from local
+    /// progress. Used when `includeContinueReading` is false.
+    public var localContinueReading: [SeriesSummary]
 
-    public init(server: MangaServer, includeContinueReading: Bool = true) {
+    public init(server: MangaServer, includeContinueReading: Bool = true, localContinueReading: [SeriesSummary] = []) {
         self.server = server
         self.includeContinueReading = includeContinueReading
+        self.localContinueReading = localContinueReading
     }
 }
 
@@ -71,6 +76,9 @@ public enum HomeLoader {
             return out
         }
         var rows: [HomeRow] = []
+        if !source.includeContinueReading, !source.localContinueReading.isEmpty {
+            rows.append(HomeRow(feed: .continueReading, series: Array(source.localContinueReading.prefix(limit))))
+        }
         var firstError: Error?
         for feed in feeds {
             switch results[feed] {

@@ -74,8 +74,12 @@ struct HomeView: View {
 
     private func reload() async {
         let key = reloadKey
-        let sources = model.servers.map {
-            HomeSource(server: model.client(for: $0), includeContinueReading: model.syncsProgress(to: $0.id))
+        // Queued progress goes up first so Continue Reading is current.
+        await model.syncPendingProgress()
+        let sources = model.servers.map { server in
+            let syncs = model.syncsProgress(to: server.id)
+            return HomeSource(server: model.client(for: server), includeContinueReading: syncs,
+                              localContinueReading: syncs ? [] : model.localContinueReading(for: server))
         }
         let loaded = await HomeLoader.load(sources)
         guard !Task.isCancelled else { return }

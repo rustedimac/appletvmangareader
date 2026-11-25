@@ -51,7 +51,8 @@ public enum MangaServerFactory {
         case .kavita:
             return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", transport: transport)
         case .suwayomi:
-            return SuwayomiClient(config: config, username: credential?.username, password: credential?.password, transport: transport)
+            return SuwayomiClient(config: config, username: credential?.username, password: credential?.password,
+                                  loginMode: credential?.suwayomiLogin, transport: transport)
         }
     }
 }

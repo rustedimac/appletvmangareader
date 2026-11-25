@@ -13,6 +13,11 @@ extension AppModel {
             demos[config.id] = server
             return server
         }
+        // Kavita sign-in accepts reader / secret.
+        kavitaSignIn = { _, username, password, _ in
+            guard username.lowercased() == "reader", password == "secret" else { throw MangaError.unauthorized }
+            return ServerCredential(apiKey: "demo-key", username: "reader")
+        }
         let base = URL(string: "https://demo.invalid")!
         for (kind, name) in [(ServerKind.kavita, "Demo Kavita"), (.suwayomi, "Demo Suwayomi")]
         where !servers.contains(where: { $0.name == name }) {
