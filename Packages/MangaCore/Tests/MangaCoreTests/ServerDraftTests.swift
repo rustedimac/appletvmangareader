@@ -104,9 +104,14 @@ final class ServerDraftTests: XCTestCase {
         // Typing is just setting `address`; nothing in the draft rewrites it
         // until absorbOPDS() runs on Return/Test/Save.
         var d = ServerDraft(kind: .kavita)
+        var typed = ""
         for ch in "http://kavita.local/api/opds/fake" {
-            d.address.append(ch)
-            XCTAssertTrue(d.address.hasPrefix("http"))
+            typed.append(ch)
+            d.address = typed
+            _ = d.resolvedURL
+            _ = d.resolvedAPIKey
+            _ = d.validationMessage
+            XCTAssertEqual(d.address, typed)
         }
         XCTAssertEqual(d.address, "http://kavita.local/api/opds/fake")
         XCTAssertEqual(d.resolvedAPIKey, "fake")

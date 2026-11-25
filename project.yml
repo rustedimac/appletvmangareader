@@ -20,9 +20,12 @@ targets:
       - App/Resources
     dependencies:
       - package: MangaCore
+      - target: MangaReaderTopShelf
     entitlements:
       path: App/MangaReader.entitlements
       properties:
+        # Shared with the Top Shelf extension (TopShelfStore).
+        com.apple.security.application-groups: [group.com.rustedimac.MangaReader]
         # Each Apple TV user is their own profile; servers are shared
         # through the user-independent keychain (see AppleTVUsers.swift).
         com.apple.developer.user-management: [runs-as-current-user-with-user-independent-keychain]
@@ -45,6 +48,10 @@ targets:
         GCSupportedGameControllers:
           - ProfileName: ExtendedGamepad
           - ProfileName: MicroGamepad
+        # Top Shelf items open mangareader://series and mangareader://read links.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.rustedimac.MangaReader
+            CFBundleURLSchemes: [mangareader]
         NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
         # Servers are plain HTTP on home hostnames (e.g. kavita.home). Don't add
         # NSAllowsLocalNetworking: when present, ATS ignores NSAllowsArbitraryLoads
@@ -59,6 +66,33 @@ targets:
         MR_ICLOUD_CONTAINER: ""
         # App icon layers and Top Shelf images (tools/make_brand_assets.py).
         ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+        TARGETED_DEVICE_FAMILY: "3"
+        CODE_SIGN_STYLE: Automatic
+  MangaReaderTopShelf:
+    type: tv-app-extension
+    platform: tvOS
+    sources:
+      - TopShelf
+    dependencies:
+      - package: MangaCore
+      - sdk: TVServices.framework
+    entitlements:
+      path: App/TopShelf.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.rustedimac.MangaReader]
+        com.apple.developer.user-management: [runs-as-current-user-with-user-independent-keychain]
+    info:
+      path: App/TopShelf-Info.plist
+      properties:
+        CFBundleDisplayName: Manga Reader
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.tv-top-shelf
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentProvider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReader.TopShelf
         TARGETED_DEVICE_FAMILY: "3"
         CODE_SIGN_STYLE: Automatic
   MangaReaderUITests:

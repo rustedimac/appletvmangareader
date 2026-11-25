@@ -5,7 +5,19 @@ import Foundation
 ///
 /// Fields are short on purpose: typing on an Apple TV is slow. For Kavita the
 /// address field also accepts the full OPDS URL, which carries the API key.
+///
+/// A Kavita login is either a username and password (the app signs in and
+/// keeps an auth key, never the password; see `KavitaClient.signIn`) or a
+/// pasted API key / OPDS URL.
 public struct ServerDraft: Equatable, Sendable {
+    public enum KavitaSignInMethod: String, CaseIterable, Sendable, Identifiable {
+        case password
+        case apiKey
+
+        public var id: String { rawValue }
+        public var title: String { self == .password ? "Username & Password" : "API Key" }
+    }
+
     public var kind: ServerKind
     public var name: String
     /// Server address, or (Kavita) a pasted OPDS URL.
@@ -14,9 +26,13 @@ public struct ServerDraft: Equatable, Sendable {
     public var username: String
     public var password: String
     public var syncProgress: Bool
+    public var kavitaMethod: KavitaSignInMethod
+    /// The profile's saved login when editing. An untouched form keeps it.
+    public var existing: ServerCredential?
 
     public init(kind: ServerKind = .kavita, name: String = "", address: String = "", apiKey: String = "",
-                username: String = "", password: String = "", syncProgress: Bool = true) {
+                username: String = "", password: String = "", syncProgress: Bool = true,
+                kavitaMethod: KavitaSignInMethod = .apiKey, existing: ServerCredential? = nil) {
         self.kind = kind
         self.name = name
         self.address = address
@@ -24,15 +40,22 @@ public struct ServerDraft: Equatable, Sendable {
         self.username = username
         self.password = password
         self.syncProgress = syncProgress
+        self.kavitaMethod = kavitaMethod
+        self.existing = existing
     }
 
     /// A draft prefilled from a saved server and the active profile's login.
+    /// A Kavita login made with a password shows the username and an empty
+    /// password; leaving it that way keeps the saved login.
     public init(editing config: ServerConfig, credential: ServerCredential?, syncProgress: Bool) {
+        let kavitaByPassword = config.kind == .kavita && (credential == nil || credential?.username != nil)
         self.init(kind: config.kind, name: config.name, address: config.baseURL.absoluteString,
-                  apiKey: credential?.apiKey ?? "", username: credential?.username ?? "",
-                  password: credential?.password ?? "", syncProgress: syncProgress)
+                  apiKey: kavitaByPassword ? "" : credential?.apiKey ?? "", username: credential?.username ?? "",
+                  password: config.kind == .kavita ? "" : credential?.password ?? "", syncProgress: syncProgress,
+                  kavitaMethod: kavitaByPassword ? .password : .apiKey, existing: credential)
     }
 
+<<<<<<< HEAD
     /// Tidies the address (and, for Kavita, the API key) once the person is
     /// done typing: on Return, Test Connection or Save. Never call this on
     /// every keystroke: the address would rewrite itself mid-typing.
@@ -53,7 +76,35 @@ public struct ServerDraft: Equatable, Sendable {
         let key = resolvedAPIKey
         if !key.isEmpty, key != apiKey { apiKey = key }
         return before != (address, apiKey)
+=======
+    /// If `address` is a Kavita OPDS URL, splits it into the server address
+    /// and API key fields and switches to API key sign-in. Returns true
+    /// when it did.
+    @discardableResult
+    public mutating func absorbOPDS() -> Bool {
+        guard kind == .kavita, let parsed = KavitaOPDS.parse(address) else { return false }
+        address = parsed.baseURL.absoluteString
+        apiKey = parsed.apiKey
+        kavitaMethod = .apiKey
+        return true
+>>>>>>> origin/main
     }
+
+    /// Kavita with a username and password, so the app has to sign in
+    /// (`KavitaClient.signIn`) to get the credential.
+    var usesKavitaPassword: Bool {
+        kind == .kavita && kavitaMethod == .password && KavitaOPDS.parse(address) == nil
+    }
+
+    /// Editing a Kavita password login without typing a new password.
+    public var keepsExistingLogin: Bool {
+        guard usesKavitaPassword, password.isEmpty, let existing, existing.apiKey?.isEmpty == false else { return false }
+        let typed = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        return typed.isEmpty || typed.caseInsensitiveCompare(existing.username ?? "") == .orderedSame
+    }
+
+    /// True when saving needs a Kavita sign-in with `username`/`password`.
+    public var needsKavitaSignIn: Bool { usesKavitaPassword && !keepsExistingLogin }
 
     /// The server's base URL. Adds `http://` when no scheme was typed and
     /// drops a trailing slash. For Kavita, an OPDS URL resolves to its base.
@@ -125,7 +176,17 @@ public struct ServerDraft: Equatable, Sendable {
     public var validationMessage: String? {
         if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter the server address." }
         guard resolvedURL != nil else { return "That doesn't look like a web address." }
+<<<<<<< HEAD
         if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key from Kavita → User Settings → 3rd Party Clients, or use the full OPDS URL as the address." }
+=======
+        if usesKavitaPassword {
+            if keepsExistingLogin { return nil }
+            if username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Enter your Kavita username." }
+            if password.isEmpty { return "Enter your Kavita password." }
+            return nil
+        }
+        if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key, or paste the OPDS URL." }
+>>>>>>> origin/main
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
         if kind == .komga, resolvedAPIKey.isEmpty {
@@ -144,14 +205,22 @@ public struct ServerDraft: Equatable, Sendable {
         return resolvedURL?.host ?? kind.displayName
     }
 
+    /// The login to save. Nil for a Kavita password login that still has
+    /// to sign in (`needsKavitaSignIn`).
     public var credential: ServerCredential? {
         switch kind {
         case .kavita:
+            if usesKavitaPassword { return keepsExistingLogin ? existing : nil }
             let key = resolvedAPIKey
-            return key.isEmpty ? nil : ServerCredential(apiKey: key)
+            guard !key.isEmpty else { return nil }
+            // Keep the known owner of an unchanged key.
+            return ServerCredential(apiKey: key, username: existing?.apiKey == key ? existing?.username : nil)
         case .suwayomi:
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
-            return user.isEmpty ? nil : ServerCredential(username: user, password: password)
+            guard !user.isEmpty else { return nil }
+            let unchanged = existing?.username == user && existing?.password == password
+            return ServerCredential(username: user, password: password,
+                                    suwayomiLogin: unchanged ? existing?.suwayomiLogin : nil)
         case .opds:
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)

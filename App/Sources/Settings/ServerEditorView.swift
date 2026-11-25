@@ -9,9 +9,11 @@ struct ServerEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     let editing: ServerConfig?
-    @State private var draft = ServerDraft()
+    @State private var draft = ServerDraft(kavitaMethod: .password)
     @State private var loaded = false
     @State private var test: TestState = .idle
+    @State private var saving = false
+    @State private var saveError: String?
     @State private var confirmingRemove = false
     @State private var categories: CategoryLoad = .idle
 
@@ -56,12 +58,38 @@ struct ServerEditorView: View {
             Section {
                 switch draft.kind {
                 case .kavita:
+<<<<<<< HEAD
                     SecureField("API key", text: $draft.apiKey)
                         .textInputAutocapitalization(.never)
                         .onSubmit { draft.absorbOPDS() }
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("serverEditor.apiKey")
                         .settingsTextFieldRow()
+=======
+                    Picker("Sign in with", selection: $draft.kavitaMethod) {
+                        ForEach(ServerDraft.KavitaSignInMethod.allCases) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("serverEditor.kavitaMethod")
+                    if draft.kavitaMethod == .password {
+                        TextField("Kavita username", text: $draft.username)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("serverEditor.username")
+                            .settingsTextFieldRow()
+                        SecureField(draft.existing?.username == nil ? "Password" : "Password (to sign in again)",
+                                    text: $draft.password)
+                            .textContentType(.password)
+                            .accessibilityIdentifier("serverEditor.password")
+                            .settingsTextFieldRow()
+                    } else {
+                        SecureField("API key", text: $draft.apiKey)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("serverEditor.apiKey")
+                            .settingsTextFieldRow()
+                    }
+>>>>>>> origin/main
                 case .komga:
                     TextField("API key (recommended)", text: $draft.apiKey)
                         .textInputAutocapitalization(.never)
@@ -97,6 +125,7 @@ struct ServerEditorView: View {
                 SettingsHeader("Login for \(model.activeProfile.name)")
             } footer: {
                 Text(loginFooter)
+                    .accessibilityIdentifier("serverEditor.loginFooter")
             }
 
             if draft.kind.canSyncProgress {
@@ -128,12 +157,21 @@ struct ServerEditorView: View {
                         testStatus
                     }
                 }
-                .disabled(!draft.isValid || test == .running)
+                // Enabled once there's an address, so focus can always move
+                // down to Save and Remove; a missing login shows its message.
+                .disabled(draft.resolvedURL == nil || test == .running || saving)
                 .accessibilityIdentifier("serverEditor.test")
 
-                Button(editing == nil ? "Add Server" : "Save") { save() }
-                    .disabled(!draft.isValid || categories.selection?.canSave == false)
-                    .accessibilityIdentifier("serverEditor.save")
+                Button {
+                    save()
+                } label: {
+                    HStack {
+                        Text(editing == nil ? "Add Server" : "Save")
+                        if saving { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(!draft.isValid || saving || categories.selection?.canSave == false)
+                .accessibilityIdentifier("serverEditor.save")
 
                 if editing != nil {
                     Button("Remove Server", role: .destructive) { confirmingRemove = true }
@@ -142,6 +180,9 @@ struct ServerEditorView: View {
             } footer: {
                 if let message = draft.validationMessage, !draft.address.isEmpty {
                     Text(message)
+                } else if let saveError {
+                    Text(saveError).foregroundStyle(.red)
+                        .accessibilityIdentifier("serverEditor.error")
                 } else if case .failure(let message) = test {
                     Text(message).foregroundStyle(.red)
                 } else if case .success(let message) = test {
@@ -161,6 +202,7 @@ struct ServerEditorView: View {
         .onChange(of: draft.apiKey) { _, _ in connectionChanged() }
         .onChange(of: draft.username) { _, _ in connectionChanged() }
         .onChange(of: draft.password) { _, _ in connectionChanged() }
+        .onChange(of: draft.kavitaMethod) { _, _ in connectionChanged() }
         .confirmationDialog("Remove \(editing?.name ?? "server")?", isPresented: $confirmingRemove,
                             titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
@@ -179,6 +221,26 @@ struct ServerEditorView: View {
         case .running: ProgressView()
         case .success: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
         case .failure: Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+        }
+    }
+
+    private var loginFooter: String {
+        switch draft.kind {
+        case .kavita:
+            if let user = draft.existing?.username, draft.keepsExistingLogin || draft.kavitaMethod == .apiKey {
+                return "Signed in as \(user). Each profile can sign in as its own Kavita user."
+            }
+            return draft.kavitaMethod == .password
+                ? "Sign in as an existing Kavita user. Progress, read state and Continue Reading follow that user. The password isn't saved; the app keeps an \"\(KavitaClient.authKeyName)\" auth key, which you can revoke in Kavita."
+                : "Each profile can sign in as its own Kavita user."
+        case .komga:
+            return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
+        case .suwayomi:
+            return "Only needed if the server asks for a login."
+        case .opds:
+            return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
+        case .freeLibrary:
+            return "The Free Library needs no login."
         }
     }
 
@@ -210,16 +272,6 @@ struct ServerEditorView: View {
         }
     }
 
-    private var loginFooter: String {
-        switch draft.kind {
-        case .kavita: return "Each profile can sign in as its own Kavita user."
-        case .komga: return "Make an API key in Komga → Account Settings → API Keys, or use the email and password you sign in to Komga with. Each profile can use its own Komga user."
-        case .suwayomi: return "Only needed if basic authentication is turned on in Suwayomi."
-        case .opds: return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
-        case .freeLibrary: return "The Free Library needs no login."
-        }
-    }
-
     private var otherSyncingProfiles: [Profile] {
         guard let editing else { return [] }
         return model.state.profilesSyncing(to: editing.id).filter { $0.id != model.activeProfile.id }
@@ -245,9 +297,15 @@ struct ServerEditorView: View {
     /// checklist until the next successful test. Ticks the user already
     /// made are kept if the same ids come back.
     private func connectionChanged() {
+<<<<<<< HEAD
         // Tidying the fields (absorbOPDS) changes the text but not where it
         // connects, so it keeps the test result.
         if connectionKey != testedKey { test = .idle }
+=======
+        test = .idle
+        saveError = nil
+        resolvedCredential = nil
+>>>>>>> origin/main
         guard categoriesKey != connectionKey else { return }
         categoryTask?.cancel()
         if let selection = categories.selection { pendingSelection = .some(selection.storedValue) }
@@ -255,6 +313,9 @@ struct ServerEditorView: View {
         categoriesKey = nil
     }
 
+    /// The login a successful test signed in with (for a Kavita password,
+    /// the auth key it got), reused by the checklist and Save.
+    @State private var resolvedCredential: ServerCredential?
     @State private var categoryTask: Task<Void, Never>?
     /// The server and login the last Test Connection ran against.
     @State private var testedKey: String?
@@ -266,12 +327,14 @@ struct ServerEditorView: View {
 
     private var connectionKey: String {
         [draft.kind.rawValue, draft.resolvedURL?.absoluteString ?? "", draft.resolvedAPIKey,
-         draft.username, draft.password].joined(separator: "|")
+         draft.username, draft.password, draft.kavitaMethod.rawValue].joined(separator: "|")
     }
 
     private func loadCategories() {
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
-        let credential = draft.credential
+        // A Kavita password login has nothing to list with until a test signs in.
+        if draft.needsKavitaSignIn && resolvedCredential == nil { return }
+        let credential = resolvedCredential ?? draft.credential
         let saved: Set<String>?
         if let selection = categories.selection {
             saved = selection.storedValue
@@ -296,14 +359,28 @@ struct ServerEditorView: View {
     }
 
     private func runTest() {
+        if let message = draft.validationMessage {
+            test = .failure(message)
+            return
+        }
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+<<<<<<< HEAD
         let credential = draft.credential
         draft.absorbOPDS()
         testedKey = connectionKey
+=======
+        let draft = self.draft
+>>>>>>> origin/main
         test = .running
         Task {
             do {
-                let message = try await model.testConnection(config, credential: credential)
+                let credential = try await model.resolveCredential(draft, for: config)
+                var message = try await model.testConnection(config, credential: credential)
+                if let user = await model.suwayomiUser(config, credential: credential) {
+                    message += ". Signed in as \(user), with progress of your own."
+                }
+                guard draft == self.draft else { return } // Edited meanwhile.
+                resolvedCredential = credential
                 test = .success(message)
                 loadCategories()
             } catch {
@@ -315,12 +392,35 @@ struct ServerEditorView: View {
     private func save() {
         draft.absorbOPDS()
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
+        let draft = self.draft
         // Without a loaded checklist, keep what was saved (all, for a new server).
         let selected = categories.selection.map(\.storedValue)
             ?? editing.flatMap { model.selectedCategories(for: $0) }
-        model.saveServer(config, credential: draft.credential)
-        model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && draft.syncProgress,
-                                                      selectedCategoryIDs: selected), for: config)
-        dismiss()
+        saving = true
+        saveError = nil
+        Task {
+            defer { saving = false }
+            do {
+                // Reuse what a test just signed in with, rather than signing in twice.
+                let credential: ServerCredential?
+                if draft == self.draft, let tested = resolvedCredential {
+                    credential = tested
+                } else {
+                    credential = try await model.resolveCredential(draft, for: config)
+                }
+                var sync = draft.syncProgress
+                // A Suwayomi server with user accounts keeps this login's
+                // progress apart from everyone else's, so it can sync.
+                if credential != draft.existing, await model.suwayomiUser(config, credential: credential) != nil {
+                    sync = true
+                }
+                model.saveServer(config, credential: credential)
+                model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && sync,
+                                                              selectedCategoryIDs: selected), for: config)
+                dismiss()
+            } catch {
+                saveError = error.localizedDescription
+            }
+        }
     }
 }
