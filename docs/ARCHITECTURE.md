@@ -13,6 +13,7 @@
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
+| `App/Sources/Shared/Design` | Design tokens (`Space`, `Radius`, `Size`, `Grid`, `Layout`) and shared layout components (`SettingsPage`, `ActionRow`). Rules in `docs/DESIGN_GUIDE.md`. |
 | `App/Sources/<Tab>` | One folder per tab: Home, Library, Favorites, Search, Settings. |
 | `App/Sources/Reader` | `ReaderView` (entry point) and `ReaderSession` (shared reader state and progress saving). `Paged/`, `Webtoon/` and `Menu/` hold the paged reader, the vertical reader and the in-reader menu. |
 | `App/UITests` | XCUITest UI tests. Launch with `-uiTesting` for in-memory state. |
