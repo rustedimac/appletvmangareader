@@ -111,6 +111,10 @@ struct ReaderMenu: View {
             .lineLimit(1)
             bookmarkButton.padding(.top, 12)
         }
+        // Full width and its own focus section, so pressing up from any tab
+        // (even the right-most) reaches the bookmark button.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .focusSection()
     }
 
     /// Bookmarks the page on screen, or removes its bookmark.
