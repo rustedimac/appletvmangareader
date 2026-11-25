@@ -9,6 +9,7 @@
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
+| `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
@@ -78,6 +79,9 @@ Suwayomi
 - Timestamps are strings: `lastReadAt` / `fetchedAt` in seconds, `uploadDate` in milliseconds.
 - `pageCount` is `-1` until `fetchChapterPages` runs. Page sizes are only known after an image downloads.
 - `UpdateChapterPatchInput` fields: `isBookmarked`, `isRead`, `lastPageRead`.
+- Mark unread: `updateChapters(input: {ids, patch: {isRead: false, lastPageRead: 0}})`. A whole series looks up its chapter ids first.
+
+Kavita mark unread: `POST api/Reader/mark-multiple-unread` with `{seriesId, volumeIds: [], chapterIds}` for chapters, `POST api/Reader/mark-unread` with `{seriesId}` for a series.
 
 ## Double-page spreads
 
@@ -294,3 +298,18 @@ position when it has one (flipped if most neighbouring chapter numbers go
 down, so one odd number can't flip a series), else by number, else by
 natural name, with natural-name ties. Suwayomi uses it; Kavita keeps its
 own sort numbers and breaks ties by natural name.
+
+## Mark as unread
+
+Long-pressing a chapter row offers "Mark as Unread" and "Mark Series as
+Unread"; the series "More" button and a poster's long-press offer "Mark
+Series as Unread". `AppModel.markUnread` / `markSeriesUnread` always update
+the profile's local progress and call the server only when the profile
+syncs there. Locally, `SeriesProgress.unreadChapterIDs` hides the server's
+read state for those chapters until they are opened again, and
+`ignoresServerProgress` (set by a series reset) makes only local progress
+count, so a profile that doesn't sync to Suwayomi can still reset a
+series. Series detail updates immediately (`SeriesDetail.markingUnread`)
+and reloads after the server answers; poster badges use
+`AppModel.unreadCount(for:)`. UI tests: `MarkUnreadUITests`, launched with
+`-demoProgress` so demo series start with progress.

@@ -37,7 +37,7 @@ private struct ServerListView: View {
                 ForEach(servers) { server in
                     NavigationLink(value: server) {
                         HStack(spacing: 24) {
-                            Image(systemName: server.kind == .kavita ? "books.vertical.fill" : "square.stack.3d.up.fill")
+                            Image(systemName: server.kind.symbolName)
                                 .frame(width: 50)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(server.name)

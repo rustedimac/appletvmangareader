@@ -97,6 +97,18 @@ struct KavitaProgressDTO: Encodable {
     var libraryId: Int
 }
 
+/// `MarkReadDto`, for `api/Reader/mark-unread`.
+struct KavitaMarkSeriesDTO: Encodable {
+    var seriesId: Int
+}
+
+/// `MarkVolumesReadDto`, for `api/Reader/mark-multiple-unread`.
+struct KavitaMarkMultipleDTO: Encodable {
+    var seriesId: Int
+    var volumeIds: [Int]
+    var chapterIds: [Int]
+}
+
 /// Kavita's FilterV2Dto. Field/comparison values mirror Kavita's enums.
 struct KavitaFilterV2: Encodable {
     struct Statement: Encodable {
