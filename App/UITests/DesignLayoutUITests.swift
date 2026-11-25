@@ -89,6 +89,55 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(first.frame.minY > 0, "The first row didn't scroll back into view", file: file, line: line)
     }
 
+    /// Value rows look like Apple's own tvOS Settings: the value sits a
+    /// small, fixed gap before the chevron, the chevron stays put whether
+    /// or not the row has focus, and a toggle's On/Off ends where the
+    /// chevrons end. Measured from the screenshot, since a row's value and
+    /// chevron aren't separate accessibility elements.
+    func testSettingsValueSitsNextToChevron() {
+        let app = XCUIApplication.launched(tab: "settings")
+        select(app.element("settings.readerDefaults"))
+        let rows = ["readerDefaults.mode", "readerDefaults.direction", "readerDefaults.background"]
+        XCTAssertTrue(app.element(rows[0]).waitForExistence(timeout: 5))
+
+        var chevronEnds: [CGFloat] = []
+        for state in ["mode-focused", "direction-focused"] {
+            focus(app.element(state == "mode-focused" ? rows[0] : rows[1]))
+            Thread.sleep(forTimeInterval: 0.8)
+            let shot = XCUIScreen.main.screenshot()
+            saveScreenshot("settings-value-rows-\(state)")
+            guard let pixels = Pixels(shot.image) else { return XCTFail("Couldn't read the screenshot") }
+            let screen = app.windows.firstMatch.frame
+            let scale = CGFloat(pixels.width) / screen.width
+
+            for id in rows {
+                let frame = app.element(id).frame
+                guard let row = trailingInk(pixels, frame: frame, scale: scale) else {
+                    XCTFail("[\(state)] \(id): found no value and chevron in \(frame)")
+                    continue
+                }
+                let gap = (row.last.minX - row.previous.maxX) / scale
+                XCTAssertLessThanOrEqual(gap, 30, "[\(state)] \(id): \(Int(gap)) pt between the value and the chevron")
+                XCTAssertGreaterThanOrEqual(gap, 8, "[\(state)] \(id): the value touches the chevron (\(Int(gap)) pt)")
+                chevronEnds.append(row.last.maxX / scale)
+            }
+
+            if state == "direction-focused" {
+                // The toggle's On/Off lines up with the chevrons above it.
+                let toggle = app.element("readerDefaults.firstPageAlone")
+                if toggle.exists, let row = trailingInk(pixels, frame: toggle.frame, scale: scale) {
+                    let offset = abs(row.last.maxX / scale - chevronEnds[chevronEnds.count - 2])
+                    XCTAssertLessThanOrEqual(offset, 8, "The toggle's value ends \(Int(offset)) pt away from the chevrons")
+                }
+            }
+        }
+        // Same chevron position on every row, focused or not (focus grows a
+        // row by a few points).
+        if let low = chevronEnds.min(), let high = chevronEnds.max() {
+            XCTAssertLessThanOrEqual(high - low, 8, "Chevrons move between rows or with focus: \(chevronEnds.map { Int($0) })")
+        }
+    }
+
     func testBrowseTabs() {
         for tab in ["home", "library", "favorites", "search"] {
             let app = XCUIApplication.launched(seed: "servers", tab: tab)
@@ -227,6 +276,52 @@ final class DesignLayoutUITests: XCTestCase {
         return "\"\(id)\""
     }
 
+    // MARK: Pixels
+
+    /// The two rightmost runs of ink (pixels that differ from the row's
+    /// platter) along the middle of a row, in screenshot pixels: in a value
+    /// row, the chevron and the last letter of the value.
+    private func trailingInk(_ pixels: Pixels, frame: CGRect, scale: CGFloat) -> (last: ClosedRange<CGFloat>, previous: ClosedRange<CGFloat>)? {
+        guard !frame.isEmpty else { return nil }
+        let midY = Int(frame.midY * scale)
+        let band = (midY - Int(10 * scale))...(midY + Int(10 * scale))
+        // Each column is compared with its own pixel above the text, which
+        // is platter inside the row and background past its end.
+        let referenceY = midY - Int(18 * scale)
+        let left = Int((frame.minX + frame.width * 0.45) * scale)
+        // A focused row grows a little past its reported frame.
+        let right = min(pixels.width - 1, Int((frame.maxX + 12) * scale))
+        guard left < right, referenceY >= 0, band.upperBound < pixels.height else { return nil }
+        func ink(_ x: Int) -> Bool {
+            let reference = pixels.luminance(x, referenceY)
+            return band.contains { abs(pixels.luminance(x, $0) - reference) > 0.2 }
+        }
+
+        var runs: [ClosedRange<CGFloat>] = []
+        var x = right
+        let joinGap = Int(3 * scale)
+        while x >= left, runs.count < 3 {
+            guard ink(x) else { x -= 1; continue }
+            let end = x
+            var start = x
+            var blank = 0
+            while x >= left, blank <= joinGap {
+                if ink(x) {
+                    start = x
+                    blank = 0
+                } else {
+                    blank += 1
+                }
+                x -= 1
+            }
+            // A run touching the scan's end is the platter's rounded edge.
+            if end >= right - 1 { continue }
+            runs.append(CGFloat(start)...CGFloat(end))
+        }
+        guard runs.count >= 2 else { return nil }
+        return (runs[0], runs[1])
+    }
+
     // MARK: Helpers
 
     private func back(_ app: XCUIApplication, to id: String) {
@@ -246,5 +341,35 @@ final class DesignLayoutUITests: XCTestCase {
         let url = URL(fileURLWithPath: dir, isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         try? shot.pngRepresentation.write(to: url.appendingPathComponent("\(name).png"))
+    }
+}
+
+/// RGBA pixels of a screenshot, for measuring what's drawn.
+private struct Pixels {
+    let width: Int
+    let height: Int
+    private let data: [UInt8]
+
+    init?(_ image: UIImage) {
+        guard let cg = image.cgImage else { return nil }
+        width = cg.width
+        height = cg.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height,
+                                          bitsPerComponent: 8, bytesPerRow: cg.width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+            return true
+        }
+        guard drawn else { return nil }
+        data = bytes
+    }
+
+    /// 0 (black) to 1 (white). `y` counts from the top.
+    func luminance(_ x: Int, _ y: Int) -> CGFloat {
+        let i = (min(max(y, 0), height - 1) * width + min(max(x, 0), width - 1)) * 4
+        return (0.2126 * CGFloat(data[i]) + 0.7152 * CGFloat(data[i + 1]) + 0.0722 * CGFloat(data[i + 2])) / 255
     }
 }

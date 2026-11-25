@@ -168,6 +168,24 @@ Form { … }
 - `.settingsPage(_:hero:)` takes any view for the hero (the profile editor
   shows the avatar being edited).
 
+### Pickers and value rows (`SettingsPicker`)
+
+A row that shows a value and opens a list of choices uses `SettingsPicker`,
+not `Picker`. It's laid out like Apple's own Settings rows: title leading,
+value in `.secondary` with the chevron `Space.s` (16 pt) after it, both
+trailing, in the same place whether or not the row has focus. The chevron
+ends where a `Toggle`'s On/Off ends, so the right edge of a form lines up.
+The system `Picker` leaves about 60 pt between its value and chevron, and
+SwiftUI can't change that.
+
+```swift
+SettingsPicker("Mode", selection: $settings.mode, options: ReadingMode.allCases) { $0.title }
+```
+
+The choices open on their own `SettingsPage` with a checkmark on the current
+one and focus starting there; picking one goes back. A custom row that opens
+another page with a value uses `SettingsValueRow` for the same spacing.
+
 ### Buttons
 
 - Default: system `Button` in its default (bordered) style. On tvOS that is a
@@ -249,6 +267,9 @@ a server and checks the rules a test can measure: focusable elements are at
 least 60 pt tall (system rows report a few points less than they draw),
 everything focusable stays inside the safe area (with room for focus growth),
 form rows aren't wider than the form column, and sibling rows don't overlap.
+`testSettingsValueSitsNextToChevron` measures value rows from the screenshot:
+8–30 pt between the value and the chevron, chevrons in the same place on every
+row with and without focus, and a toggle's On/Off ending in line with them.
 
 Set `DESIGN_AUDIT_DIR` (as `TEST_RUNNER_DESIGN_AUDIT_DIR` for `xcodebuild`) to
 also save a screenshot of every screen it visits to that folder. Those
