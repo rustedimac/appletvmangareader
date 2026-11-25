@@ -39,7 +39,13 @@ final class MarkUnreadUITests: XCTestCase {
     /// A menu item by identifier, or by title when the menu doesn't carry
     /// identifiers through.
     private func menuItem(_ identifier: String, _ title: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", identifier, title)).firstMatch
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ OR label == %@", identifier, title)).firstMatch
+    }
+
+    /// Focus and element tree, for failure messages.
+    private var screen: String {
+        "focused: \(focusedDescription())\n" + String(app.debugDescription.prefix(6000))
     }
 
     private func longPressSelect() {
@@ -77,7 +83,7 @@ final class MarkUnreadUITests: XCTestCase {
         focus(chapter(id, 2))
         longPressSelect()
         let item = menuItem("chapter.menu.unread", "Mark as Unread")
-        XCTAssertTrue(item.waitForExistence(timeout: 5), "chapter menu didn't open")
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "chapter menu didn't open. \(screen)")
         select(item)
 
         XCTAssertTrue(waitFor(chapter(id, 2), "value == 'unread'"), "chapter 2 still shows as read")
@@ -92,7 +98,7 @@ final class MarkUnreadUITests: XCTestCase {
         focus(chapter(id, 1))
         longPressSelect()
         let item = menuItem("chapter.menu.seriesUnread", "Mark Series as Unread")
-        XCTAssertTrue(item.waitForExistence(timeout: 5), "chapter menu didn't open")
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "chapter menu didn't open. \(screen)")
         select(item)
 
         for n in 1...3 {
@@ -105,7 +111,7 @@ final class MarkUnreadUITests: XCTestCase {
         let id = openFirstHomeSeries()
         let more = app.buttons["series.more"]
         XCTAssertTrue(more.waitForExistence(timeout: 10))
-        XCTAssertTrue(press(.right, until: more, max: 5), "More button should be focusable")
+        XCTAssertTrue(focus(more, .right), "More button should be focusable. \(screen)")
         remote.press(.select)
         let item = menuItem("series.more.unread", "Mark Series as Unread")
         XCTAssertTrue(item.waitForExistence(timeout: 5), "More menu didn't open")
@@ -121,7 +127,7 @@ final class MarkUnreadUITests: XCTestCase {
         let id = focusHomePoster()
         longPressSelect()
         let item = menuItem("poster.menu.seriesUnread", "Mark Series as Unread")
-        XCTAssertTrue(item.waitForExistence(timeout: 5), "poster menu didn't open")
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "poster menu didn't open. \(screen)")
         select(item)
         XCTAssertTrue(waitFor(item, "exists == false"), "menu didn't close")
         // Give the demo server's round trip a moment, then open the series.
