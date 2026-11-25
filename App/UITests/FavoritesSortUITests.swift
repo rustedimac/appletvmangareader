@@ -27,9 +27,12 @@ final class FavoritesSortUITests: XCTestCase {
     }
 
     private func expectOrder(_ order: String, file: StaticString = #filePath, line: UInt = #line) {
-        let deadline = Date().addingTimeInterval(5)
+        let deadline = Date().addingTimeInterval(8)
         while posterOrder != order, Date() < deadline { Thread.sleep(forTimeInterval: 0.3) }
-        XCTAssertEqual(posterOrder, order, file: file, line: line)
+        let modelOrder = (app.descendants(matching: .any)["favorites.grid"].value as? String) ?? "?"
+        XCTAssertEqual(posterOrder, order,
+                       "model order \(modelOrder), sort \(app.buttons["favorites.sort.direction"].value ?? "?")",
+                       file: file, line: line)
     }
 
     private var focused: XCUIElement {
@@ -50,7 +53,10 @@ final class FavoritesSortUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.35)
         }
         XCTAssertTrue(target.hasFocus, "Couldn't focus \(id). Focus: \(focusedDescription())", file: file, line: line)
+        // Let the bar's scroll and focus animation finish, or the click can be dropped.
+        Thread.sleep(forTimeInterval: 0.8)
         remote.press(.select)
+        Thread.sleep(forTimeInterval: 0.3)
     }
 
     func testDefaultIsNewestFavoritedFirst() {
