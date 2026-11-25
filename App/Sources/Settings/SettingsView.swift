@@ -7,15 +7,14 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ScreenTitle("Settings")
-                Section("Profile") {
+            Form {
+                Section(settingsHeader: "Profile") {
                     Button {
                         model.isPickingProfile = true
                     } label: {
-                        HStack(spacing: 30) {
-                            ProfileAvatarView(profile: model.activeProfile, size: 64)
-                            VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: Space.m) {
+                            ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
+                            VStack(alignment: .leading, spacing: Space.xxs) {
                                 Text(model.activeProfile.name)
                                 Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
                             }
@@ -68,7 +67,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.addFreeLibrary")
                     }
                 } header: {
-                    Text("Servers")
+                    SettingsHeader("Servers")
                 } footer: {
                     if model.servers.isEmpty {
                         Text("Add a Kavita or Suwayomi server to start reading.")
@@ -77,7 +76,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Sync and Backup") {
+                Section(settingsHeader: "Sync and Backup") {
                     NavigationLink {
                         ICloudSyncView()
                     } label: {
@@ -86,6 +85,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.icloud")
                 }
             }
+            .settingsPage("Settings", systemImage: "gearshape")
         }
     }
 }
@@ -109,9 +109,9 @@ private struct ServerRow: View {
     let pickedCount: Int?
 
     var body: some View {
-        HStack(spacing: 30) {
+        HStack(spacing: Space.m) {
             Image(systemName: server.kind.symbolName)
-                .frame(width: 50)
+                .frame(width: Size.avatarRow)
             VStack(alignment: .leading, spacing: 4) {
                 Text(server.name)
                 Text(subtitle)

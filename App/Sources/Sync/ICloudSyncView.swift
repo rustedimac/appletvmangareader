@@ -12,7 +12,6 @@ struct ICloudSyncView: View {
 
     var body: some View {
         Form {
-            ScreenTitle("iCloud Sync and Backup")
             Section {
                 Toggle("Sync with iCloud", isOn: isOn)
                     .disabled(!sync.isAvailableInBuild)
@@ -56,6 +55,7 @@ struct ICloudSyncView: View {
                 Text("Works without iCloud. Download a backup file from a phone or computer on the same network, or restore one.")
             }
         }
+        .settingsPage("iCloud Sync and Backup", systemImage: "icloud")
     }
 
     private var statusText: String {
