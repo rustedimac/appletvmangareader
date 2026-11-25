@@ -90,3 +90,22 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 - `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
   size, which is how readers learn Suwayomi page sizes. Without a
   `targetSize` it only downloads and reads the header.
+
+## Paged reader
+
+`Reader/Paged/PagedReaderView` shows one spread at a time. Frames come from
+`SpreadGeometry` (both pages at one height, edge to edge, pixel-snapped) and
+each image is drawn to exactly its frame, so a printed spread split across
+two files reads as one picture. `PageImageLoader` downsamples to screen
+size, caches, coalesces requests and preloads ±2 spreads nearest first;
+sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
+correctly before the reader reaches a wide page.
+
+## Reader demo for UI tests
+
+Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
+series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
+up front, one with sizes learned on load, pages drawn on device. Options:
+`-readerDirection leftToRight`, `-readerLayout single`,
+`-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
+tests can reuse it.
