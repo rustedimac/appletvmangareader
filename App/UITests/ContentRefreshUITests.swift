@@ -107,7 +107,9 @@ final class ContentRefreshUITests: XCTestCase {
         if focus(link, .down, maxPresses: 25) { remote.press(.select) }
         let large = app.element("browse.density.large")
         XCTAssertTrue(large.waitForExistence(timeout: 10))
-        if focus(large, .down, maxPresses: 25) { remote.press(.select) }
+        // The sizes sit side by side: down to Medium, then right to Large.
+        focus(app.element("browse.density.standard"), .down, maxPresses: 25)
+        if focus(large, .right, maxPresses: 4) { remote.press(.select) }
         XCTAssertTrue(waitUntil(large, "value == 'selected'"))
 
         selectTab("Home")
@@ -136,8 +138,14 @@ final class ContentRefreshUITests: XCTestCase {
         XCTAssertTrue(app.element("settings.server.Harbor Shelf").waitForExistence(timeout: 10))
 
         selectTab("Home")
-        XCTAssertTrue(shelf("Harbor Shelf.recentlyUpdated").waitForExistence(timeout: 15),
-                      "the new server's rows show up without relaunching")
+        // Home is a lazy stack and the new server's shelf comes third, below
+        // the screen: scroll down to it.
+        let harbor = shelf("Harbor Shelf.recentlyUpdated")
+        XCTAssertTrue(app.element("shelfRow.Demo Kavita.recentlyUpdated").waitForExistence(timeout: 15))
+        for _ in 0..<8 where !harbor.waitForExistence(timeout: 2) {
+            remote.press(.down)
+        }
+        XCTAssertTrue(harbor.waitForExistence(timeout: 5), "the new server's rows show up without relaunching")
         XCTAssertTrue(shelf("Demo Kavita.recentlyUpdated").exists)
     }
 }
