@@ -18,6 +18,7 @@ struct BookReaderView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var session: BookReaderSession?
     @State private var unsupported = false
 
@@ -58,6 +59,10 @@ struct BookReaderView: View {
             await s.start()
         }
         .onDisappear { session?.close() }
+        // Home button or screen saver: save before tvOS may suspend the app.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { session?.flushProgress() }
+        }
     }
 }
 
