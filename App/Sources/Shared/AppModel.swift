@@ -65,6 +65,7 @@ final class AppModel {
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
+            model.applyUITestingHomeLayout()
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),

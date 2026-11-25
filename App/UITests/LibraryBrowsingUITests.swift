@@ -215,8 +215,8 @@ final class LibraryBrowsingUITests: XCTestCase {
 
     func testHideAndReorderHomeRows() {
         launch()
-        let updated = app.staticTexts["shelf.Demo Kavita.recentlyUpdated"]
-        let added = app.staticTexts["shelf.Demo Kavita.newlyAdded"]
+        let updated = app.staticTexts["shelf.recentlyUpdated"]
+        let added = app.staticTexts["shelf.newlyAdded"]
         XCTAssertTrue(updated.waitForExistence(timeout: 15), "Recently Updated is the first row with content")
 
         openCustomizeHome()
@@ -264,7 +264,7 @@ final class LibraryBrowsingUITests: XCTestCase {
         remote.press(.menu)
 
         selectTab("Home")
-        let row = app.staticTexts["shelf.Demo Kavita.continueReading"]
+        let row = app.staticTexts["shelf.continueReading"]
         XCTAssertTrue(row.waitForExistence(timeout: 15), "Continue Reading never showed")
         // Continue Reading is the first row, so the first poster down from
         // the tab bar is the series just read.
@@ -287,7 +287,7 @@ final class LibraryBrowsingUITests: XCTestCase {
 
     func testCaughtUpShowsFinishedSeries() {
         launch(["-demoFinished", "1"])
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         // Opening the finished series notices it's caught up.
         openKavitaLibrary()
         let poster = app.buttons["poster.1"]

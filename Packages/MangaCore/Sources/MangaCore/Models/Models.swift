@@ -147,6 +147,11 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var pagesRead: Int?
     /// Number of chapters, when known (Suwayomi library grids).
     public var chapterCount: Int?
+    /// When the series got its place in a Home feed: last read (Continue
+    /// Reading), added (Newly Added) or last new chapter (Recently
+    /// Updated). Set by feeds when the server says, so rows from several
+    /// servers can be merged in one order (`HomeMerge`).
+    public var feedDate: Date? = nil
 
     public var id: SeriesRef { ref }
 
@@ -215,6 +220,9 @@ public struct SeriesDetail: Codable, Hashable, Sendable {
     /// When the server last added a chapter, if it tracks that (Kavita's
     /// `lastChapterAdded`). See `latestChapterDate`.
     public var latestChapterAt: Date? = nil
+    /// Which libraries/categories of its server the series is in, when the
+    /// client knows their names. See `SeriesPlacement`.
+    public var placement: SeriesPlacement? = nil
 
     public init(summary: SeriesSummary, synopsis: String?, authors: [String], genres: [String],
                 status: String?, chapters: [Chapter]) {

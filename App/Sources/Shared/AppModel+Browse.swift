@@ -12,6 +12,10 @@ extension AppModel {
 
     var homeLayout: HomeLayout { browsePreferences.home }
     var gridDensity: GridDensity { browsePreferences.gridDensity }
+    /// Merged Home rows (default) or one row per server.
+    var homeServerRows: HomeServerRows { homeLayout.serverRows }
+    /// Where posters name their server in rows that mix servers.
+    var posterServerLabel: PosterServerLabel { homeLayout.serverLabel }
 
     // MARK: Libraries
 
