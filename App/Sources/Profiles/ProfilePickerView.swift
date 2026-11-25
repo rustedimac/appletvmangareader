@@ -38,8 +38,7 @@ struct ProfilePickerView: View {
         HStack(spacing: 60) {
             ForEach(model.state.profiles) { profile in
                 Button {
-                    model.switchProfile(profile.id)
-                    model.isPickingProfile = false
+                    model.pickProfile(profile.id)
                 } label: {
                     VStack(spacing: 24) {
                         ProfileAvatarView(profile: profile, size: 220)

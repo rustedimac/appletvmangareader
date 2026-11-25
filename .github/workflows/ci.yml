@@ -16,6 +16,16 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Seconds on Linux: catches screen titles or headers that would stay pinned
+  # over scrolling rows (see tools/check_pinned_headers.py).
+  ui-lint:
+    name: UI lint (pinned headers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_pinned_headers.py
+
   core-tests:
     name: MangaCore unit tests
     runs-on: macos-15
@@ -31,7 +41,9 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    timeout-minutes: 40
+    # The UI suite alone took 29 minutes at 72 tests; build and simulator
+    # boot add about 5. Leave room as tests are added.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -54,19 +66,22 @@ jobs:
       - name: Build and test
         run: |
           mkdir -p build
-          status=0
+          # Stream test results so a timed-out run still shows how far it got.
+          set +e
           xcodebuild test \
             -project MangaReader.xcodeproj \
             -scheme MangaReader \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath build/Results.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            > build/xcodebuild.log 2>&1 || status=$?
-          grep -E "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)" build/xcodebuild.log | tail -300 || true
+            2>&1 | tee build/xcodebuild.log \
+            | grep --line-buffered -E "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)"
+          status=${PIPESTATUS[0]}
+          set -e
           if [ $status -ne 0 ]; then tail -80 build/xcodebuild.log; fi
           exit $status
       - name: Upload results
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: xcodebuild-results

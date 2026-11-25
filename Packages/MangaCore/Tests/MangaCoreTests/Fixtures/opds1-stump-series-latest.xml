@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>latestSeries</id>
+  <title>Latest Series</title>
+  <updated>2026-11-25T09:17:44.553333318+00:00</updated>
+  <author>
+    <name>Stump</name>
+    <uri>https://github.com/stumpapp/stump</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="/opds/v1.2/series/latest?page=1"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="/opds/v1.2/catalog"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="previous" href="/opds/v1.2/series/latest?page=0"/>
+  <entry>
+    <title>Harbor Lights</title>
+    <id>5ab26869-7e71-4180-a548-5980dd52672c</id>
+    <updated>2026-11-25T09:09:22.606035574+00:00</updated>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/series/5ab26869-7e71-4180-a548-5980dd52672c"/>
+  </entry>
+  <entry>
+    <title>Lantern Courier</title>
+    <id>0d6d970f-47f5-41d0-98a1-05b5a1c2992e</id>
+    <updated>2026-11-25T09:09:22.590543089+00:00</updated>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/series/0d6d970f-47f5-41d0-98a1-05b5a1c2992e"/>
+  </entry>
+  <entry>
+    <title>Paper Moon Post</title>
+    <id>b11ec8e8-289f-456b-9b2a-9efec220bfff</id>
+    <updated>2026-11-25T09:09:22.586897633+00:00</updated>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/series/b11ec8e8-289f-456b-9b2a-9efec220bfff"/>
+  </entry>
+</feed>

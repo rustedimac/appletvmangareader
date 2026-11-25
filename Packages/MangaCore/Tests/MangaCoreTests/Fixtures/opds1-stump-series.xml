@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>0d6d970f-47f5-41d0-98a1-05b5a1c2992e</id>
+  <title>Lantern Courier</title>
+  <updated>2026-11-25T09:17:09.302600368+00:00</updated>
+  <author>
+    <name>Stump</name>
+    <uri>https://github.com/stumpapp/stump</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="/opds/v1.2/series/0d6d970f-47f5-41d0-98a1-05b5a1c2992e?page=1"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="/opds/v1.2/catalog"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="previous" href="/opds/v1.2/series/0d6d970f-47f5-41d0-98a1-05b5a1c2992e?page=0"/>
+  <entry>
+    <title>Lantern Courier v01</title>
+    <id>8d29a722-28da-4c0d-abb3-30f5511f3167</id>
+    <updated>2026-11-25T09:17:09.302495794+00:00</updated>
+    <content type="html">0.2 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/file/Test%20Pattern%20Alpha%20v01.cbz"/>
+    <link href="/opds/v1.2/books/8d29a722-28da-4c0d-abb3-30f5511f3167/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="6"/>
+  </entry>
+  <entry>
+    <title>Lantern Courier v02</title>
+    <id>ca1e7ac5-595e-4a0c-a855-358d079e3942</id>
+    <updated>2026-11-25T09:17:09.302589279+00:00</updated>
+    <content type="html">0.1 MiB - cbz</content>
+    <link type="image/jpeg" rel="http://opds-spec.org/image/thumbnail" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/thumbnail"/>
+    <link type="image/jpeg" rel="http://opds-spec.org/image" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/pages/0?zero_based=true"/>
+    <link type="application/zip" rel="http://opds-spec.org/acquisition" href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/file/Test%20Pattern%20Alpha%20v02.cbz"/>
+    <link href="/opds/v1.2/books/ca1e7ac5-595e-4a0c-a855-358d079e3942/pages/{pageNumber}?zero_based=true" type="image/jpeg" rel="http://vaemendis.net/opds-pse/stream" pse:count="5"/>
+  </entry>
+</feed>

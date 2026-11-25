@@ -34,7 +34,10 @@ struct SearchView: View {
             BrowseMessage(title: "No servers yet", message: "Add a server in Settings to search it.",
                           systemImage: "server.rack")
         } else if CrossServerSearch.normalize(query) == nil {
-            EmptyView()
+            BrowseMessage(title: "Search your servers",
+                          message: "Type a title, or hold the microphone button on the Siri Remote and say it.",
+                          systemImage: "mic")
+                .accessibilityIdentifier("search.hint")
         } else if isSearching && results.isEmpty {
             ProgressView().frame(maxWidth: .infinity).padding(80)
         } else if results.isEmpty && searchedQuery != nil {

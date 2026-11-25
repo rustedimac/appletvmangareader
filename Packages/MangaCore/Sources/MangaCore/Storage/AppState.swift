@@ -88,10 +88,15 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Book (EPUB/text) reader settings. Nil until changed.
+    public var bookSettings: BookSettings?
     /// Bookmarked pages across every server.
     public var bookmarks: [Bookmark]
     /// How the Favorites tab is sorted.
     public var favoritesSort: FavoritesSort
+    /// Home layout, library sorts and reading styles, poster size. Nil
+    /// until changed (see `AppState+Browse.swift`).
+    public var browse: BrowsePreferences?
     /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
     /// `autoScrollLevel`.
     public var webtoonAutoScrollLevel: Int? = nil
@@ -101,8 +106,11 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 progress: [String: SeriesProgress] = [:],
                 defaultReaderSettings: ReaderSettings = .default,
                 readerOverrides: [String: ReaderSettings] = [:],
+                bookSettings: BookSettings? = nil,
                 bookmarks: [Bookmark] = [],
-                favoritesSort: FavoritesSort = .default) {
+                favoritesSort: FavoritesSort = .default,
+                browse: BrowsePreferences? = nil) {
+        self.bookSettings = bookSettings
         self.serverSettings = serverSettings
         self.favorites = favorites
         self.progress = progress
@@ -110,10 +118,11 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.readerOverrides = readerOverrides
         self.bookmarks = bookmarks
         self.favoritesSort = favoritesSort
+        self.browse = browse
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookmarks, favoritesSort, webtoonAutoScrollLevel
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, browse
     }
 
     // State saved by older versions lacks the newer fields.
@@ -124,9 +133,13 @@ public struct ProfileData: Codable, Hashable, Sendable {
         progress = try c.decodeIfPresent([String: SeriesProgress].self, forKey: .progress) ?? [:]
         defaultReaderSettings = try c.decodeIfPresent(ReaderSettings.self, forKey: .defaultReaderSettings) ?? .default
         readerOverrides = try c.decodeIfPresent([String: ReaderSettings].self, forKey: .readerOverrides) ?? [:]
+        // A bad value falls back to the defaults instead of failing the profile.
+        bookSettings = try? c.decodeIfPresent(BookSettings.self, forKey: .bookSettings)
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
         webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        // A browse shape this build can't read falls back to defaults.
+        browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -136,9 +149,11 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encode(progress, forKey: .progress)
         try c.encode(defaultReaderSettings, forKey: .defaultReaderSettings)
         try c.encode(readerOverrides, forKey: .readerOverrides)
+        try c.encodeIfPresent(bookSettings, forKey: .bookSettings)
         if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
         if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
+        try c.encodeIfPresent(browse, forKey: .browse)
     }
 }
 
@@ -157,17 +172,23 @@ public struct AppState: Codable, Hashable, Sendable {
     public var servers: [ServerConfig]
     /// Keyed by profile id (uuidString).
     public var profileData: [String: ProfileData]
+    /// The profile to open without asking "Who's reading?". Only used when
+    /// the app runs as the current Apple TV user, where this state belongs
+    /// to that user alone (see `ProfileLaunch`).
+    public var rememberedProfileID: UUID?
     /// True once the user removed the built-in Free Library, so it isn't
     /// added back on the next launch. Nil in state saved before it existed.
     public var freeLibraryRemoved: Bool?
 
     public init(version: Int = AppState.currentVersion, profiles: [Profile] = [], activeProfileID: UUID? = nil,
-                servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:]) {
+                servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:],
+                rememberedProfileID: UUID? = nil) {
         self.version = version
         self.profiles = profiles
         self.activeProfileID = activeProfileID
         self.servers = servers
         self.profileData = profileData
+        self.rememberedProfileID = rememberedProfileID
     }
 
     /// A fresh install has one profile so the app works without setup.
@@ -211,6 +232,7 @@ public struct AppState: Codable, Hashable, Sendable {
         profiles.remove(at: i)
         profileData[id.uuidString] = nil
         if activeProfileID == id { activeProfileID = profiles.first?.id }
+        if rememberedProfileID == id { rememberedProfileID = nil }
         return true
     }
 
@@ -254,6 +276,7 @@ public struct AppState: Codable, Hashable, Sendable {
             data.bookmarks.removeAll { $0.series.ref.serverID == id }
             data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
             data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
+            data.browse?.removeServer(id)
             profileData[key] = data
         }
     }
@@ -376,6 +399,16 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
         mutateData(profile) { $0.defaultReaderSettings = settings }
+    }
+
+    // MARK: Book settings
+
+    public func bookSettings(profile: UUID) -> BookSettings {
+        profileData[profile.uuidString]?.bookSettings ?? .default
+    }
+
+    public mutating func setBookSettings(_ settings: BookSettings, profile: UUID) {
+        mutateData(profile) { $0.bookSettings = settings }
     }
 
     // MARK: Helpers

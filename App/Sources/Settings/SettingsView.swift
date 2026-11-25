@@ -8,26 +8,32 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(settingsHeader: "Profile") {
-                    Button {
-                        model.isPickingProfile = true
-                    } label: {
-                        HStack(spacing: Space.m) {
-                            ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
-                            VStack(alignment: .leading, spacing: Space.xxs) {
-                                Text(model.activeProfile.name)
-                                Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
+                if model.perAppleTVUser {
+                    AppleTVUserSection()
+                }
+
+                Section(settingsHeader: model.perAppleTVUser ? "Reading" : "Profile") {
+                    if showsInAppProfiles {
+                        Button {
+                            model.isPickingProfile = true
+                        } label: {
+                            HStack(spacing: Space.m) {
+                                ProfileAvatarView(profile: model.activeProfile, size: Size.avatarRow)
+                                VStack(alignment: .leading, spacing: Space.xxs) {
+                                    Text(model.activeProfile.name)
+                                    Text("Switch Profile").font(.caption).foregroundStyle(.secondary)
+                                }
                             }
                         }
-                    }
-                    .accessibilityIdentifier("settings.switchProfile")
+                        .accessibilityIdentifier("settings.switchProfile")
 
-                    NavigationLink {
-                        ProfilesListView()
-                    } label: {
-                        Label("Manage Profiles", systemImage: "person.2")
+                        NavigationLink {
+                            ProfilesListView()
+                        } label: {
+                            Label("Manage Profiles", systemImage: "person.2")
+                        }
+                        .accessibilityIdentifier("settings.manageProfiles")
                     }
-                    .accessibilityIdentifier("settings.manageProfiles")
 
                     NavigationLink {
                         ReaderDefaultsView()
@@ -35,6 +41,13 @@ struct SettingsView: View {
                         Label("Default Reader Settings", systemImage: "book")
                     }
                     .accessibilityIdentifier("settings.readerDefaults")
+
+                    NavigationLink {
+                        BrowseSettingsView()
+                    } label: {
+                        Label("Customize Home", systemImage: "rectangle.grid.1x2")
+                    }
+                    .accessibilityIdentifier("settings.customizeHome")
                 }
 
                 Section {
@@ -75,9 +88,25 @@ struct SettingsView: View {
                         Text("Logins are saved separately for each profile.")
                     }
                 }
+
+                Section(settingsHeader: "Sync and Backup") {
+                    NavigationLink {
+                        ICloudSyncView()
+                    } label: {
+                        Label("iCloud Sync and Backup", systemImage: "icloud")
+                    }
+                    .accessibilityIdentifier("settings.icloud")
+                }
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
+    }
+
+    /// In-app profiles are the fallback when there are no Apple TV users.
+    /// With Apple TV users they only show for older state that already has
+    /// several profiles.
+    private var showsInAppProfiles: Bool {
+        !model.perAppleTVUser || model.state.profiles.count > 1
     }
 }
 
@@ -86,7 +115,7 @@ private struct ServerRow: View {
         if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
-            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+            let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()
             parts.append("\(pickedCount) \(noun) picked")
         }
@@ -110,8 +139,8 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind == .kavita && !hasLogin {
-                Text("No API key").font(.caption).foregroundStyle(.orange)
+            if server.kind.requiresLogin && !hasLogin {
+                Text(server.kind == .kavita ? "No API key" : "No login").font(.caption).foregroundStyle(.orange)
             } else if !syncs && server.kind != .freeLibrary {
                 Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
             }

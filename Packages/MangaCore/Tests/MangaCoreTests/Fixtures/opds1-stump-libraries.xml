@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>allLibraries</id>
+  <title>All libraries</title>
+  <updated>2026-11-25T09:17:09.586306360+00:00</updated>
+  <author>
+    <name>Stump</name>
+    <uri>https://github.com/stumpapp/stump</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="/opds/v1.2/libraries"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="/opds/v1.2/catalog"/>
+  <entry>
+    <title>Comics</title>
+    <id>281ab025-729c-4893-bd0a-3ef50256190a</id>
+    <updated>2026-11-25T09:09:22.606035574+00:00</updated>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/libraries/281ab025-729c-4893-bd0a-3ef50256190a"/>
+  </entry>
+  <entry>
+    <title>Manga</title>
+    <id>886eb9c6-ddb9-4bc4-a065-c2427feb3b0c</id>
+    <updated>2026-11-25T09:09:22.590543089+00:00</updated>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/libraries/886eb9c6-ddb9-4bc4-a065-c2427feb3b0c"/>
+  </entry>
+</feed>
