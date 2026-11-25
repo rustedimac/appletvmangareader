@@ -283,6 +283,32 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Books and PDFs
+
+See [BOOKS-AND-PDF.md](BOOKS-AND-PDF.md) for what each backend serves.
+
+- `ContentFormat` (`images`, `pdf`, `epub`, `text`) is on `SeriesSummary`
+  and `Chapter` (nil means images). Kavita maps its `MangaFormat`. Posters
+  and chapter rows show a `FormatBadge` for PDF/EPUB/TXT only.
+- PDFs read in the image readers: Kavita renders their pages
+  (`extractPdf=true`).
+- `ReaderView` hands chapters whose format `isText` to
+  `Reader/Book/BookReaderView`. The backend must conform to `BookProviding`
+  (`bookManifest(for:)`, `bookSection(_:of:)`); `KavitaClient` does, through
+  `api/Book/{chapterId}/book-info`, `/chapters` and `/book-page`.
+- `HTMLBookParser` / `PlainTextBookParser` (MangaCore/Book) turn a section
+  into `BookBlock`s. `BookLayoutEngine` builds attributed text and
+  paginates it with TextKit into one or two columns; `BookSectionLayout`
+  draws a page with the same layout manager. `BookCursor` (MangaCore, tested)
+  moves across pages and sections.
+- Settings (`BookSettings`) are per profile in `ProfileData.bookSettings`.
+  Progress: the section index goes to the server as the page; the place
+  inside the section is kept in `AppModel.bookPositions`.
+- UI tests: `BookReaderUITests` with `-uiTesting -readerDemo -readerBook`
+  (public-domain Alice in Wonderland, `Reader/Demo/DemoBook.swift`).
+  Identifiers: `book.page` (value `<section>.<page>`), `book.position`,
+  `book.edge`, `book.menu.<row>.<option>`, `book.toc.<n>`.
+
 ## Apple TV users
 
 The app has the `com.apple.developer.user-management` entitlement with

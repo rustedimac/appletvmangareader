@@ -88,6 +88,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Book (EPUB/text) reader settings. Nil until changed.
+    public var bookSettings: BookSettings?
     /// Bookmarked pages across every server.
     public var bookmarks: [Bookmark]
     /// How the Favorites tab is sorted.
@@ -101,8 +103,10 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 progress: [String: SeriesProgress] = [:],
                 defaultReaderSettings: ReaderSettings = .default,
                 readerOverrides: [String: ReaderSettings] = [:],
+                bookSettings: BookSettings? = nil,
                 bookmarks: [Bookmark] = [],
                 favoritesSort: FavoritesSort = .default) {
+        self.bookSettings = bookSettings
         self.serverSettings = serverSettings
         self.favorites = favorites
         self.progress = progress
@@ -113,7 +117,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookmarks, favoritesSort, webtoonAutoScrollLevel
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel
     }
 
     // State saved by older versions lacks the newer fields.
@@ -124,6 +128,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
         progress = try c.decodeIfPresent([String: SeriesProgress].self, forKey: .progress) ?? [:]
         defaultReaderSettings = try c.decodeIfPresent(ReaderSettings.self, forKey: .defaultReaderSettings) ?? .default
         readerOverrides = try c.decodeIfPresent([String: ReaderSettings].self, forKey: .readerOverrides) ?? [:]
+        // A bad value falls back to the defaults instead of failing the profile.
+        bookSettings = try? c.decodeIfPresent(BookSettings.self, forKey: .bookSettings)
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
         webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
@@ -136,6 +142,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encode(progress, forKey: .progress)
         try c.encode(defaultReaderSettings, forKey: .defaultReaderSettings)
         try c.encode(readerOverrides, forKey: .readerOverrides)
+        try c.encodeIfPresent(bookSettings, forKey: .bookSettings)
         if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
         if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
@@ -383,6 +390,16 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
         mutateData(profile) { $0.defaultReaderSettings = settings }
+    }
+
+    // MARK: Book settings
+
+    public func bookSettings(profile: UUID) -> BookSettings {
+        profileData[profile.uuidString]?.bookSettings ?? .default
+    }
+
+    public mutating func setBookSettings(_ settings: BookSettings, profile: UUID) {
+        mutateData(profile) { $0.bookSettings = settings }
     }
 
     // MARK: Helpers
