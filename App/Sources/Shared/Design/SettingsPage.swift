@@ -46,7 +46,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 .labelStyle(.settingsRow)
                 // A focused row grows about 10 %; the list would clip it at
                 // its own edges. The mask below does the clipping instead.
-                .scrollClipDisabled()
+                .scrollClipDisabled() // pinned-header-ok: nothing sits above the form (title is in the side column) and the mask below fades rows at the top
                 .frame(maxWidth: Size.formColumn, maxHeight: .infinity)
                 // Rows scrolled up fade out at the top of the form instead
                 // of sliding under the tab bar. The mask reaches past the

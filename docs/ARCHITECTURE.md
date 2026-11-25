@@ -343,3 +343,17 @@ series. Series detail updates immediately (`SeriesDetail.markingUnread`)
 and reloads after the server answers; poster badges use
 `AppModel.unreadCount(for:)`. UI tests: `MarkUnreadUITests`, launched with
 `-demoProgress` so demo series start with progress.
+
+## Screen titles and scrolling headers
+
+tvOS keeps a `.navigationTitle` pinned while a Form or List scrolls, so the
+title ends up drawn over the rows. Settings screens use `.settingsPage(...)`
+(docs/DESIGN_GUIDE.md), which puts the title in a side column; any other
+screen puts its title inside its scrolling content. Panels with their own
+header (the in-reader menu) keep the header inside the same ScrollView as
+the rows. `.scrollClipDisabled()` is for horizontal shelves and tab bars: on
+a vertical scroll view it lets rows slide over whatever sits above it.
+`tools/check_pinned_headers.py` enforces both rules in CI (a reviewed
+exception ends its line with `// pinned-header-ok: <reason>`), and
+`ReaderMenuUITests.testHeaderScrollsWithOptions` scrolls the menu down and
+back up.
