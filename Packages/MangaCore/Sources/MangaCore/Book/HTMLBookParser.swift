@@ -122,7 +122,7 @@ struct HTMLTokenizer: Sequence, IteratorProtocol {
             i += 9
             var out = String.UnicodeScalarView()
             while i < s.count, !starts(with: "]]>") { out.append(s[i]); i += 1 }
-            i = min(s.count, i + 3)
+            i = Swift.min(s.count, i + 3)
             return .text(String(out))
         }
         if starts(with: "<!") || starts(with: "<?") {
@@ -190,7 +190,7 @@ struct HTMLTokenizer: Sequence, IteratorProtocol {
         if quote == "\"" || quote == "'" {
             i += 1
             while i < s.count, s[i] != quote { out.append(s[i]); i += 1 }
-            i = min(s.count, i + 1)
+            i = Swift.min(s.count, i + 1)
         } else {
             while i < s.count, s[i] != ">", !s[i].properties.isWhitespace { out.append(s[i]); i += 1 }
         }
