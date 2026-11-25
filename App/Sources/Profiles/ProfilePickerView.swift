@@ -16,42 +16,12 @@ struct ProfilePickerView: View {
                 Text("Who's reading?")
                     .font(.largeTitle.weight(.semibold))
 
-                ScrollView(.horizontal) {
-                    HStack(spacing: 60) {
-                        ForEach(model.state.profiles) { profile in
-                            Button {
-                                if model.needsPINToOpen(profile.id) {
-                                    unlocking = profile
-                                } else {
-                                    open(profile)
-                                }
-                            } label: {
-                                VStack(spacing: 24) {
-                                    ProfileAvatarView(profile: profile, size: 220)
-                                        .overlay(alignment: .bottomTrailing) {
-                                            if model.requiresPINToOpen(profile.id) && model.hasPIN(profile.id) {
-                                                Image(systemName: "lock.fill")
-                                                    .font(.title3)
-                                                    .padding(12)
-                                                    .background(.thinMaterial, in: Circle())
-                                                    .padding(10)
-                                            }
-                                        }
-                                    Text(profile.name)
-                                        .font(.headline)
-                                        .lineLimit(1)
-                                        .frame(maxWidth: 260)
-                                }
-                            }
-                            .buttonStyle(ProfileTileButtonStyle())
-                            .focused($focused, equals: profile.id)
-                            .accessibilityIdentifier("profilePicker.\(profile.name)")
-                        }
-                    }
-                    .padding(.horizontal, 80)
-                    .padding(.vertical, 40)
+                // Centered when the profiles fit on screen; scrolls when they don't.
+                ViewThatFits(in: .horizontal) {
+                    profileRow
+                    ScrollView(.horizontal) { profileRow }
+                        .scrollClipDisabled()
                 }
-                .scrollClipDisabled()
                 .frame(maxWidth: .infinity)
 
                 NavigationLink {
@@ -74,6 +44,42 @@ struct ProfilePickerView: View {
                 }
             }
         }
+    }
+
+    private var profileRow: some View {
+        HStack(spacing: 60) {
+            ForEach(model.state.profiles) { profile in
+                Button {
+                    if model.needsPINToOpen(profile.id) {
+                        unlocking = profile
+                    } else {
+                        open(profile)
+                    }
+                } label: {
+                    VStack(spacing: 24) {
+                        ProfileAvatarView(profile: profile, size: 220)
+                            .overlay(alignment: .bottomTrailing) {
+                                if model.requiresPINToOpen(profile.id) && model.hasPIN(profile.id) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.title3)
+                                        .padding(12)
+                                        .background(.thinMaterial, in: Circle())
+                                        .padding(10)
+                                }
+                            }
+                        Text(profile.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                            .frame(maxWidth: 260)
+                    }
+                }
+                .buttonStyle(ProfileTileButtonStyle())
+                .focused($focused, equals: profile.id)
+                .accessibilityIdentifier("profilePicker.\(profile.name)")
+            }
+        }
+        .padding(.horizontal, 80)
+        .padding(.vertical, 40)
     }
 
     private func open(_ profile: Profile) {
