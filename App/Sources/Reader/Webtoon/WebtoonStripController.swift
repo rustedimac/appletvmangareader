@@ -38,6 +38,9 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
     private var fetchingChapters: Set<String> = []
     private var failedFetch: [String: Date] = [:]
     private var userHasScrolled = false
+    private var panStartOffset: CGFloat = 0
+    /// Remote touch-surface travel to content travel.
+    private let swipeGain: CGFloat = 1.5
 
     /// Opens the reader menu.
     var onMenu: (() -> Void)?
@@ -61,10 +64,15 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
         sv.backgroundColor = .clear
         sv.decelerationRate = .normal
         sv.accessibilityIdentifier = "reader.webtoon.strip"
-        sv.panGestureRecognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
-        // A pan recognizer set up for indirect touches also scrolls half a
-        // screen on arrow presses by default. Clicks are ours (see handlePress).
-        sv.panGestureRecognizer.allowedPressTypes = []
+        // The system's own scrolling is off: on tvOS a focused, scrollable
+        // scroll view also moves half a screen on every arrow click, which
+        // fights our click step. Swipes go through our own pan recognizer
+        // and every movement through the driver.
+        sv.isScrollEnabled = false
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        pan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        pan.allowedPressTypes = []
+        sv.addGestureRecognizer(pan)
         sv.onPress = { [weak self] type, began in self?.handlePress(type, began: began) ?? false }
         driver.scrollView = sv
         driver.maxOffset = { [weak self] in self?.maxOffsetPoints ?? 0 }
@@ -188,7 +196,9 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
                 scrollView.contentOffset = CGPoint(x: 0, y: y)
             }
         }
-        driver.shift(by: scrollView.contentOffset.y - oldOffset)
+        let delta = scrollView.contentOffset.y - oldOffset
+        driver.shift(by: delta)
+        panStartOffset += delta
         updateVisible()
     }
 
@@ -441,9 +451,23 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
 
     // MARK: UIScrollViewDelegate
 
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        driver.stop()
-        userHasScrolled = true
+    /// Touch-surface swipes: the content follows the finger, then coasts.
+    @objc private func handlePan(_ pan: UIPanGestureRecognizer) {
+        let sv = scrollView
+        switch pan.state {
+        case .began:
+            driver.stop()
+            userHasScrolled = true
+            panStartOffset = sv.contentOffset.y
+        case .changed:
+            let dy = pan.translation(in: sv).y * swipeGain
+            let y = min(max(0, panStartOffset - dy), maxOffsetPoints)
+            sv.contentOffset.y = (y * scale).rounded() / scale
+        case .ended:
+            driver.fling(velocity: -pan.velocity(in: sv).y * swipeGain)
+        default:
+            break
+        }
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {

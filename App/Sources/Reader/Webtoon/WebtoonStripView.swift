@@ -259,6 +259,8 @@ final class WebtoonScrollDriver {
     private var glideFrom: CGFloat = 0
     private var glideStart: CFTimeInterval = 0
     private var holdDirection: CGFloat = 0
+    /// Momentum after a swipe, in points per second.
+    private var flingVelocity: CGFloat = 0
     private var holdStart: CFTimeInterval = 0
     private var lastTick: CFTimeInterval = 0
     private var link: CADisplayLink?
@@ -274,8 +276,16 @@ final class WebtoonScrollDriver {
 
     var isActive: Bool { link != nil }
 
+    /// Coasts after a swipe, slowing down like a scroll view does.
+    func fling(velocity: CGFloat) {
+        target = nil
+        flingVelocity = velocity
+        if abs(velocity) > 20 { start() }
+    }
+
     func glide(to y: CGFloat) {
         guard let scrollView else { return }
+        flingVelocity = 0
         target = min(max(0, y), maxOffset())
         glideFrom = scrollView.contentOffset.y
         glideStart = CACurrentMediaTime()
@@ -283,6 +293,7 @@ final class WebtoonScrollDriver {
     }
 
     func beginHold(forward: Bool) {
+        flingVelocity = 0
         holdDirection = forward ? 1 : -1
         holdStart = CACurrentMediaTime()
         start()
@@ -298,6 +309,7 @@ final class WebtoonScrollDriver {
 
     func stop() {
         target = nil
+        flingVelocity = 0
         holdDirection = 0
         link?.invalidate()
         link = nil
@@ -321,7 +333,7 @@ final class WebtoonScrollDriver {
     }
 
     private func stopIfIdle() {
-        if target == nil && holdDirection == 0 {
+        if target == nil && holdDirection == 0 && flingVelocity == 0 {
             link?.invalidate()
             link = nil
         }
@@ -353,6 +365,10 @@ final class WebtoonScrollDriver {
                 y = t
                 target = nil
             }
+        } else if flingVelocity != 0 {
+            y += flingVelocity * CGFloat(dt)
+            flingVelocity *= CGFloat(pow(0.998, dt * 1000))
+            if abs(flingVelocity) < 10 || y <= 0 || y >= maxOffset() { flingVelocity = 0 }
         } else if holdDirection == 0 {
             stopIfIdle()
             return

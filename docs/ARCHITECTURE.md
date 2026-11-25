@@ -114,7 +114,7 @@ the image arrives.
   above when scrolling near the top, with a divider between them. Crossing
   into another chapter calls `ReaderSession.adopt(chapter:pages:sizes:page:)`
   so the session switches without a loading state.
-- **Remote.** `WebtoonScrollView` (UIKit, focusable) pans with touch-surface
+- **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
   page; select or Play/Pause opens the menu; Menu passes through to
