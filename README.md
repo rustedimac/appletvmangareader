@@ -36,6 +36,15 @@ xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
 
 CI runs both on every push and pull request (`.github/workflows/ci.yml`).
 
+## Free Library
+
+With no setup, the app shows the built-in Free Library: classic comics,
+pulp magazines and illustrated books that are public domain in the US, from
+the Internet Archive, plus the Pepper&Carrot webcomic by David Revoy (CC BY
+4.0). The list is curated in
+`Packages/MangaCore/Sources/MangaCore/FreeLibrary/catalog.json`; see
+[docs/FREE_LIBRARY.md](docs/FREE_LIBRARY.md) for the rules.
+
 ## Game controllers
 
 Xbox, PlayStation and MFi controllers work everywhere the remote does

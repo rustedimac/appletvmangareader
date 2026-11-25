@@ -84,6 +84,7 @@ struct SeriesDetailView: View {
                         .font(.callout)
                         .lineLimit(5)
                         .frame(maxWidth: 1100, alignment: .leading)
+                        .accessibilityIdentifier("series.synopsis")
                 }
                 actions.padding(.top, 10)
             }

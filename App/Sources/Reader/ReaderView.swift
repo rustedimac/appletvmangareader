@@ -26,6 +26,7 @@ struct ReaderView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var session: ReaderSession?
 
     var body: some View {
@@ -63,6 +64,11 @@ struct ReaderView: View {
             guard let session else { return }
             session.close()
             GameControllerHub.shared.remove(owner: session)
+        }
+        // Home button, screen saver or app switcher: save before tvOS may
+        // suspend or end the app.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { session?.flushProgress() }
         }
     }
 }
