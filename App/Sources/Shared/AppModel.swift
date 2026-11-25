@@ -13,6 +13,9 @@ final class AppModel {
     @ObservationIgnored let secrets: SecretStore
     @ObservationIgnored let transport: HTTPTransport
     @ObservationIgnored private var clientCache: [String: MangaServer] = [:]
+    /// True while the "Who's reading?" picker is showing. Set at launch when
+    /// there's more than one profile, and by "Switch Profile" in Settings.
+    var isPickingProfile = false
     /// Builds server clients. UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
     @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, HTTPTransport) -> MangaServer = {
@@ -24,11 +27,14 @@ final class AppModel {
         self.secrets = secrets
         self.transport = transport
         self.state = stateStore.load()
+        self.isPickingProfile = state.profiles.count > 1
     }
 
     static func live() -> AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
-            let model = AppModel(stateStore: StateStore(backing: InMemoryKeyValueStore()), secrets: InMemorySecretStore())
+            let store = StateStore(backing: InMemoryKeyValueStore())
+            if let seeded = UITestingSeed.state() { store.save(seeded) }
+            let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
             return model
         }
@@ -48,6 +54,26 @@ final class AppModel {
 
     func switchProfile(_ id: UUID) {
         update { $0.setActiveProfile(id) }
+        clientCache.removeAll()
+    }
+
+    @discardableResult
+    func addProfile(name: String, symbol: String, colorIndex: Int) -> Profile {
+        var added: Profile?
+        update { added = $0.addProfile(name: name, symbol: symbol, colorIndex: colorIndex) }
+        return added!
+    }
+
+    func updateProfile(_ profile: Profile) {
+        update { $0.updateProfile(profile) }
+    }
+
+    /// Removes a profile, its data and its server logins. The last profile
+    /// can't be removed.
+    func removeProfile(_ id: UUID) {
+        guard state.profiles.count > 1 else { return }
+        for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
+        update { $0.removeProfile(id) }
         clientCache.removeAll()
     }
 
@@ -79,6 +105,20 @@ final class AppModel {
         }
         secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
         clientCache.removeAll()
+    }
+
+    /// Checks a server and login without saving them.
+    func testConnection(_ server: ServerConfig, credential: ServerCredential?) async throws -> String {
+        try await makeClient(server, credential, transport).validate()
+    }
+
+    func serverSettings(for server: ServerConfig) -> ProfileServerSettings {
+        state.serverSettings(profile: activeProfile.id, server: server.id)
+    }
+
+    func setServerSettings(_ settings: ProfileServerSettings, for server: ServerConfig) {
+        let profile = activeProfile.id
+        update { $0.setServerSettings(settings, profile: profile, server: server.id) }
     }
 
     func removeServer(_ server: ServerConfig) {
@@ -130,5 +170,15 @@ final class AppModel {
     func setReaderSettings(_ settings: ReaderSettings, for ref: SeriesRef) {
         let profile = activeProfile.id
         update { $0.setReaderSettings(settings, for: ref, profile: profile) }
+    }
+
+    /// The active profile's reader settings for series without an override.
+    var defaultReaderSettings: ReaderSettings {
+        state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default
+    }
+
+    func setDefaultReaderSettings(_ settings: ReaderSettings) {
+        let profile = activeProfile.id
+        update { $0.setDefaultReaderSettings(settings, profile: profile) }
     }
 }
