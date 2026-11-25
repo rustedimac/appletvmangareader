@@ -112,7 +112,6 @@ struct BookReaderMenu: View {
             .padding(.vertical, 20)
             .padding(.bottom, 40)
         }
-        .scrollClipDisabled()
     }
 
     private func set(_ s: BookSettings) {
@@ -192,7 +191,6 @@ private struct BookContentsPane: View {
                 }
                 .padding(.vertical, 20)
             }
-            .scrollClipDisabled()
             .onAppear { if let currentID { proxy.scrollTo(currentID, anchor: .center) } }
         }
     }
