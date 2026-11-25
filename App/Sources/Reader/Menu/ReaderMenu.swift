@@ -79,6 +79,11 @@ struct ReaderMenu: View {
                 VStack(alignment: .leading, spacing: 32) {
                     header
                         .id(Self.topID)
+                        // Up from any tab lands on Bookmark This Page, even
+                        // from the right-hand tabs, which have nothing
+                        // directly above them inside the scroll view.
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .focusSection()
                     HStack(spacing: 20) {
                         ForEach(Tab.allCases) { t in
                             OptionButton(title: t.title, isSelected: tab == t) { tab = t }
