@@ -148,7 +148,9 @@ struct ServerEditorView: View {
                         testStatus
                     }
                 }
-                .disabled(!draft.isValid || test == .running || saving)
+                // Enabled once there's an address, so focus can always move
+                // down to Save and Remove; a missing login shows its message.
+                .disabled(draft.resolvedURL == nil || test == .running || saving)
                 .accessibilityIdentifier("serverEditor.test")
 
                 Button {
@@ -333,6 +335,10 @@ struct ServerEditorView: View {
     }
 
     private func runTest() {
+        if let message = draft.validationMessage {
+            test = .failure(message)
+            return
+        }
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
         let draft = self.draft
         test = .running
