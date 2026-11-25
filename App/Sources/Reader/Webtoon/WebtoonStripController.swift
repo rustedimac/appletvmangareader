@@ -11,7 +11,7 @@ import MangaCore
 /// a page's real height arrives or a chapter is added or dropped above, what
 /// is on screen stays exactly where it was.
 @MainActor
-final class WebtoonStripController: NSObject, UIScrollViewDelegate {
+final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInputTarget {
     let container = WebtoonContainerView()
     private var scrollView: WebtoonScrollView { container.scrollView }
     private let session: ReaderSession
@@ -41,6 +41,10 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
     private var panStartOffset: CGFloat = 0
     /// Remote touch-surface travel to content travel.
     private let swipeGain: CGFloat = 1.5
+    /// When auto-scroll was last turned on or off. A second toggle right
+    /// after is dropped, in case one controller press arrives both as a
+    /// Play/Pause press and as the X button.
+    private var lastAutoToggle: CFTimeInterval = 0
 
     /// Opens the reader menu.
     var onMenu: (() -> Void)?
@@ -77,11 +81,15 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
         driver.scrollView = sv
         driver.maxOffset = { [weak self] in self?.maxOffsetPoints ?? 0 }
         driver.onMove = { [weak self] in self?.userHasScrolled = true }
+        driver.atEnd = { [weak self] in self?.stripReachesEnd ?? true }
+        driver.onAutoScrollEnded = { [weak self] in self?.autoScrollDidStop() }
+        session.webtoonInput = self
         container.onLayout = { [weak self] in self?.containerDidLayout() }
     }
 
     /// Stops the scroll driver and pending loads. Call when the view goes away.
     func teardown() {
+        setAutoScroll(false)
         driver.stop()
         loader.cancelAll()
         for view in pageViews.values { view.recycle() }
@@ -91,6 +99,13 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
 
     /// Called whenever the session's state may have changed.
     func sync() {
+        if driver.autoLevel != nil {
+            if session.isMenuPresented || session.loadState != .loaded || !session.isAutoScrolling {
+                setAutoScroll(false)
+            } else {
+                driver.autoLevel = session.autoScrollLevel
+            }
+        }
         let newSettings = session.settings
         if newSettings != settings {
             let widthChanged = newSettings.clampedWebtoonWidth != settings.clampedWebtoonWidth
@@ -120,6 +135,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
     }
 
     private func clear() {
+        setAutoScroll(false)
         driver.stop()
         loader.cancelAll()
         for view in pageViews.values { view.recycle(); view.removeFromSuperview(); pagePool.append(view) }
@@ -408,6 +424,14 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
         switch type {
         case .downArrow, .upArrow:
             let forward = type == .downArrow
+            // A game controller stick may also arrive as arrow presses; the
+            // stick already scrolls smoothly.
+            if GameControllerHub.shared.stickRecentlyActive { return true }
+            if driver.autoLevel != nil {
+                // While auto-scrolling, up/down make it slower/faster.
+                if began { changeAutoScrollSpeed(by: forward ? 1 : -1) }
+                return true
+            }
             if began {
                 userHasScrolled = true
                 let from = driver.target ?? scrollView.contentOffset.y
@@ -422,21 +446,78 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
             }
             return true
         case .leftArrow, .rightArrow:
+            if GameControllerHub.shared.stickRecentlyActive { return true }
             if began { jumpPage(forward: type == .rightArrow) }
             return true
-        case .select, .playPause:
-            if began {
+        case .select:
+            guard began else { return true }
+            if driver.autoLevel != nil {
+                // A click pauses auto-scroll; the next one opens the menu.
+                setAutoScroll(false)
+            } else {
                 driver.stop()
                 onMenu?()
             }
+            return true
+        case .playPause:
+            if began { toggleAutoScroll() }
             return true
         default:
             return false
         }
     }
 
+    // MARK: Auto-scroll
+
+    /// Play/Pause, or X on a game controller.
+    func toggleAutoScroll() {
+        let now = CACurrentMediaTime()
+        guard now - lastAutoToggle > 0.3 else { return }
+        setAutoScroll(driver.autoLevel == nil)
+    }
+
+    private func setAutoScroll(_ on: Bool) {
+        let canRun = on && session.loadState == .loaded && !session.isMenuPresented && !layout.items.isEmpty
+        if (driver.autoLevel != nil) != canRun { lastAutoToggle = CACurrentMediaTime() }
+        if canRun {
+            userHasScrolled = true
+            driver.autoLevel = session.autoScrollLevel
+        } else {
+            driver.autoLevel = nil
+        }
+        if session.isAutoScrolling != canRun { session.isAutoScrolling = canRun }
+        // Keep the screen awake while the strip moves on its own.
+        UIApplication.shared.isIdleTimerDisabled = canRun
+    }
+
+    /// The strip ends with the series' last chapter (nothing more to join).
+    private var stripReachesEnd: Bool {
+        guard let last = layout.items.last else { return true }
+        if case .end = last.kind { return true }
+        return false
+    }
+
+    private func autoScrollDidStop() {
+        if session.isAutoScrolling { session.isAutoScrolling = false }
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+
+    private func changeAutoScrollSpeed(by steps: Int) {
+        guard steps != 0 else { return }
+        session.setAutoScrollLevel(WebtoonAutoScroll.stepped(session.autoScrollLevel, by: steps))
+        if driver.autoLevel != nil { driver.autoLevel = session.autoScrollLevel }
+    }
+
+    // MARK: Game controller stick
+
+    func stickMoved(y: Double) {
+        let speed = GamepadStick.scrollSpeed(y: y, viewport: Double(viewport.height))
+        if speed != 0 { userHasScrolled = true }
+        driver.stickVelocity = CGFloat(speed)
+    }
+
     /// Puts the top of the next (or previous) page at the top of the screen.
-    private func jumpPage(forward: Bool) {
+    func jumpPage(forward: Bool) {
         userHasScrolled = true
         let current = Int(((driver.target ?? scrollView.contentOffset.y) * scale).rounded())
         guard let i = layout.itemIndex(atY: current) else { return }
@@ -454,6 +535,13 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
     /// Touch-surface swipes: the content follows the finger, then coasts.
     @objc private func handlePan(_ pan: UIPanGestureRecognizer) {
         let sv = scrollView
+        if driver.autoLevel != nil {
+            // While auto-scrolling, a swipe up speeds it up and down slows it.
+            if pan.state == .ended {
+                changeAutoScrollSpeed(by: WebtoonAutoScroll.levelChange(forSwipe: Double(pan.translation(in: sv).y)))
+            }
+            return
+        }
         switch pan.state {
         case .began:
             driver.stop()
