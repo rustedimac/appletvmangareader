@@ -62,6 +62,9 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
         sv.decelerationRate = .normal
         sv.accessibilityIdentifier = "reader.webtoon.strip"
         sv.panGestureRecognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        // A pan recognizer set up for indirect touches also scrolls half a
+        // screen on arrow presses by default. Clicks are ours (see handlePress).
+        sv.panGestureRecognizer.allowedPressTypes = []
         sv.onPress = { [weak self] type, began in self?.handlePress(type, began: began) ?? false }
         driver.scrollView = sv
         driver.maxOffset = { [weak self] in self?.maxOffsetPoints ?? 0 }
