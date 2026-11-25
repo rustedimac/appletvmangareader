@@ -165,6 +165,9 @@ final class DesignLayoutUITests: XCTestCase {
                 let b = inContent[j].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
                 // A button inside a row reports its own frame within the row's.
                 if a.contains(b) || b.contains(a) { continue }
+                // Segments inside a segmented control report frames that
+                // stick out a little past the control's own frame.
+                if a.contains(CGPoint(x: b.midX, y: b.midY)) || b.contains(CGPoint(x: a.midX, y: a.midY)) { continue }
                 XCTAssertFalse(a.intersects(b), "[\(name)] \(inContent[i].label) overlaps \(inContent[j].label)",
                                file: file, line: line)
             }

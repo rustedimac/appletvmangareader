@@ -78,8 +78,9 @@ struct ReaderMenu: View {
                 ChapterListPane(session: session, focus: $focus)
             }
         }
-        .padding(.horizontal, 60)
-        .padding(.top, 60)
+        .padding(.leading, Space.xl)
+        .padding(.trailing, Layout.safeSide)
+        .padding(.top, Layout.safeTop)
     }
 
     private var header: some View {
