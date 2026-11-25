@@ -96,11 +96,10 @@ struct CategorySelectionView: View {
 
     var body: some View {
         Form {
-            ScreenTitle("\(server.name) \(server.kind.categoryNoun)")
             Section {
                 CategoryChecklist(kind: server.kind, load: $load, retry: { Task { await fetch() } })
             } header: {
-                Text("\(server.kind.categoryNoun) to Import for \(model.activeProfile.name)")
+                SettingsHeader("\(server.kind.categoryNoun) to Import for \(model.activeProfile.name)")
             } footer: {
                 if let footer = CategoryChecklist.footer(kind: server.kind, load: load) { Text(footer) }
             }
@@ -115,6 +114,7 @@ struct CategorySelectionView: View {
                 .accessibilityIdentifier("categories.save")
             }
         }
+        .settingsPage("\(server.name) \(server.kind.categoryNoun)", systemImage: "checklist")
         .task { if load == .idle { await fetch() } }
     }
 

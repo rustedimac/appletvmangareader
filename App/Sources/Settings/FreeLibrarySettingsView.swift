@@ -13,7 +13,7 @@ struct FreeLibrarySettingsView: View {
 
     var body: some View {
         Form {
-            Section {
+            Section(settingsHeader: "About") {
                 Text(FreeLibrary.about)
                     .accessibilityIdentifier("freeLibrary.about")
                 if let summary {
@@ -21,11 +21,11 @@ struct FreeLibrarySettingsView: View {
                 }
             }
 
-            Section("Credits") {
+            Section(settingsHeader: "Credits") {
                 ForEach(Array(FreeLibrary.credits.enumerated()), id: \.offset) { i, credit in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(credit.title).font(.headline)
-                        Text(credit.detail).font(.callout).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: Space.xxs) {
+                        Text(credit.title)
+                        Text(credit.detail).font(.caption).foregroundStyle(.secondary)
                     }
                     .focusable()
                     .accessibilityElement(children: .combine)
@@ -40,6 +40,8 @@ struct FreeLibrarySettingsView: View {
                     Label("Choose Collections", systemImage: "checklist")
                 }
                 .accessibilityIdentifier("freeLibrary.collections")
+            } header: {
+                SettingsHeader("Collections")
             } footer: {
                 Text("Progress in the Free Library is kept on this Apple TV, separately for each profile.")
             }
@@ -51,7 +53,7 @@ struct FreeLibrarySettingsView: View {
                 Text("You can add it back from Settings at any time.")
             }
         }
-        .navigationTitle(FreeLibrary.name)
+        .settingsPage(FreeLibrary.name, systemImage: ServerKind.freeLibrary.symbolName)
         .task { summary = try? await model.client(for: server).validate() }
         .confirmationDialog("Remove the Free Library?", isPresented: $confirmingRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
