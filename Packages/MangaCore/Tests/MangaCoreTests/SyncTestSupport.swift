@@ -37,8 +37,11 @@ final class SyncTestDevice: @unchecked Sendable {
         set { lock.lock(); _state = newValue; lock.unlock() }
     }
 
+    /// Doesn't hold the lock while `body` runs, so it can read `now`.
     func change(_ body: (inout AppState) -> Void) {
-        lock.lock(); body(&_state); lock.unlock()
+        var s = state
+        body(&s)
+        state = s
     }
 
     var host: SyncHost {
