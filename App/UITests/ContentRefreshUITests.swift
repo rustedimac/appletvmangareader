@@ -59,38 +59,39 @@ final class ContentRefreshUITests: XCTestCase {
     // MARK: Tests
 
     func testUntickingALibraryUpdatesHomeWithoutRelaunch() {
+        // Demo Suwayomi needs no login, so its editor lists categories.
         let kavita = shelf("Demo Kavita.recentlyUpdated")
         let suwayomi = shelf("Demo Suwayomi.recentlyUpdated")
-        XCTAssertTrue(kavita.waitForExistence(timeout: 15))
-        XCTAssertTrue(poster("89", in: kavita).waitForExistence(timeout: 10), "series 89 is in All Series")
+        XCTAssertTrue(suwayomi.waitForExistence(timeout: 15))
+        XCTAssertTrue(poster("89", in: suwayomi).waitForExistence(timeout: 10), "series 89 is in All Series")
 
-        // Import only "Every Third" from Demo Kavita.
+        // Import only "Every Third" from Demo Suwayomi.
         selectTab("Settings")
-        select(app.element("settings.server.Demo Kavita"))
+        select(app.element("settings.server.Demo Suwayomi"))
         let all = app.element("categories.item.all")
         XCTAssertTrue(all.waitForExistence(timeout: 10))
         select(all)
         XCTAssertTrue(waitUntil(all, "value == 'off'"))
         select(app.element("serverEditor.save"))
-        XCTAssertTrue(app.element("settings.server.Demo Kavita").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.element("settings.server.Demo Suwayomi").waitForExistence(timeout: 10))
 
         selectTab("Home")
-        XCTAssertTrue(kavita.waitForExistence(timeout: 15))
-        XCTAssertTrue(poster("87", in: kavita).waitForExistence(timeout: 15))
-        XCTAssertTrue(waitUntil(poster("89", in: kavita), "exists == false", timeout: 15),
-                      "Home still shows a series from the unticked library")
-        XCTAssertTrue(poster("89", in: suwayomi).exists, "the other server is unchanged")
+        XCTAssertTrue(suwayomi.waitForExistence(timeout: 15))
+        XCTAssertTrue(poster("87", in: suwayomi).waitForExistence(timeout: 15))
+        XCTAssertTrue(waitUntil(poster("89", in: suwayomi), "exists == false", timeout: 15),
+                      "Home still shows a series from the unticked category")
+        XCTAssertTrue(poster("89", in: kavita).exists, "the other server is unchanged")
 
-        // Library and Search follow the same selection.
+        // Search follows the same selection.
         selectTab("Search")
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         remote.press(.down)
         usleep(500_000)
         field.typeText("Chronicles 89")
-        XCTAssertTrue(app.staticTexts["shelf.search.Demo Suwayomi"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.staticTexts["shelf.search.Demo Kavita"].exists,
-                       "Search still finds a series from the unticked library")
+        XCTAssertTrue(app.staticTexts["shelf.search.Demo Kavita"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.staticTexts["shelf.search.Demo Suwayomi"].exists,
+                       "Search still finds a series from the unticked category")
     }
 
     func testPosterSizeChangesHomeShelvesRightAway() {
