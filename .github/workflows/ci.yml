@@ -41,9 +41,13 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    # The UI suite alone took 29 minutes at 72 tests; build and simulator
-    # boot add about 5. Leave room as tests are added.
+    # Serial, the UI suite took 43 minutes at 91 tests (plus ~6 for build and
+    # simulator start). Parallel simulator clones cut that; see docs/CI.md.
     timeout-minutes: 60
+    env:
+      # Simulator clones that run UI test classes side by side on the one
+      # runner. Same runner minutes for more tests, so it helps the queue too.
+      UI_TEST_WORKERS: 3
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -52,30 +56,47 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         run: xcodegen generate
-      - name: Pick a tvOS simulator
-        id: sim
-        run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c '
-          import json,sys
-          d=json.load(sys.stdin)["devices"]
-          c=[(r,x) for r,v in d.items() if "tvOS" in r for x in v]
-          c.sort(key=lambda t:(t[0], "4K" in t[1]["name"]))
-          print(c[-1][1]["udid"])')
-          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-          xcrun simctl list devices available | grep -i "apple tv" || true
       - name: Build and test
         run: |
           mkdir -p build
-          # Stream test results so a timed-out run still shows how far it got.
+          DD="$RUNNER_TEMP/DerivedData"
+          # Listing simulators the first time starts CoreSimulator, which
+          # takes 2-3 minutes on these runners. Do it while the app compiles.
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/sims.json" &
+          sims_pid=$!
+          # Stream results so a timed-out run still shows how far it got.
           set +e
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project MangaReader.xcodeproj \
             -scheme MangaReader \
-            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -destination 'generic/platform=tvOS Simulator' \
+            -derivedDataPath "$DD" \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/build.log \
+            | grep --line-buffered -E "error:|\*\* (BUILD|TEST)"
+          status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then tail -80 build/build.log; exit $status; fi
+          wait $sims_pid
+          set -e
+          UDID=$(python3 -c '
+          import json,sys
+          d=json.load(open(sys.argv[1]))["devices"]
+          c=[(r,x) for r,v in d.items() if "tvOS" in r for x in v]
+          c.sort(key=lambda t:(t[0], "4K" in t[1]["name"]))
+          print(c[-1][1]["udid"])' "$RUNNER_TEMP/sims.json")
+          echo "Simulator: $UDID"
+          set +e
+          xcodebuild test-without-building \
+            -project MangaReader.xcodeproj \
+            -scheme MangaReader \
+            -destination "id=$UDID" \
+            -derivedDataPath "$DD" \
+            -parallel-testing-enabled YES \
+            -parallel-testing-worker-count "$UI_TEST_WORKERS" \
             -resultBundlePath build/Results.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/xcodebuild.log \
-            | grep --line-buffered -E "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)"
+            | grep --line-buffered -iE "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)"
           status=${PIPESTATUS[0]}
           set -e
           if [ $status -ne 0 ]; then tail -80 build/xcodebuild.log; fi
