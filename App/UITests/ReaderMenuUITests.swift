@@ -221,4 +221,29 @@ final class ReaderMenuUITests: XCTestCase {
         remote.press(.left)
         expectIndicator("2–3 / 6")
     }
+
+    /// The title and tabs scroll with the options. They used to stay pinned
+    /// while the rows slid underneath, so both were drawn over each other.
+    func testHeaderScrollsWithOptions() {
+        launch()
+        openMenu()
+        let title = menuItem("title")
+        let tab = menuItem("tab.settings")
+        let firstRow = menuItem("mode.paged")
+        XCTAssertTrue(title.frame.maxY <= tab.frame.minY + 1, "title should start above the tabs")
+
+        moveFocus(to: "resetToDefault")
+        Thread.sleep(forTimeInterval: 0.6)
+        // Wherever the scroll ends up, the rows stay below the tabs.
+        XCTAssertGreaterThanOrEqual(firstRow.frame.minY, tab.frame.maxY - 1, "options are drawn under the tabs")
+        if title.exists, title.frame.maxY > 0 {
+            XCTAssertLessThanOrEqual(title.frame.maxY, tab.frame.minY + 1, "title is drawn over the tabs")
+        }
+
+        // Back up to the tabs: the title comes back into view above them.
+        moveFocus(to: "tab.settings")
+        Thread.sleep(forTimeInterval: 0.6)
+        XCTAssertGreaterThanOrEqual(title.frame.minY, 0, "title didn't scroll back into view")
+        XCTAssertTrue(title.frame.maxY <= tab.frame.minY + 1)
+    }
 }

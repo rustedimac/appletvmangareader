@@ -13,6 +13,7 @@ struct FreeLibrarySettingsView: View {
 
     var body: some View {
         Form {
+            ScreenTitle(FreeLibrary.name)
             Section {
                 Text(FreeLibrary.about)
                     .accessibilityIdentifier("freeLibrary.about")
@@ -51,7 +52,6 @@ struct FreeLibrarySettingsView: View {
                 Text("You can add it back from Settings at any time.")
             }
         }
-        .navigationTitle(FreeLibrary.name)
         .task { summary = try? await model.client(for: server).validate() }
         .confirmationDialog("Remove the Free Library?", isPresented: $confirmingRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {

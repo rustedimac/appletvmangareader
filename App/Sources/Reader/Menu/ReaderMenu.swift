@@ -61,32 +61,52 @@ struct ReaderMenu: View {
 
     // MARK: Layout
 
+    /// Header, tabs and the open pane all live in one ScrollView, so the
+    /// title and tabs scroll away with the options instead of staying pinned
+    /// while the rows slide underneath them (the scroll view doesn't clip, so
+    /// pinned text ended up drawn over the rows).
     private var panel: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            header
-            HStack(spacing: 20) {
-                ForEach(Tab.allCases) { t in
-                    OptionButton(title: t.title, isSelected: tab == t) { tab = t }
-                        .focused($focus, equals: "tab.\(t.rawValue)")
-                        .accessibilityIdentifier("reader.menu.tab.\(t.rawValue)")
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    header
+                        .id(Self.topID)
+                    HStack(spacing: 20) {
+                        ForEach(Tab.allCases) { t in
+                            OptionButton(title: t.title, isSelected: tab == t) { tab = t }
+                                .focused($focus, equals: "tab.\(t.rawValue)")
+                                .accessibilityIdentifier("reader.menu.tab.\(t.rawValue)")
+                        }
+                    }
+                    switch tab {
+                    case .settings:
+                        settingsPane
+                    case .chapters:
+                        ChapterListPane(session: session, focus: $focus, proxy: proxy)
+                    }
                 }
+                .padding(.horizontal, 60)
+                .padding(.top, 60)
+                .padding(.bottom, 60)
             }
-            switch tab {
-            case .settings:
-                settingsPane
-            case .chapters:
-                ChapterListPane(session: session, focus: $focus)
+            .scrollClipDisabled()
+            .onChange(of: focus) { _, key in
+                // Focus moving up onto the tabs only scrolls them into view;
+                // bring the title back too.
+                guard key?.hasPrefix("tab.") == true else { return }
+                withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
             }
         }
-        .padding(.horizontal, 60)
-        .padding(.top, 60)
     }
+
+    private static let topID = "reader.menu.top"
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(session.series.title)
                 .font(.headline)
                 .lineLimit(1)
+                .accessibilityIdentifier("reader.menu.title")
             HStack(spacing: 16) {
                 Text(session.chapter.title)
                 let position = ReaderMenuOptions.positionLabel(visiblePages: session.visiblePages,
@@ -105,18 +125,14 @@ struct ReaderMenu: View {
     // MARK: Settings
 
     private var settingsPane: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 36) {
-                ForEach(ReaderMenuOptions.items(for: settings)) { item in
-                    row(item)
-                }
-                Divider()
-                defaultsSection
+        VStack(alignment: .leading, spacing: 36) {
+            ForEach(ReaderMenuOptions.items(for: settings)) { item in
+                row(item)
             }
-            .padding(.vertical, 20)
-            .padding(.bottom, 40)
+            Divider()
+            defaultsSection
         }
-        .scrollClipDisabled()
+        .padding(.top, 20)
     }
 
     @ViewBuilder
@@ -312,28 +328,24 @@ struct OptionButton: View {
 }
 
 /// The series' chapters, with the open one marked and in view. Picking one
-/// opens it and closes the menu.
+/// opens it and closes the menu. Lives inside the menu's ScrollView, below
+/// the header and tabs; `proxy` is that scroll view's reader.
 private struct ChapterListPane: View {
     let session: ReaderSession
     var focus: FocusState<String?>.Binding
+    let proxy: ScrollViewProxy
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(session.chapters) { chapter in
-                        row(chapter).id(chapter.id)
-                    }
-                }
-                .padding(.vertical, 20)
-                .padding(.bottom, 40)
+        LazyVStack(alignment: .leading, spacing: 16) {
+            ForEach(session.chapters) { chapter in
+                row(chapter).id(chapter.id)
             }
-            .scrollClipDisabled()
-            .onAppear {
-                let current = session.chapter.id
-                proxy.scrollTo(current, anchor: .center)
-                DispatchQueue.main.async { focus.wrappedValue = "chapter.\(current)" }
-            }
+        }
+        .padding(.top, 20)
+        .onAppear {
+            let current = session.chapter.id
+            proxy.scrollTo(current, anchor: .center)
+            DispatchQueue.main.async { focus.wrappedValue = "chapter.\(current)" }
         }
     }
 
