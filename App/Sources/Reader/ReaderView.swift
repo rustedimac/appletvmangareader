@@ -70,12 +70,51 @@ private struct ReaderContent: View {
             // focus back when it closes.
             .disabled(session.isMenuPresented)
             ReaderLoadStateView(session: session)
+            ReaderBookmarkOverlay(session: session)
             if session.isMenuPresented {
                 ReaderMenu(session: session)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)
+        .animation(.easeInOut(duration: 0.2), value: session.notice)
+    }
+}
+
+/// A ribbon in the corner while a bookmarked page is on screen, and the
+/// "Bookmarked" notice after toggling one.
+struct ReaderBookmarkOverlay: View {
+    let session: ReaderSession
+
+    var body: some View {
+        ZStack {
+            if session.isShowingBookmarkedPage, !session.isMenuPresented {
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.red)
+                    .shadow(radius: 4)
+                    .padding(.top, 30)
+                    .padding(.trailing, 60)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .accessibilityIdentifier("reader.bookmarked")
+                    .accessibilityLabel("Bookmarked page")
+            }
+            if let notice = session.notice {
+                Label(notice.text, systemImage: notice.systemImage)
+                    .font(.callout)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 14)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(notice.text)
+                    .accessibilityIdentifier("reader.notice")
+            }
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
     }
 }
 

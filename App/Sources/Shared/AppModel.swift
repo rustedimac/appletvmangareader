@@ -36,6 +36,7 @@ final class AppModel {
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore())
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             return model
         }
         return AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore())

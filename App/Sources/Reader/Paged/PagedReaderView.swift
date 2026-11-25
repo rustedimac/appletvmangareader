@@ -6,7 +6,8 @@ import MangaCore
 /// single-page layout).
 ///
 /// Siri Remote: left/right (click or swipe) turns the page, following the
-/// reading direction. Swipe down or Play/Pause opens the reader menu. Going
+/// reading direction. Swipe down or Play/Pause opens the reader menu; swipe
+/// or click up bookmarks the page (again removes it). Going
 /// past the first or last spread shows a chapter transition card; pressing
 /// again opens the previous or next chapter.
 struct PagedReaderView: View {
@@ -59,6 +60,7 @@ struct PagedReaderView: View {
         case .left: session.turn(.left)
         case .right: session.turn(.right)
         case .down: session.isMenuPresented = true
+        case .up: session.toggleBookmark()
         default: break
         }
     }
