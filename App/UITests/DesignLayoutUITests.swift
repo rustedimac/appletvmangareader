@@ -100,6 +100,8 @@ final class DesignLayoutUITests: XCTestCase {
         let rows = ["readerDefaults.mode", "readerDefaults.direction", "readerDefaults.background"]
         XCTAssertTrue(app.element(rows[0]).waitForExistence(timeout: 5))
 
+        // Chevron ends on rows without focus; a focused row grows (about 3 %
+        // on older tvOS), which moves its chevron with the platter.
         var chevronEnds: [CGFloat] = []
         for state in ["mode-focused", "direction-focused"] {
             focus(app.element(state == "mode-focused" ? rows[0] : rows[1]))
@@ -110,6 +112,8 @@ final class DesignLayoutUITests: XCTestCase {
             let screen = app.windows.firstMatch.frame
             let scale = CGFloat(pixels.width) / screen.width
 
+            let focusedRow = state == "mode-focused" ? rows[0] : rows[1]
+            var focusedEnd: (end: CGFloat, width: CGFloat)?
             for id in rows {
                 let frame = app.element(id).frame
                 guard let row = trailingInk(pixels, frame: frame, scale: scale) else {
@@ -119,22 +123,32 @@ final class DesignLayoutUITests: XCTestCase {
                 let gap = (row.last.lowerBound - row.previous.upperBound) / scale
                 XCTAssertLessThanOrEqual(gap, 30, "[\(state)] \(id): \(Int(gap)) pt between the value and the chevron")
                 XCTAssertGreaterThanOrEqual(gap, 8, "[\(state)] \(id): the value touches the chevron (\(Int(gap)) pt)")
-                chevronEnds.append(row.last.upperBound / scale)
+                if id == focusedRow {
+                    focusedEnd = (row.last.upperBound / scale, frame.width)
+                } else {
+                    chevronEnds.append(row.last.upperBound / scale)
+                }
+            }
+            // The focused row's chevron moves only as far as the focus growth
+            // takes it.
+            if let focusedEnd, let unfocused = chevronEnds.last {
+                let shift = abs(focusedEnd.end - unfocused)
+                XCTAssertLessThanOrEqual(shift, focusedEnd.width * 0.04 + 8,
+                                         "[\(state)] the focused row's chevron moves \(Int(shift)) pt")
             }
 
             if state == "direction-focused" {
                 // The toggle's On/Off lines up with the chevrons above it.
                 let toggle = app.element("readerDefaults.firstPageAlone")
                 if toggle.exists, let row = trailingInk(pixels, frame: toggle.frame, scale: scale) {
-                    let offset = abs(row.last.upperBound / scale - chevronEnds[chevronEnds.count - 2])
+                    let offset = abs(row.last.upperBound / scale - (chevronEnds.last ?? 0))
                     XCTAssertLessThanOrEqual(offset, 8, "The toggle's value ends \(Int(offset)) pt away from the chevrons")
                 }
             }
         }
-        // Same chevron position on every row, focused or not (focus grows a
-        // row by a few points).
+        // Same chevron position on every row without focus.
         if let low = chevronEnds.min(), let high = chevronEnds.max() {
-            XCTAssertLessThanOrEqual(high - low, 8, "Chevrons move between rows or with focus: \(chevronEnds.map { Int($0) })")
+            XCTAssertLessThanOrEqual(high - low, 8, "Chevrons move between rows: \(chevronEnds.map { Int($0) })")
         }
     }
 
@@ -285,16 +299,19 @@ final class DesignLayoutUITests: XCTestCase {
         guard !frame.isEmpty else { return nil }
         let midY = Int(frame.midY * scale)
         let band = (midY - Int(10 * scale))...(midY + Int(10 * scale))
-        // Each column is compared with its own pixel above the text, which
-        // is platter inside the row and background past its end.
-        let referenceY = midY - Int(18 * scale)
         let left = Int((frame.minX + frame.width * 0.45) * scale)
-        // A focused row grows a little past its reported frame.
-        let right = min(pixels.width - 1, Int((frame.maxX + 12) * scale))
-        guard left < right, referenceY >= 0, band.upperBound < pixels.height else { return nil }
+        // A focused row grows past its reported frame.
+        let right = min(pixels.width - 1, Int((frame.maxX + 60) * scale))
+        guard left < right, band.lowerBound >= 0, band.upperBound < pixels.height else { return nil }
+        // The platter is the most common shade along the row's middle. Past
+        // the platter's end the background differs from it; that run touches
+        // the scan's end and is dropped below.
+        var shades: [Int: Int] = [:]
+        for x in left...Int(frame.maxX * scale) { shades[Int(pixels.luminance(x, midY) * 50), default: 0] += 1 }
+        guard let platter = shades.max(by: { $0.value < $1.value })?.key else { return nil }
+        let reference = CGFloat(platter) / 50 + 0.01
         func ink(_ x: Int) -> Bool {
-            let reference = pixels.luminance(x, referenceY)
-            return band.contains { abs(pixels.luminance(x, $0) - reference) > 0.2 }
+            band.contains { abs(pixels.luminance(x, $0) - reference) > 0.2 }
         }
 
         var runs: [ClosedRange<CGFloat>] = []
@@ -314,7 +331,7 @@ final class DesignLayoutUITests: XCTestCase {
                 }
                 x -= 1
             }
-            // A run touching the scan's end is the platter's rounded edge.
+            // A run touching the scan's end is the background past the platter.
             if end >= right - 1 { continue }
             runs.append(CGFloat(start)...CGFloat(end))
         }
