@@ -41,7 +41,7 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode

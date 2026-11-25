@@ -6,8 +6,9 @@ header placed above a ScrollView with `.scrollClipDisabled()` has the rows
 slide underneath it. Both drew text over the rows (Settings #26, reader menu
 and Free Library #32). Rules for App/Sources:
 
-1. No `.navigationTitle(`. Put `ScreenTitle("...")` first inside the Form or
-   List (or as the first view in the ScrollView) so it scrolls with the rows.
+1. No `.navigationTitle(`. Settings screens use `.settingsPage(title, ...)`
+   (title in a side column, see docs/DESIGN_GUIDE.md); anything else puts its
+   title inside the scrolling content (`ScreenTitle` or a plain header view).
 2. `.scrollClipDisabled()` only on horizontal ScrollViews (shelves, tab bars),
    where focus growth would otherwise be clipped. A vertical scroll view must
    clip, or hold its header inside its content. To allow one anyway, end the
@@ -30,7 +31,7 @@ for path in sorted(ROOT.rglob("*.swift")):
         code = line.split("//", 1)[0]
         if ".navigationTitle(" in code:
             errors.append(f"{rel}:{i + 1}: .navigationTitle stays pinned over scrolling rows on tvOS; "
-                          "use ScreenTitle(...) as the first item of the scrolling content")
+                          "use .settingsPage(...) or put the title inside the scrolling content")
         if ".scrollClipDisabled()" in code and "pinned-header-ok:" not in line:
             axis = None
             for j in range(i, -1, -1):
