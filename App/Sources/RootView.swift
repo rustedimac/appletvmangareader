@@ -31,6 +31,11 @@ struct RootView: View {
     private var content: some View {
         if model.isPickingProfile {
             ProfilePickerView()
+        } else if model.showsWelcome || model.isBusyInWelcome {
+            // Nothing to read yet: pick Free Library collections, add a
+            // server or restore a backup (see `Welcome`).
+            WelcomeView()
+                .id(model.activeProfile.id)
         } else {
             TabView(selection: $tab) {
                 HomeView()

@@ -7,6 +7,9 @@ import MangaCore
 /// - `-uiTestingSeed profiles`: two profiles, so the picker shows at launch.
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
 /// - `-uiTestingTab settings`: start on the Settings tab.
+/// - `-welcome`: let the first-run welcome show (it never does in UI tests
+///   otherwise). Without `-freeLibrary` it starts from an empty install with
+///   the offline Free Library client ready for "Start Reading".
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 

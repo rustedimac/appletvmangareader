@@ -147,6 +147,7 @@ struct SalvagedProfileData: Decodable {
         let recent = c.lossyDictionary(SeriesSummary.self, "recentSeries")
         d.recentSeries = recent.isEmpty ? nil : recent
         d.browse = c.lossy(BrowsePreferences.self, "browse")
+        d.welcomeCompleted = c.lossy(Bool.self, "welcomeCompleted")
         data = d
     }
 }
