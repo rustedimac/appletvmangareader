@@ -29,9 +29,11 @@ targets:
         UIRequiredDeviceCapabilities: [arm64]
         UIUserInterfaceStyle: Automatic
         NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
+        # Servers are plain HTTP on home hostnames (e.g. kavita.home). Don't add
+        # NSAllowsLocalNetworking: when present, ATS ignores NSAllowsArbitraryLoads
+        # and only exempts .local names and IP addresses.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
-          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReader
