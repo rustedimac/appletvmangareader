@@ -138,13 +138,34 @@ size, caches, coalesces requests and preloads ±2 spreads nearest first;
 sizes learned while preloading feed `reportSize`, so Suwayomi chapters pair
 correctly before the reader reaches a wide page.
 
+## Failed pages
+
+A page that still fails after the automatic retries never closes the
+reader or blocks page turns. It shows a card ("Page 3 didn't load", the
+reason from `PageLoadFailure`, a Retry pill drawn as the focused control).
+The reader keeps focus, so left/right still turn pages and Select retries
+the failed pages on screen; Play/Pause still opens the menu.
+
+- Paged: `ReaderSession.pageFailures` / `retryVisibleFailedPages()`. Each
+  page view's load task is keyed by `pageRetryTokens[page]`, so a retry
+  reloads only the failed pages. Revisiting a spread retries its failed
+  pages once more on its own.
+- Webtoon: `WebtoonStripController.failedPages`. Failed pages are not
+  reloaded on every scroll; Select retries those on screen. Size
+  prefetches that fail wait 15 s before trying again.
+- A chapter's page list is fetched with `RetryPolicy.pageLists` before the
+  chapter error card (with Retry) shows.
+
 ## Reader demo for UI tests
 
 Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
 series (`Reader/Demo/ReaderDemo.swift`): three chapters, one with sizes known
 up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerDirection leftToRight`, `-readerLayout single`,
-`-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
+`-readerStartChapter 2`, `-readerStartPage 3`. `-readerPageFaults "1.2=fail3,2.0=hang1"` makes
+chosen pages (chapter 1-based, page 0-based) return HTTP 503 or hang for
+their first N requests (`DemoPageFaults`), and the demo uses a short retry
+policy (2 attempts, `-readerAttemptTimeout`, default 1.5 s). The webtoon reader and menu
 tests can reuse it.
 
 ## Webtoon reader
