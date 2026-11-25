@@ -13,6 +13,11 @@ final class AppModel {
     @ObservationIgnored let secrets: SecretStore
     @ObservationIgnored let transport: HTTPTransport
     @ObservationIgnored private var clientCache: [String: MangaServer] = [:]
+    /// Builds server clients. UI tests swap in `SampleLibraryServer` (see
+    /// `AppModel+Demo.swift`).
+    @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, HTTPTransport) -> MangaServer = {
+        MangaServerFactory.make(config: $0, credential: $1, transport: $2)
+    }
 
     init(stateStore: StateStore, secrets: SecretStore, transport: HTTPTransport = URLSessionTransport()) {
         self.stateStore = stateStore
@@ -23,7 +28,9 @@ final class AppModel {
 
     static func live() -> AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
-            return AppModel(stateStore: StateStore(backing: InMemoryKeyValueStore()), secrets: InMemorySecretStore())
+            let model = AppModel(stateStore: StateStore(backing: InMemoryKeyValueStore()), secrets: InMemorySecretStore())
+            if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
+            return model
         }
         return AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore())
     }
@@ -51,7 +58,7 @@ final class AppModel {
         let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: activeProfile.id, server: server.id)
-        let client = MangaServerFactory.make(config: server, credential: credential, transport: transport)
+        let client = makeClient(server, credential, transport)
         clientCache[key] = client
         return client
     }
