@@ -53,6 +53,26 @@ public extension SeriesDetail {
 
     var readCount: Int { chapters.filter(\.isRead).count }
 
+    /// True when any chapter is read or started.
+    var hasProgress: Bool { chapters.contains { $0.readState != .unread } }
+
+    /// The same detail with these chapters shown as unread, for updating
+    /// the screen before the server answers. Nil ids means every chapter.
+    func markingUnread(_ chapterIDs: Set<String>? = nil) -> SeriesDetail {
+        var d = self
+        for i in d.chapters.indices where chapterIDs?.contains(d.chapters[i].id) ?? true {
+            d.chapters[i].isRead = false
+            d.chapters[i].lastPageRead = 0
+        }
+        return d
+    }
+
+    /// Unread count for a poster badge: the server's count when it has one,
+    /// otherwise the number of unread chapters.
+    var posterUnreadCount: Int {
+        summary.unreadCount ?? chapters.filter { !$0.isRead }.count
+    }
+
     /// Chapters in display order. `chapters` is always reading order.
     func displayChapters(newestFirst: Bool) -> [Chapter] {
         newestFirst ? chapters.reversed() : chapters

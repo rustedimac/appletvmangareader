@@ -23,6 +23,7 @@ extension EnvironmentValues {
 /// A focusable poster that opens series detail. Lifts on focus (card
 /// button style) and shows `PosterBadges`: unread chapters or a check in
 /// the corner, a progress bar, and the series' size under the title.
+/// Long-press offers Mark Series as Unread.
 struct SeriesPoster: View {
     @Environment(AppModel.self) private var model
     @Environment(\.posterWidth) private var width
@@ -32,11 +33,17 @@ struct SeriesPoster: View {
     var onRemoveFromContinueReading: (() -> Void)? = nil
     /// Lets a grid move focus to this poster (A–Z jump).
     var focus: FocusState<SeriesRef?>.Binding? = nil
+    @State private var markError: String?
 
     var body: some View {
-        let badges = PosterBadges(series: series)
+        let badges = PosterBadges(series: badgeSeries)
         VStack(alignment: .leading, spacing: 14) {
             link(badges)
+                .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(markError ?? "")
+                }
             VStack(alignment: .leading, spacing: 2) {
                 Text(series.title)
                     .font(width < PosterMetrics.width ? .caption2 : .caption)
@@ -61,6 +68,16 @@ struct SeriesPoster: View {
         .environment(\.layoutDirection, .leftToRight)
     }
 
+    /// The series with any count changed by "Mark as Unread" since the row
+    /// loaded. Its page progress is stale then, so badges use the count.
+    private var badgeSeries: SeriesSummary {
+        guard let override = model.unreadCountOverrides[series.ref] else { return series }
+        var s = series
+        s.unreadCount = override
+        s.pagesRead = nil
+        return s
+    }
+
     @ViewBuilder
     private func link(_ badges: PosterBadges) -> some View {
         let base = NavigationLink(value: series) {
@@ -83,6 +100,18 @@ struct SeriesPoster: View {
                 }
                 .accessibilityIdentifier("poster.menu.removeFromContinueReading")
             }
+            Button {
+                Task {
+                    do {
+                        try await model.markSeriesUnread(series.ref)
+                    } catch {
+                        markError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    }
+                }
+            } label: {
+                Label("Mark Series as Unread", systemImage: "circle")
+            }
+            .accessibilityIdentifier("poster.menu.seriesUnread")
         }
         if let focus {
             base.focused(focus, equals: series.ref)
