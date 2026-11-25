@@ -88,6 +88,27 @@ final class AppModel {
     /// Drops cached server clients, e.g. after sync changed servers or logins.
     func resetClients() {
         clientCache.removeAll()
+        credentialRevision += 1
+    }
+
+    /// Bumped whenever logins change. They live in the keychain, outside
+    /// `state`, so screens can't observe them any other way.
+    private(set) var credentialRevision = 0
+
+    /// Changes whenever what the browse screens load from servers could:
+    /// the active profile, a server added, removed or edited, the
+    /// libraries/categories it imports, its progress sync setting, or a
+    /// login. Home, Library, Search, Favorites and Bookmarks reload on it
+    /// (`.task(id: model.contentKey)`), so changes in Settings show up
+    /// right away instead of after a relaunch.
+    var contentKey: String {
+        ([activeProfile.id.uuidString, String(credentialRevision)] + servers.map(contentKey(for:)))
+            .joined(separator: ",")
+    }
+
+    /// `contentKey` for one server's screens (Library).
+    func contentKey(for server: ServerConfig) -> String {
+        "\(server.id)|\(server.hashValue)|\(scopeKey(for: server))|\(syncsProgress(to: server.id))|\(credentialRevision)"
     }
 
     var activeProfile: Profile { state.activeProfile ?? Profile(name: "Me") }
@@ -95,7 +116,7 @@ final class AppModel {
 
     func switchProfile(_ id: UUID) {
         update { $0.setActiveProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     @discardableResult
@@ -115,7 +136,7 @@ final class AppModel {
         guard state.profiles.count > 1 else { return }
         for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
         update { $0.removeProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Servers
@@ -157,7 +178,7 @@ final class AppModel {
             update { $0.updateServer(server) }
         }
         secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
-        clientCache.removeAll()
+        resetClients()
     }
 
     /// Checks a server and login without saving them.
@@ -197,7 +218,7 @@ final class AppModel {
         } else {
             update { $0.removeServer(server.id) }
         }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Favorites

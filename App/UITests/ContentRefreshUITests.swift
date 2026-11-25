@@ -1,7 +1,7 @@
 import XCTest
 
-/// Home, Library and Search pick up server and library changes right away,
-/// without relaunching the app. Runs against the offline demo servers
+/// Home, Library and Search pick up server, library and poster size
+/// changes right away, without relaunching the app. Runs against the offline demo servers
 /// ("Demo Kavita" and "Demo Suwayomi", see `SampleLibraryServer`), whose
 /// libraries are "all" (every series) and "short" (every third series).
 final class ContentRefreshUITests: XCTestCase {
@@ -91,6 +91,33 @@ final class ContentRefreshUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["shelf.search.Demo Suwayomi"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts["shelf.search.Demo Kavita"].exists,
                        "Search still finds a series from the unticked library")
+    }
+
+    func testPosterSizeChangesHomeShelvesRightAway() {
+        let kavita = shelf("Demo Kavita.recentlyUpdated")
+        XCTAssertTrue(kavita.waitForExistence(timeout: 15))
+        let before = poster("89", in: kavita)
+        XCTAssertTrue(before.waitForExistence(timeout: 10))
+        let medium = before.frame.width
+
+        selectTab("Settings")
+        let link = app.element("settings.customizeHome")
+        XCTAssertTrue(link.waitForExistence(timeout: 10))
+        if focus(link, .down, maxPresses: 25) { remote.press(.select) }
+        let large = app.element("browse.density.large")
+        XCTAssertTrue(large.waitForExistence(timeout: 10))
+        if focus(large, .down, maxPresses: 25) { remote.press(.select) }
+        XCTAssertTrue(waitUntil(large, "value == 'selected'"))
+
+        selectTab("Home")
+        let after = poster("89", in: kavita)
+        XCTAssertTrue(after.waitForExistence(timeout: 15))
+        var width = after.frame.width
+        for _ in 0..<20 where width < medium + 40 {
+            usleep(500_000)
+            width = after.frame.width
+        }
+        XCTAssertGreaterThan(width, medium + 40, "Home posters kept their old size (\(width) vs \(medium))")
     }
 
     func testAddedServerShowsOnHomeWithoutRelaunch() {

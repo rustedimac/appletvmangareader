@@ -10,6 +10,8 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var sections: [HomeServerSection] = []
     @State private var loadedKey: String?
+    /// Only the newest reload may replace the rows.
+    @State private var generation = 0
     @State private var path = NavigationPath()
 
     enum Route: Hashable { case customize }
@@ -31,11 +33,9 @@ struct HomeView: View {
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
         }
-        .task(id: reloadKey) { await reload() }
-        .onAppear {
-            // Coming back from another tab (say, after reading from Library).
-            if loadedKey != nil { Task { await reload() } }
-        }
+        // Runs on every appear too, so coming back from another tab (after
+        // reading from Library, or changing servers in Settings) reloads.
+        .task(id: model.contentKey) { await reload() }
         .onChange(of: path.isEmpty) { _, isEmpty in
             // Back on Home after reading: progress and rows may have changed.
             if isEmpty { Task { await reload() } }
@@ -43,7 +43,13 @@ struct HomeView: View {
     }
 
     private var isMultiServer: Bool { model.servers.count > 1 }
-    private var isLoading: Bool { !model.servers.isEmpty && sections.isEmpty && loadedKey != reloadKey }
+    /// Rows loaded for the current servers, libraries and profile. Rows
+    /// from before a change in Settings aren't shown while the new ones
+    /// load, so Home never mixes in a removed server or unticked library.
+    private var currentSections: [HomeServerSection] {
+        loadedKey == model.contentKey ? sections : []
+    }
+    private var isLoading: Bool { !model.servers.isEmpty && loadedKey != model.contentKey }
 
     @ViewBuilder
     private var content: some View {
@@ -52,7 +58,7 @@ struct HomeView: View {
                           message: "Add a Kavita or Suwayomi server in Settings to start reading.",
                           systemImage: "server.rack")
         }
-        ForEach(sections.filter { $0.errorMessage != nil }) { section in
+        ForEach(currentSections.filter { $0.errorMessage != nil }) { section in
             if section.errorMessage == MangaError.missingCredential.errorDescription {
                 // Not a network problem: this profile hasn't signed in here yet.
                 BrowseMessage(title: "\(model.activeProfile.name) isn't signed in to \(section.server.name)",
@@ -92,7 +98,7 @@ struct HomeView: View {
             }
         case .continueReading, .recentlyUpdated, .newlyAdded:
             if let feed = kind.feed {
-                ForEach(sections) { section in
+                ForEach(currentSections) { section in
                     let series = self.series(feed, in: section)
                     if !series.isEmpty {
                         SeriesShelf(title: isMultiServer ? "\(kind.title) · \(section.server.name)" : kind.title,
@@ -123,23 +129,20 @@ struct HomeView: View {
             case .caughtUp: return !model.caughtUpSeries.isEmpty
             case .continueReading, .recentlyUpdated, .newlyAdded:
                 guard let feed = kind.feed else { return false }
-                return sections.contains { !series(feed, in: $0).isEmpty }
+                return currentSections.contains { !series(feed, in: $0).isEmpty }
             }
         }
     }
 
-    private var reloadKey: String {
-        ([model.activeProfile.id.uuidString] + model.servers.map { "\($0.id)|\($0.baseURL)|\($0.name)|\(model.scopeKey(for: $0))" })
-            .joined(separator: ",")
-    }
-
     private func reload() async {
-        let key = reloadKey
+        let key = model.contentKey
+        generation += 1
+        let mine = generation
         let sources = model.servers.map {
             HomeSource(server: model.client(for: $0), includeContinueReading: model.syncsProgress(to: $0.id))
         }
         let loaded = await HomeLoader.load(sources)
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, mine == generation else { return }
         sections = loaded
         loadedKey = key
         // A Caught Up series that shows up with unread chapters isn't anymore.

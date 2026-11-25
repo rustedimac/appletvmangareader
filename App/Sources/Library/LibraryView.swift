@@ -19,7 +19,9 @@ struct LibraryView: View {
                     ServerListView(servers: model.servers)
                 }
             }
-            .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: $0) }
+            // The pushed value is a snapshot; show the server as it is now,
+            // so an edit in Settings (address, login) applies right away.
+            .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: model.state.server($0.id) ?? $0) }
             .seriesNavigation()
         }
     }
@@ -69,6 +71,8 @@ struct ServerLibraryView: View {
     @State private var selected: MangaCategory?
     @State private var errorMessage: String?
     @State private var loaded = false
+    /// `model.contentKey(for:)` the categories were loaded for.
+    @State private var loadedKey: String?
     @State private var jump: LetterJump?
 
     var body: some View {
@@ -94,7 +98,8 @@ struct ServerLibraryView: View {
                             if let selected {
                                 let options = model.libraryOptions(server, selected)
                                 CategoryGridView(server: server, category: selected, options: options, jump: jump, proxy: proxy)
-                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)")
+                                    // A new login or selection reloads the grid from page 1.
+                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)|\(loadedKey ?? "")")
                             }
                         }
                     }
@@ -105,7 +110,15 @@ struct ServerLibraryView: View {
                 }
             }
         }
-        .task(id: "\(server.id)|\(server.baseURL)|\(model.scopeKey(for: server))") { await load() }
+        .task(id: model.contentKey(for: server)) {
+            // After a change in Settings, show loading rather than the
+            // libraries from before it.
+            if loadedKey != model.contentKey(for: server) {
+                loaded = false
+                errorMessage = nil
+            }
+            await load()
+        }
     }
 
     /// The A–Z bar only makes sense when the grid is sorted by title.
@@ -156,13 +169,18 @@ struct ServerLibraryView: View {
     }
 
     private func load() async {
+        let key = model.contentKey(for: server)
         do {
             let list = try await model.client(for: server).categories().sorted { ($0.order, $0.name) < ($1.order, $1.name) }
+            guard !Task.isCancelled else { return }
             categories = list
+            loadedKey = key
             if selected == nil || !list.contains(where: { $0.id == selected?.id }) { selected = list.first }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            loadedKey = key
         }
         loaded = true
     }
