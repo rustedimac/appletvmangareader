@@ -173,6 +173,20 @@ final class AppModel {
         state.serverSettings(profile: activeProfile.id, server: serverID).syncProgressToServer
     }
 
+    /// Writes the reader's position to this profile's saved state only. The
+    /// reader calls it on every page change so a crash or a force quit
+    /// never loses the page; `recordProgress` pushes to the server.
+    func recordLocalProgress(chapter: Chapter, page: Int, completed: Bool) {
+        let profile = activeProfile.id
+        update { $0.recordProgress(chapter.seriesRef, chapterID: chapter.id, page: page, completed: completed, profile: profile) }
+    }
+
+    /// The page to open `chapter` at when none was asked for.
+    func resumePage(for chapter: Chapter, sessionPage: Int?) -> Int {
+        ResumePosition.startPage(for: chapter, sessionPage: sessionPage,
+                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id))
+    }
+
     /// Records progress locally, and on the server if this profile syncs there.
     func recordProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async {
         let profile = activeProfile.id
