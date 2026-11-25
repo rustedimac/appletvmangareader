@@ -10,6 +10,7 @@
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). |
+| `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
 | `App/Sources/Shared` | `AppModel`, the `@Observable` app model in the SwiftUI environment, plus shared views. |
 | `App/Sources/<Tab>` | One folder per tab: Home, Library, Favorites, Search, Settings. |
@@ -70,6 +71,25 @@ page on screen. See `SpreadLayoutTests` for the exact rules.
 - Menu: `session.updateSettings(_:)` applies live and saves for the series.
 - Progress goes through `AppModel.recordProgress`, two seconds after the
   last page turn, on chapter change, and on close.
+
+## Images
+
+Every cover and page goes through `ImagePipeline.shared` (the SwiftUI
+environment's `\.imagePipeline`). Pass `targetSize` in **pixels**; a side of
+0 or infinity is unconstrained, so the webtoon reader can pass only a width.
+Images are decoded at that size, never upscaled, and capped at 16,384 px.
+
+- Memory: `NSCache`, 256 MB of decoded bitmaps, cleared on memory warnings.
+  Target sizes are rounded up to 64 px so small layout changes reuse a decode.
+- Disk: encoded bytes in `Caches/ImagePipeline`, 512 MB, oldest-first trim,
+  SHA-256 file names. Only bytes ImageIO can read are stored.
+- Cache keys drop Kavita's `apiKey`, so keys never reach disk and profiles share entries.
+- Requests for the same URL share one download, which is cancelled only when
+  every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
+  go ahead of prefetches.
+- `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
+  size, which is how readers learn Suwayomi page sizes. Without a
+  `targetSize` it only downloads and reads the header.
 
 ## Paged reader
 

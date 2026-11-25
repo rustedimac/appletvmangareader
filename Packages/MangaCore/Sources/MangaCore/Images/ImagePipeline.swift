@@ -3,6 +3,9 @@ import CoreGraphics
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Loads cover and page images for every screen. Use `ImagePipeline.shared`
 /// (the SwiftUI environment's `imagePipeline` defaults to it).
@@ -10,17 +13,42 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     public static let shared = ImagePipeline()
 
     let transport: HTTPTransport
+    let disk: DiskImageCache?
     private let memory = NSCache<NSString, CachedImage>()
+    private let coalescer = FetchCoalescer()
+    private let limiter: DownloadLimiter
     private let lock = NSLock()
     private var pixelSizes: [String: PageSize] = [:]
     private var prefetchTasks: [String: Task<Void, Never>] = [:]
+    private var memoryWarningObserver: NSObjectProtocol?
 
-    /// - Parameter memoryLimit: bytes of decoded images kept in memory.
+    /// - Parameters:
+    ///   - memoryLimit: bytes of decoded images kept in memory.
+    ///   - diskDirectory: where encoded images are cached; `nil` disables the disk cache.
+    ///   - diskLimit: bytes kept on disk before the oldest files are removed.
+    ///   - maxConcurrentDownloads: parallel downloads across all servers.
     public init(transport: HTTPTransport = URLSessionTransport(session: ImagePipeline.makeSession()),
-                memoryLimit: Int = 256 * 1024 * 1024) {
+                memoryLimit: Int = 256 * 1024 * 1024,
+                diskDirectory: URL? = ImagePipeline.defaultDiskDirectory,
+                diskLimit: Int = 512 * 1024 * 1024,
+                maxConcurrentDownloads: Int = 6) {
         self.transport = transport
+        self.disk = diskDirectory.map { DiskImageCache(directory: $0, limit: diskLimit) }
+        self.limiter = DownloadLimiter(limit: maxConcurrentDownloads)
         memory.totalCostLimit = memoryLimit
+        #if canImport(UIKit) && !os(watchOS)
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil
+        ) { [weak self] _ in self?.clearMemory() }
+        #endif
     }
+
+    deinit {
+        if let memoryWarningObserver { NotificationCenter.default.removeObserver(memoryWarningObserver) }
+    }
+
+    /// `Library/Caches/ImagePipeline`.
+    public static var defaultDiskDirectory: URL { DiskImageCache.defaultDirectory() }
 
     /// A session without URLCache (the pipeline caches itself) that allows a
     /// few parallel downloads per server.
@@ -39,7 +67,7 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         let target = Self.bucketed(targetSize)
         let key = Self.memoryKey(url, targetSize: target, scaling: scaling)
         if let hit = memory.object(forKey: key as NSString) { return hit.value }
-        let data = try await fetch(url, server: server)
+        let data = try await data(for: url, server: server, high: true)
         try Task.checkCancellation()
         let image = try ImageDecoder.decode(data, targetSize: target, scaling: scaling)
         store(image, key: key, url: url)
@@ -54,22 +82,36 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         for url in urls {
             let key = Self.cacheKey(url)
             lock.lock()
-            let running = prefetchTasks[key] != nil
-            lock.unlock()
-            if running { continue }
-            let task = Task(priority: .utility) { [weak self] in
+            defer { lock.unlock() }
+            if prefetchTasks[key] != nil { continue }
+            // Created under the lock so a fast finish can't run before the
+            // task is registered.
+            prefetchTasks[key] = Task(priority: .utility) { [weak self] in
                 guard let self else { return }
                 defer { self.finishPrefetch(key) }
-                if let size = self.cachedPixelSize(for: url), targetSize == nil {
+                if let targetSize {
+                    let target = Self.bucketed(targetSize)
+                    let memKey = Self.memoryKey(url, targetSize: target, scaling: .fit)
+                    if let hit = self.memory.object(forKey: memKey as NSString) {
+                        onPixelSize?(url, hit.value.pixelSize)
+                        return
+                    }
+                    guard let data = try? await self.data(for: url, server: server, high: false),
+                          !Task.isCancelled,
+                          let image = try? ImageDecoder.decode(data, targetSize: target, scaling: .fit) else { return }
+                    self.store(image, key: memKey, url: url)
+                    onPixelSize?(url, image.pixelSize)
+                } else {
+                    if let size = self.cachedPixelSize(for: url) {
+                        onPixelSize?(url, size)
+                        return
+                    }
+                    guard let data = try? await self.data(for: url, server: server, high: false),
+                          let size = ImageDecoder.pixelSize(of: data) else { return }
+                    self.recordSize(size, url: url)
                     onPixelSize?(url, size)
-                    return
                 }
-                guard let loaded = try? await self.load(url, server: server, targetSize: targetSize, scaling: .fit) else { return }
-                onPixelSize?(url, loaded.pixelSize)
             }
-            lock.lock()
-            prefetchTasks[key] = task
-            lock.unlock()
         }
     }
 
@@ -85,12 +127,49 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         return pixelSizes[Self.cacheKey(url)]
     }
 
-    /// Drops decoded images (e.g. on a memory warning). Sizes are kept.
+    /// Drops decoded images (done automatically on a memory warning).
+    /// Sizes and the disk cache are kept.
     public func clearMemory() {
         memory.removeAllObjects()
     }
 
+    /// Empties the memory and disk caches (Settings → "Clear image cache").
+    public func clearAll() {
+        memory.removeAllObjects()
+        disk?.removeAll()
+    }
+
+    /// Bytes in the disk cache.
+    public var diskUsage: Int { disk?.size ?? 0 }
+
     // MARK: Internals
+
+    /// Encoded bytes from disk, or one shared, rate-limited download.
+    func data(for url: URL, server: MangaServer, high: Bool) async throws -> Data {
+        let key = Self.cacheKey(url)
+        if let cached = disk?.data(for: key) { return cached }
+        if high { await limiter.promote(key) }
+        return try await coalescer.data(for: key) { [self] in
+            if let cached = disk?.data(for: key) { return cached }
+            await limiter.acquire(key: key, high: high)
+            let result: Result<Data, Error>
+            do {
+                try Task.checkCancellation()
+                result = .success(try await fetch(url, server: server))
+            } catch {
+                result = .failure(error)
+            }
+            await limiter.release()
+            let data = try result.get()
+            // Only keep bytes ImageIO can read, so a login page or error
+            // body never gets cached as an image.
+            if let size = ImageDecoder.pixelSize(of: data) {
+                disk?.store(data, for: key)
+                recordSize(size, url: url)
+            }
+            return data
+        }
+    }
 
     func fetch(_ url: URL, server: MangaServer) async throws -> Data {
         let (data, response) = try await transport.send(server.imageRequest(url))
@@ -105,8 +184,12 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     private func store(_ image: LoadedImage, key: String, url: URL) {
         let cost = image.cgImage.bytesPerRow * image.cgImage.height
         memory.setObject(CachedImage(image), forKey: key as NSString, cost: cost)
+        recordSize(image.pixelSize, url: url)
+    }
+
+    private func recordSize(_ size: PageSize, url: URL) {
         lock.lock()
-        pixelSizes[Self.cacheKey(url)] = image.pixelSize
+        pixelSizes[Self.cacheKey(url)] = size
         lock.unlock()
     }
 
