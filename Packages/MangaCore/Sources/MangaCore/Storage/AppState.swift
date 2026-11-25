@@ -48,6 +48,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// Whether opening the profile asks for its PIN. The PIN itself is in
     /// the Keychain (`PINStore`); without one this does nothing.
     public var requiresPINToOpen: Bool?
+    /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
+    /// `autoScrollLevel`.
+    public var webtoonAutoScrollLevel: Int? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],

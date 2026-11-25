@@ -7,6 +7,7 @@ struct ProfilesListView: View {
 
     var body: some View {
         List {
+            ScreenTitle("Profiles")
             Section {
                 ForEach(model.state.profiles) { profile in
                     NavigationLink {
@@ -43,6 +44,5 @@ struct ProfilesListView: View {
                 .accessibilityIdentifier("profiles.add")
             }
         }
-        .navigationTitle("Profiles")
     }
 }
