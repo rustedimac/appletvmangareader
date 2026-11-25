@@ -73,7 +73,7 @@ final class DesignLayoutUITests: XCTestCase {
 
     /// The Server Type picker sits in a row with no platter of its own, so
     /// only its track and the selected segment are drawn. With the platter,
-    /// the row's insets push the track in from the text fields' edges.
+    /// the row's insets push the track in from the form column's edges.
     func testServerTypePickerHasNoRowPlatter() {
         let app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.addServer"))
@@ -82,11 +82,14 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(kind.waitForExistence(timeout: 5))
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         audit(app, "settings-add-server-type")
-        let tolerance = 12 * app.windows.firstMatch.frame.width / 1920
-        XCTAssertEqual(kind.frame.minX, name.frame.minX, accuracy: tolerance,
-                       "Picker \(kind.frame) is inset from the text field \(name.frame): row platter is back")
-        XCTAssertEqual(kind.frame.maxX, name.frame.maxX, accuracy: tolerance,
-                       "Picker \(kind.frame) is inset from the text field \(name.frame): row platter is back")
+        // Text fields report a frame a little wider than the row (their
+        // capsule's focus outset), so compare with the form column instead.
+        let form = app.element("settingsPage.form").frame
+        let tolerance = 8 * app.windows.firstMatch.frame.width / 1920
+        XCTAssertEqual(kind.frame.minX, form.minX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the form column \(form): row platter is back")
+        XCTAssertEqual(kind.frame.maxX, form.maxX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the form column \(form): row platter is back")
     }
 
     private func checkTitleBesideForm(_ app: XCUIApplication, _ name: String, first: XCUIElement, last: XCUIElement,
@@ -195,8 +198,8 @@ final class DesignLayoutUITests: XCTestCase {
                 let b = inContent[j].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
                 // A button inside a row reports its own frame within the row's.
                 if a.contains(b) || b.contains(a) { continue }
-                // Segments inside a segmented control report frames that
-                // stick out a little past the control's own frame.
+                // Some system controls report child frames that stick out a
+                // little past their own frame.
                 if a.contains(CGPoint(x: b.midX, y: b.midY)) || b.contains(CGPoint(x: a.midX, y: a.midY)) { continue }
                 XCTAssertFalse(a.intersects(b), "[\(name)] \(inContent[i].label) overlaps \(inContent[j].label)",
                                file: file, line: line)
@@ -214,7 +217,17 @@ final class DesignLayoutUITests: XCTestCase {
     private func focusables(_ app: XCUIApplication, in screen: CGRect) -> [(label: String, frame: CGRect)] {
         guard let root = snapshot(of: app) else { return [] }
         var result: [(String, CGRect)] = []
-        for element in all(in: root, where: { Self.focusableTypes.contains($0.elementType) }) {
+        // A segmented control is one focus target; its segments report
+        // frames that overlap each other and the control, so measure only
+        // the control.
+        var elements: [XCUIElementSnapshot] = []
+        var stack = [root]
+        while let next = stack.popLast() {
+            if Self.focusableTypes.contains(next.elementType) { elements.append(next) }
+            if next.elementType == .segmentedControl { continue }
+            stack.append(contentsOf: next.children.reversed())
+        }
+        for element in elements {
             let f = element.frame
             // Only fully visible elements; ones scrolled past the edge are fine.
             guard !f.isEmpty, screen.contains(f) else { continue }
