@@ -13,6 +13,7 @@ import MangaCore
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
 /// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
 ///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
+/// - `-readerBook` opens the book reader on `DemoBookServer` instead
 enum ReaderDemo {
     static var isEnabled: Bool { ProcessInfo.processInfo.arguments.contains("-readerDemo") }
 
@@ -38,7 +39,10 @@ enum ReaderDemo {
             // never fires on a view with nothing in it.
             ZStack {
                 Color.black.ignoresSafeArea()
-                if ready {
+                if ready, ProcessInfo.processInfo.arguments.contains("-readerBook") {
+                    ReaderView(series: DemoBookServer.series, chapters: DemoBookServer.chapters,
+                               start: DemoBookServer.chapters[0], server: DemoBookServer())
+                } else if ready {
                     let chapters = DemoMangaServer.chapters
                     let defaults = UserDefaults.standard
                     let n = max(1, min(chapters.count, defaults.integer(forKey: "readerStartChapter")))

@@ -81,6 +81,15 @@ struct SettingsView: View {
                         Text("Logins are saved separately for each profile.")
                     }
                 }
+
+                Section(settingsHeader: "Sync and Backup") {
+                    NavigationLink {
+                        ICloudSyncView()
+                    } label: {
+                        Label("iCloud Sync and Backup", systemImage: "icloud")
+                    }
+                    .accessibilityIdentifier("settings.icloud")
+                }
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
