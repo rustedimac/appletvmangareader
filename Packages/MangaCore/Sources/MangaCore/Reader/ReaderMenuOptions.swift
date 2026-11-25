@@ -12,6 +12,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case zoom
     case background
     case webtoonWidth
+    case autoScroll
 
     public var id: String { rawValue }
 
@@ -27,6 +28,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .zoom: return "Click to Zoom"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
+        case .autoScroll: return "Auto-Scroll"
         }
     }
 }
@@ -46,7 +48,7 @@ public enum ReaderMenuOptions {
             items += [.fit, .cropBorders, .zoom, .background]
             return items
         case .webtoon:
-            return [.mode, .webtoonWidth, .background]
+            return [.mode, .webtoonWidth, .autoScroll, .background]
         }
     }
 

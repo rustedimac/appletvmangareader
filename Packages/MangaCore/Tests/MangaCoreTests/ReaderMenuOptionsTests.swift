@@ -17,7 +17,7 @@ final class ReaderMenuOptionsTests: XCTestCase {
 
     func testWebtoonShowsWidthAndHidesPagedRows() {
         let s = ReaderSettings(mode: .webtoon, layout: .double)
-        XCTAssertEqual(ReaderMenuOptions.items(for: s), [.mode, .webtoonWidth, .background])
+        XCTAssertEqual(ReaderMenuOptions.items(for: s), [.mode, .webtoonWidth, .autoScroll, .background])
     }
 
     func testZoomLabel() {
