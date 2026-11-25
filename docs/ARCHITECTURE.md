@@ -119,7 +119,7 @@ the image arrives.
   scrolls continuously and speeds up; left/right snaps to the previous/next
   page; select or Play/Pause opens the menu; Menu passes through to
   `ReaderView`.
-- Only views within half a screen of the viewport exist; the rest are
+- Only views within a screen above and two below the top exist; the rest are
   recycled.
 
 UI tests: `WebtoonReaderUITests`, launched with

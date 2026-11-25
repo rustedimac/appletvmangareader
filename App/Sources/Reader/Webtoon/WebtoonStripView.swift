@@ -54,9 +54,16 @@ final class WebtoonContainerView: UIView {
         if window != nil { requestFocus() }
     }
 
+    /// Moves focus to the strip, e.g. after the reader menu closes.
     func requestFocus() {
-        setNeedsFocusUpdate()
-        updateFocusIfNeeded()
+        guard window != nil, !scrollView.isFocused else { return }
+        if let system = UIFocusSystem.focusSystem(for: self) {
+            system.requestFocusUpdate(to: scrollView)
+            system.updateFocusIfNeeded()
+        } else {
+            setNeedsFocusUpdate()
+            updateFocusIfNeeded()
+        }
     }
 }
 
@@ -226,7 +233,8 @@ final class WebtoonEndView: UIView {
 
 /// Smooth remote-driven scrolling: clicks glide to a target (presses in a
 /// row add up), and holding a direction scrolls continuously, speeding up
-/// the longer it's held.
+/// the longer it's held. Motion is timed by the clock, not by frame count,
+/// so a slow frame never shortens a step.
 @MainActor
 final class WebtoonScrollDriver {
     weak var scrollView: UIScrollView?
@@ -234,22 +242,29 @@ final class WebtoonScrollDriver {
     var maxOffset: () -> CGFloat = { 0 }
     var onMove: (() -> Void)?
     private(set) var target: CGFloat?
+    private var glideFrom: CGFloat = 0
+    private var glideStart: CFTimeInterval = 0
     private var holdDirection: CGFloat = 0
     private var holdStart: CFTimeInterval = 0
     private var lastTick: CFTimeInterval = 0
     private var link: CADisplayLink?
     /// How long a press must be held before it turns into continuous scrolling.
     let holdDelay: CFTimeInterval = 0.35
+    /// How long one click's glide takes.
+    let glideDuration: CFTimeInterval = 0.25
 
     private final class Proxy: NSObject {
         weak var driver: WebtoonScrollDriver?
-        @objc func tick(_ link: CADisplayLink) { MainActor.assumeIsolated { driver?.tick(link) } }
+        @objc func tick(_ link: CADisplayLink) { MainActor.assumeIsolated { driver?.tick() } }
     }
 
     var isActive: Bool { link != nil }
 
     func glide(to y: CGFloat) {
+        guard let scrollView else { return }
         target = min(max(0, y), maxOffset())
+        glideFrom = scrollView.contentOffset.y
+        glideStart = CACurrentMediaTime()
         start()
     }
 
@@ -274,19 +289,21 @@ final class WebtoonScrollDriver {
         link = nil
     }
 
-    /// Content above moved by `delta` points; keep the glide target in step.
+    /// Content above moved by `delta` points; keep the glide in step.
     func shift(by delta: CGFloat) {
-        if let t = target { target = t + delta }
+        guard delta != 0, let t = target else { return }
+        target = t + delta
+        glideFrom += delta
     }
 
     private func start() {
+        lastTick = CACurrentMediaTime()
         guard link == nil else { return }
         let proxy = Proxy()
         proxy.driver = self
         let link = CADisplayLink(target: proxy, selector: #selector(Proxy.tick(_:)))
         link.add(to: .main, forMode: .common)
         self.link = link
-        lastTick = CACurrentMediaTime()
     }
 
     private func stopIfIdle() {
@@ -296,23 +313,23 @@ final class WebtoonScrollDriver {
         }
     }
 
-    private func tick(_ link: CADisplayLink) {
+    private func tick() {
         guard let scrollView else { stop(); return }
         let now = CACurrentMediaTime()
-        let dt = min(0.05, max(0, now - lastTick))
+        let dt = min(0.25, max(0, now - lastTick))
         lastTick = now
         let scale = max(1, scrollView.traitCollection.displayScale)
         var y = scrollView.contentOffset.y
-        let maxY = maxOffset()
         if holdDirection != 0, now - holdStart >= holdDelay {
             target = nil
             let speed = WebtoonScrolling.holdSpeed(heldFor: now - holdStart - holdDelay,
                                                    viewport: Double(scrollView.bounds.height))
             y += holdDirection * CGFloat(speed) * CGFloat(dt)
         } else if let t = target {
-            let k = 1 - exp(-CGFloat(dt) * 14)
-            y += (t - y) * k
-            if abs(t - y) < 0.5 / scale {
+            let p = min(1, max(0, (now - glideStart) / glideDuration))
+            let eased = 1 - pow(1 - p, 3)
+            y = glideFrom + (t - glideFrom) * CGFloat(eased)
+            if p >= 1 {
                 y = t
                 target = nil
             }
@@ -320,7 +337,7 @@ final class WebtoonScrollDriver {
             stopIfIdle()
             return
         }
-        y = min(max(0, y), maxY)
+        y = min(max(0, y), maxOffset())
         y = (y * scale).rounded() / scale
         if y != scrollView.contentOffset.y {
             scrollView.contentOffset.y = y

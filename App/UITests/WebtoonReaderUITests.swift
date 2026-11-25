@@ -45,7 +45,7 @@ final class WebtoonReaderUITests: XCTestCase {
         for _ in 0..<times {
             remote.press(button)
             // Let the glide settle so each click is measured on its own.
-            Thread.sleep(forTimeInterval: 0.4)
+            Thread.sleep(forTimeInterval: 0.6)
         }
     }
 

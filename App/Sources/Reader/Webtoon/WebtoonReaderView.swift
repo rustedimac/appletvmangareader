@@ -76,7 +76,8 @@ private struct WebtoonStripRepresentable: UIViewRepresentable {
         controller.sync()
         if !state.menuPresented {
             // Take focus back when the menu closes.
-            DispatchQueue.main.async { view.requestFocus() }
+            // Wait a moment so the menu's buttons are gone first.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { view.requestFocus() }
         }
     }
 

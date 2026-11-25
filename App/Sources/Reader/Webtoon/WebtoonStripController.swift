@@ -195,7 +195,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate {
         guard !layout.items.isEmpty, viewport.height > 0 else { return }
         let vp = viewportPixels
         let top = offsetPixels
-        let range = layout.itemIndices(from: top - vp.height / 2, to: top + vp.height + vp.height / 2)
+        let range = layout.itemIndices(from: top - vp.height, to: top + 2 * vp.height)
         var wantedPages = Set<WebtoonItemKind>()
         var wantedBreaks = Set<String>()
         var wantsEnd = false
