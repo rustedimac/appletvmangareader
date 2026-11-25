@@ -33,7 +33,7 @@ final class AppStateTests: XCTestCase {
         s.addServer(kavita)
         let a = s.profiles[0].id
         let b = s.addProfile(name: "B").id
-        let series = SeriesSummary(ref: SeriesRef(serverID: kavita.id, seriesID: "7"), title: "Berserk", coverURL: nil)
+        let series = SeriesSummary(ref: SeriesRef(serverID: kavita.id, seriesID: "7"), title: "Iron Vow", coverURL: nil)
         s.setFavorite(series, true, profile: a)
         XCTAssertTrue(s.isFavorite(series.ref, profile: a))
         XCTAssertFalse(s.isFavorite(series.ref, profile: b))

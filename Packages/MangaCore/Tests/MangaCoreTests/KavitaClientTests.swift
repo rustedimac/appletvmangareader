@@ -48,7 +48,7 @@ final class KavitaClientTests: XCTestCase {
         mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-page1"),
                 headers: ["Pagination": #"{"currentPage":1,"itemsPerPage":2,"totalItems":179,"totalPages":90}"#])
         let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 1, pageSize: 2)
-        XCTAssertEqual(page.items.map(\.title), ["A Ninja and an Assassin Under One Roof", "A Witch's Life in Mongol"])
+        XCTAssertEqual(page.items.map(\.title), ["Lantern Street Couriers", "Moss and Mortar"])
         XCTAssertEqual(page.items.map(\.unreadCount), [1383, 1031])
         XCTAssertEqual(page.items.first?.libraryID, "1")
         XCTAssertTrue(page.hasMore)
@@ -78,7 +78,7 @@ final class KavitaClientTests: XCTestCase {
     func testPagingFallsBackToCountWithoutHeader() async throws {
         mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-last"))
         let page = try await client.series(in: MangaCategory(id: "1", name: "Manga"), page: 2, pageSize: 2)
-        XCTAssertEqual(page.items.map(\.title), ["A-Channel"])
+        XCTAssertEqual(page.items.map(\.title), ["Quiet Harbor"])
         XCTAssertFalse(page.hasMore)
     }
 
@@ -108,7 +108,7 @@ final class KavitaClientTests: XCTestCase {
         mock.on("POST", "api/Series/v2", body: fixture("kavita-series-v2-last"),
                 headers: ["Pagination": #"{"currentPage":1,"itemsPerPage":20,"totalItems":1,"totalPages":1}"#])
         let page = try await client.series(in: try XCTUnwrap(cats.last), page: 1, pageSize: 20)
-        XCTAssertEqual(page.items.map(\.title), ["A-Channel"])
+        XCTAssertEqual(page.items.map(\.title), ["Quiet Harbor"])
         XCTAssertFalse(page.hasMore)
         let req = mock.lastRequest(containing: "api/Series/v2")
         XCTAssertFalse(req?.url?.absoluteString.contains("libraryId") ?? true)
@@ -128,7 +128,7 @@ final class KavitaClientTests: XCTestCase {
         mock.on("POST", "recently-updated-series", body: fixture("kavita-recently-updated"))
         let items = try await client.feed(.recentlyUpdated, limit: 10)
         XCTAssertEqual(items.map(\.ref.seriesID), ["157", "2", "65"])
-        XCTAssertEqual(items.first?.title, "Let's Go, Kaikigumi")
+        XCTAssertEqual(items.first?.title, "Paper Kite Club")
         XCTAssertEqual(items.first?.libraryID, "1")
         let limited = try await client.feed(.recentlyUpdated, limit: 2)
         XCTAssertEqual(limited.count, 2)
@@ -145,29 +145,29 @@ final class KavitaClientTests: XCTestCase {
     }
 
     func testSeriesDetailOrdersVolumesAndChapters() async throws {
-        mock.on("GET", "api/Series/5", body: #"{"id":5,"name":"Berserk","libraryId":1}"#)
-        mock.on("GET", "api/Series/metadata", body: #"{"summary":"Guts.","genres":[{"title":"Dark Fantasy"}],"writers":[{"name":"Kentaro Miura"}],"publicationStatus":0}"#)
+        mock.on("GET", "api/Series/5", body: #"{"id":5,"name":"Iron Vow","libraryId":1}"#)
+        mock.on("GET", "api/Series/metadata", body: #"{"summary":"A wandering swordsman.","genres":[{"title":"Fantasy"}],"writers":[{"name":"Ren Takeda"}],"publicationStatus":0}"#)
         mock.on("GET", "api/Series/volumes", body: """
         [
           {"id":30,"minNumber":100000,"name":"Specials","chapters":[{"id":300,"range":"Art Book","minNumber":100000,"sortOrder":1,"pages":40,"pagesRead":0,"isSpecial":true,"title":"Art Book","volumeId":30}]},
           {"id":20,"minNumber":-100000,"name":"-100000","chapters":[
             {"id":202,"range":"12","minNumber":12,"sortOrder":12,"pages":20,"pagesRead":5,"volumeId":20},
-            {"id":201,"range":"11","minNumber":11,"sortOrder":11,"pages":20,"pagesRead":20,"volumeId":20,"titleName":"The Black Swordsman"}
+            {"id":201,"range":"11","minNumber":11,"sortOrder":11,"pages":20,"pagesRead":20,"volumeId":20,"titleName":"The Night Rider"}
           ]},
           {"id":10,"minNumber":1,"name":"1","chapters":[{"id":100,"range":"-100000","minNumber":-100000,"sortOrder":-100000,"pages":180,"pagesRead":180,"volumeId":10}]}
         ]
         """)
         let detail = try await client.seriesDetail("5")
         XCTAssertEqual(detail.chapters.map(\.id), ["100", "201", "202", "300"])
-        XCTAssertEqual(detail.chapters.map(\.title), ["Volume 1", "Chapter 11: The Black Swordsman", "Chapter 12", "Art Book"])
+        XCTAssertEqual(detail.chapters.map(\.title), ["Volume 1", "Chapter 11: The Night Rider", "Chapter 12", "Art Book"])
         XCTAssertEqual(detail.chapters.map(\.isRead), [true, true, false, false])
         XCTAssertEqual(detail.chapters[2].lastPageRead, 5)
         XCTAssertEqual(detail.chapters[2].volumeID, "20")
         XCTAssertEqual(detail.continueChapter?.id, "202")
-        XCTAssertEqual(detail.authors, ["Kentaro Miura"])
-        XCTAssertEqual(detail.genres, ["Dark Fantasy"])
+        XCTAssertEqual(detail.authors, ["Ren Takeda"])
+        XCTAssertEqual(detail.genres, ["Fantasy"])
         XCTAssertEqual(detail.status, "Ongoing")
-        XCTAssertEqual(detail.synopsis, "Guts.")
+        XCTAssertEqual(detail.synopsis, "A wandering swordsman.")
     }
 
     func testPagesUseFileDimensions() async throws {
@@ -187,7 +187,7 @@ final class KavitaClientTests: XCTestCase {
     }
 
     func testRealVolumesSortChaptersAndKeepTitles() async throws {
-        mock.on("GET", "api/Series/29", body: #"{"id":29,"name":"A Ninja and an Assassin Under One Roof","localizedName":"","pages":1383,"pagesRead":0,"libraryId":1,"latestReadDate":"0001-01-01T00:00:00"}"#)
+        mock.on("GET", "api/Series/29", body: #"{"id":29,"name":"Lantern Street Couriers","localizedName":"","pages":1383,"pagesRead":0,"libraryId":1,"latestReadDate":"0001-01-01T00:00:00"}"#)
         mock.on("GET", "api/Series/metadata", status: 404, body: "")
         mock.on("GET", "api/Series/volumes", body: fixture("kavita-volumes"))
         let detail = try await client.seriesDetail("29")
@@ -195,7 +195,7 @@ final class KavitaClientTests: XCTestCase {
         // sends them as 50, 51, 51.5 but not always in that order).
         XCTAssertEqual(detail.chapters.map(\.id), ["2400", "2401", "2402", "2388", "2390", "2389"])
         XCTAssertEqual(detail.chapters.map(\.title),
-                       ["Vol.1 Ch.1", "Vol.1 Ch.2", "Vol.1 Ch.3", "Ch.50", "Ch.51", "Ch.51.5 - Ninkoro 4koma - KILLER ROBOT"])
+                       ["Vol.1 Ch.1", "Vol.1 Ch.2", "Vol.1 Ch.3", "Ch.50", "Ch.51", "Ch.51.5 - Omake"])
         XCTAssertEqual(detail.chapters.map(\.volumeID), ["109", "109", "109", "108", "108", "108"])
         XCTAssertEqual(detail.chapters[0].isRead, true)
         XCTAssertEqual(detail.chapters[1].lastPageRead, 4)

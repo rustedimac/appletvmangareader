@@ -10,8 +10,8 @@ final class HTTPClientTests: XCTestCase {
 
     func testQueryValuesAreEscaped() throws {
         let c = HTTPClient(baseURL: URL(string: "http://h")!, transport: MockTransport())
-        let url = try c.url("api/Search/search", query: ["queryString": "one piece&co+1"])
-        XCTAssertEqual(url.absoluteString, "http://h/api/Search/search?queryString=one%20piece%26co%2B1")
+        let url = try c.url("api/Search/search", query: ["queryString": "blue sky&co+1"])
+        XCTAssertEqual(url.absoluteString, "http://h/api/Search/search?queryString=blue%20sky%26co%2B1")
     }
 
     func testStatusMapping() async {
