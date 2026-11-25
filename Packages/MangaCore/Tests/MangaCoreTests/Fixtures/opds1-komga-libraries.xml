@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>allLibraries</id>
+  <title>All libraries</title>
+  <updated>2026-11-25T08:59:20.632151132Z</updated>
+  <author>
+    <name>Komga</name>
+    <uri>https://github.com/gotson/komga</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="http://komga.local:25600/opds/v1.2/libraries"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="http://komga.local:25600/opds/v1.2/catalog"/>
+  <entry>
+    <title>Manga</title>
+    <updated>2026-11-25T08:56:54Z</updated>
+    <id>0SB719FAHCE3H</id>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="http://komga.local:25600/opds/v1.2/libraries/0SB719FAHCE3H"/>
+  </entry>
+  <entry>
+    <title>Comics</title>
+    <updated>2026-11-25T08:56:55Z</updated>
+    <id>0SB719FX9C0FF</id>
+    <content/>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="http://komga.local:25600/opds/v1.2/libraries/0SB719FX9C0FF"/>
+  </entry>
+</feed>

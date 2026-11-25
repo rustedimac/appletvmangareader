@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>root</id>
+  <title>Stump OPDS catalog</title>
+  <updated>2026-11-25T09:17:08.412310655+00:00</updated>
+  <author>
+    <name>Stump</name>
+    <uri>https://github.com/stumpapp/stump</uri>
+  </author>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="self" href="/opds/v1.2/catalog"/>
+  <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="start" href="/opds/v1.2/catalog"/>
+  <link type="application/opensearchdescription+xml" rel="search" href="/opds/v1.2/search"/>
+  <entry>
+    <title>Keep reading</title>
+    <id>keepReading</id>
+    <updated>2026-11-25T09:17:08.412290284+00:00</updated>
+    <content type="html">Continue reading your in progress books</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/keep-reading"/>
+  </entry>
+  <entry>
+    <title>All series</title>
+    <id>allSeries</id>
+    <updated>2026-11-25T09:17:08.412298986+00:00</updated>
+    <content type="html">Browse by series</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/series"/>
+  </entry>
+  <entry>
+    <title>Latest series</title>
+    <id>latestSeries</id>
+    <updated>2026-11-25T09:17:08.412301756+00:00</updated>
+    <content type="html">Browse latest series</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/series/latest"/>
+  </entry>
+  <entry>
+    <title>All libraries</title>
+    <id>allLibraries</id>
+    <updated>2026-11-25T09:17:08.412303634+00:00</updated>
+    <content type="html">Browse by library</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/libraries"/>
+  </entry>
+  <entry>
+    <title>All books</title>
+    <id>allBooks</id>
+    <updated>2026-11-25T09:17:08.412305829+00:00</updated>
+    <content type="html">Browse all books</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/books"/>
+  </entry>
+  <entry>
+    <title>Latest books</title>
+    <id>latestBooks</id>
+    <updated>2026-11-25T09:17:08.412307306+00:00</updated>
+    <content type="html">Browse latest books</content>
+    <link type="application/atom+xml;profile=opds-catalog;kind=navigation" rel="subsection" href="/opds/v1.2/books/latest"/>
+  </entry>
+</feed>

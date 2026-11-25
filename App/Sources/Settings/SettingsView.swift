@@ -86,7 +86,7 @@ private struct ServerRow: View {
         if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
         if let pickedCount {
-            let noun = pickedCount == 1 ? (server.kind == .kavita ? "library" : "category")
+            let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()
             parts.append("\(pickedCount) \(noun) picked")
         }
@@ -110,8 +110,8 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind == .kavita && !hasLogin {
-                Text("No API key").font(.caption).foregroundStyle(.orange)
+            if server.kind.requiresLogin && !hasLogin {
+                Text(server.kind == .kavita ? "No API key" : "No login").font(.caption).foregroundStyle(.orange)
             } else if !syncs && server.kind != .freeLibrary {
                 Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
             }

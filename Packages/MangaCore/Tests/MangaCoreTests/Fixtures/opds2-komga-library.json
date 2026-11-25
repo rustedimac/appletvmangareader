@@ -1,0 +1,413 @@
+{
+    "metadata": {
+        "title": "Manga - Recommended",
+        "modified": "2026-11-25T08:56:54Z"
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H"
+        },
+        {
+            "title": "Home",
+            "rel": "start",
+            "href": "http://komga.local:25600/opds/v2/catalog",
+            "type": "application/opds+json"
+        },
+        {
+            "title": "Search",
+            "rel": "search",
+            "href": "http://komga.local:25600/opds/v2/search{?query}",
+            "type": "application/opds+json",
+            "templated": true
+        }
+    ],
+    "navigation": [
+        {
+            "title": "Recommended",
+            "rel": "subsection",
+            "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H",
+            "type": "application/opds+json"
+        },
+        {
+            "title": "Browse",
+            "rel": "subsection",
+            "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H/browse",
+            "type": "application/opds+json"
+        }
+    ],
+    "groups": [
+        {
+            "metadata": {
+                "title": "Keep Reading",
+                "itemsPerPage": 5,
+                "currentPage": 1,
+                "numberOfItems": 1
+            },
+            "links": [
+                {
+                    "title": "Keep Reading",
+                    "rel": "self",
+                    "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H/keep-reading",
+                    "type": "application/opds+json"
+                }
+            ],
+            "publications": [
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "The First Delivery",
+                        "modified": "2026-11-25T08:56:56.844Z",
+                        "penciler": [
+                            "Ren Sample"
+                        ],
+                        "contributor": [
+                            "Aiko Example"
+                        ],
+                        "numberOfPages": 6,
+                        "belongsTo": {
+                            "series": [
+                                {
+                                    "name": "Lantern Courier",
+                                    "position": 1.0,
+                                    "links": [
+                                        {
+                                            "href": "http://komga.local:25600/opds/v2/series/0SB719FFDC3VJ",
+                                            "type": "application/opds+json"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/manifest",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://www.cantook.com/api/progression",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/progression",
+                            "type": "application/vnd.readium.progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "readingOrder": [],
+                    "resources": [],
+                    "toc": [],
+                    "landmarks": [],
+                    "pageList": []
+                }
+            ]
+        },
+        {
+            "metadata": {
+                "title": "Latest Books",
+                "itemsPerPage": 5,
+                "currentPage": 1,
+                "numberOfItems": 3
+            },
+            "links": [
+                {
+                    "title": "Latest Books",
+                    "rel": "self",
+                    "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H/books/latest",
+                    "type": "application/opds+json"
+                }
+            ],
+            "publications": [
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Paper Moon Post v01",
+                        "modified": "2026-11-25T08:56:56.836Z",
+                        "numberOfPages": 4,
+                        "belongsTo": {
+                            "series": [
+                                {
+                                    "name": "Paper Moon Post",
+                                    "position": 1.0,
+                                    "links": [
+                                        {
+                                            "href": "http://komga.local:25600/opds/v2/series/0SB719FEXC6JV",
+                                            "type": "application/opds+json"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FF1CBBE/manifest",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FF1CBBE/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://www.cantook.com/api/progression",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FF1CBBE/progression",
+                            "type": "application/vnd.readium.progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FF1CBBE/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "readingOrder": [],
+                    "resources": [],
+                    "toc": [],
+                    "landmarks": [],
+                    "pageList": []
+                },
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "The First Delivery",
+                        "modified": "2026-11-25T08:56:56.844Z",
+                        "penciler": [
+                            "Ren Sample"
+                        ],
+                        "contributor": [
+                            "Aiko Example"
+                        ],
+                        "numberOfPages": 6,
+                        "belongsTo": {
+                            "series": [
+                                {
+                                    "name": "Lantern Courier",
+                                    "position": 1.0,
+                                    "links": [
+                                        {
+                                            "href": "http://komga.local:25600/opds/v2/series/0SB719FFDC3VJ",
+                                            "type": "application/opds+json"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/manifest",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://www.cantook.com/api/progression",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/progression",
+                            "type": "application/vnd.readium.progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "readingOrder": [],
+                    "resources": [],
+                    "toc": [],
+                    "landmarks": [],
+                    "pageList": []
+                },
+                {
+                    "context": "https://readium.org/webpub-manifest/context.jsonld",
+                    "metadata": {
+                        "title": "Lantern Courier v02",
+                        "modified": "2026-11-25T08:56:56.851Z",
+                        "numberOfPages": 5,
+                        "belongsTo": {
+                            "series": [
+                                {
+                                    "name": "Lantern Courier",
+                                    "position": 2.0,
+                                    "links": [
+                                        {
+                                            "href": "http://komga.local:25600/opds/v2/series/0SB719FFDC3VJ",
+                                            "type": "application/opds+json"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VM/manifest",
+                            "type": "application/divina+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://opds-spec.org/acquisition",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VM/file",
+                            "type": "application/vnd.comicbook+zip",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        },
+                        {
+                            "rel": "http://www.cantook.com/api/progression",
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VM/progression",
+                            "type": "application/vnd.readium.progression+json",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "images": [
+                        {
+                            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VM/thumbnail",
+                            "type": "image/jpeg",
+                            "properties": {
+                                "authenticate": {
+                                    "href": "http://komga.local:25600/opds/v2/auth",
+                                    "type": "application/opds-authentication+json"
+                                }
+                            }
+                        }
+                    ],
+                    "readingOrder": [],
+                    "resources": [],
+                    "toc": [],
+                    "landmarks": [],
+                    "pageList": []
+                }
+            ]
+        },
+        {
+            "metadata": {
+                "title": "Latest Series",
+                "itemsPerPage": 5,
+                "currentPage": 1,
+                "numberOfItems": 2
+            },
+            "links": [
+                {
+                    "title": "Latest Series",
+                    "rel": "self",
+                    "href": "http://komga.local:25600/opds/v2/libraries/0SB719FAHCE3H/series/latest",
+                    "type": "application/opds+json"
+                }
+            ],
+            "navigation": [
+                {
+                    "title": "Paper Moon Post",
+                    "href": "http://komga.local:25600/opds/v2/series/0SB719FEXC6JV",
+                    "type": "application/opds+json"
+                },
+                {
+                    "title": "Lantern Courier",
+                    "href": "http://komga.local:25600/opds/v2/series/0SB719FFDC3VJ",
+                    "type": "application/opds+json"
+                }
+            ]
+        }
+    ]
+}

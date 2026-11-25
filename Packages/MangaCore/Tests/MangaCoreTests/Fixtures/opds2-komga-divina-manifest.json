@@ -1,0 +1,119 @@
+{
+    "context": "https://readium.org/webpub-manifest/context.jsonld",
+    "metadata": {
+        "title": "The First Delivery",
+        "conformsTo": "https://readium.org/webpub-manifest/profiles/divina",
+        "modified": "2026-11-25T08:56:56.844Z",
+        "penciler": [
+            "Ren Sample"
+        ],
+        "contributor": [
+            "Aiko Example"
+        ],
+        "readingProgression": "rtl",
+        "numberOfPages": 6,
+        "belongsTo": {
+            "series": [
+                {
+                    "name": "Lantern Courier",
+                    "position": 1.0,
+                    "links": [
+                        {
+                            "href": "http://komga.local:25600/opds/v2/series/0SB719FFDC3VJ",
+                            "type": "application/opds+json"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/manifest",
+            "type": "application/divina+json",
+            "properties": {
+                "authenticate": {
+                    "href": "http://komga.local:25600/opds/v2/auth",
+                    "type": "application/opds-authentication+json"
+                }
+            }
+        },
+        {
+            "rel": "http://opds-spec.org/acquisition",
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/file",
+            "type": "application/vnd.comicbook+zip",
+            "properties": {
+                "authenticate": {
+                    "href": "http://komga.local:25600/opds/v2/auth",
+                    "type": "application/opds-authentication+json"
+                }
+            }
+        },
+        {
+            "rel": "http://www.cantook.com/api/progression",
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/progression",
+            "type": "application/vnd.readium.progression+json",
+            "properties": {
+                "authenticate": {
+                    "href": "http://komga.local:25600/opds/v2/auth",
+                    "type": "application/opds-authentication+json"
+                }
+            }
+        }
+    ],
+    "images": [],
+    "readingOrder": [
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/1?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 800,
+            "height": 1200
+        },
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/2?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 800,
+            "height": 1200
+        },
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/3?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 800,
+            "height": 1200
+        },
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/4?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 1600,
+            "height": 1200
+        },
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/5?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 800,
+            "height": 1200
+        },
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/pages/6?contentNegotiation=false",
+            "type": "image/jpeg",
+            "width": 800,
+            "height": 1200
+        }
+    ],
+    "resources": [
+        {
+            "href": "http://komga.local:25600/opds/v2/books/0SB719FFDC3VK/thumbnail",
+            "type": "image/jpeg",
+            "properties": {
+                "authenticate": {
+                    "href": "http://komga.local:25600/opds/v2/auth",
+                    "type": "application/opds-authentication+json"
+                }
+            }
+        }
+    ],
+    "toc": [],
+    "landmarks": [],
+    "pageList": []
+}
