@@ -164,10 +164,11 @@ public enum SyncMapper {
         domain(.progress, order: 4, SyncedProgress.self, natural: { $0.positionAt },
                values: { perProfile($0) { d in
                    d.progress.mapValues { p in
-                       SyncedProgress(chapterID: p.chapterID, page: p.page, positionAt: p.updatedAt,
-                                      marks: Dictionary(uniqueKeysWithValues: p.readChapterIDs.map {
-                                          ($0, ReadMark(read: true, at: p.updatedAt))
-                                      }))
+                       var marks: [String: ReadMark] = [:]
+                       for c in p.unreadChapterIDs { marks[c] = ReadMark(read: false, at: p.updatedAt) }
+                       for c in p.readChapterIDs { marks[c] = ReadMark(read: true, at: p.updatedAt) }
+                       return SyncedProgress(chapterID: p.chapterID, page: p.page, positionAt: p.updatedAt, marks: marks,
+                                             ignoresServerProgress: p.ignoresServerProgress ? true : nil)
                    }
                } },
                apply: { state, id, value, _ in
@@ -181,6 +182,10 @@ public enum SyncMapper {
                        p.page = value.page
                        p.updatedAt = value.positionAt
                        p.readChapterIDs = value.readChapterIDs
+                       // Every unread mark means "marked unread somewhere";
+                       // keep it so the server's read state doesn't win.
+                       p.unreadChapterIDs = value.unreadChapterIDs
+                       p.ignoresServerProgress = value.ignoresServerProgress ?? false
                        d.progress[key] = p
                    }
                }),

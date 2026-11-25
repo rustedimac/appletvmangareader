@@ -47,11 +47,11 @@ public enum SyncMerge {
         guard let previous else { return local }
         var out = local
         var marks: [String: ReadMark] = [:]
-        let read = local.readChapterIDs
-        for chapter in read {
-            if let old = previous.marks[chapter], old.read { marks[chapter] = old } else { marks[chapter] = ReadMark(read: true, at: now) }
+        for (chapter, mark) in local.marks {
+            if let old = previous.marks[chapter], old.read == mark.read { marks[chapter] = old }
+            else { marks[chapter] = ReadMark(read: mark.read, at: now) }
         }
-        for (chapter, old) in previous.marks where !read.contains(chapter) {
+        for (chapter, old) in previous.marks where local.marks[chapter] == nil {
             marks[chapter] = old.read ? ReadMark(read: false, at: now) : old
         }
         out.marks = marks

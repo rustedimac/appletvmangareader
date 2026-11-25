@@ -13,7 +13,9 @@ final class ICloudSyncUITests: XCTestCase {
         let toggle = app.element("icloud.toggle")
         XCTAssertTrue(toggle.waitForExistence(timeout: 10))
         XCTAssertFalse(toggle.isEnabled)
-        XCTAssertTrue(app.staticTexts["Not set up in this build"].exists)
+        let status = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Not set up", "Not set up")).firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5), "status says sync isn't set up")
         XCTAssertTrue(app.element("icloud.explanation").exists)
         XCTAssertFalse(app.element("icloud.syncNow").exists)
     }

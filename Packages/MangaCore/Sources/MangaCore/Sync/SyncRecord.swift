@@ -82,13 +82,19 @@ public struct SyncedProgress: Codable, Hashable, Sendable {
     public var page: Int
     public var positionAt: Date
     public var marks: [String: ReadMark]
+    /// The whole series was marked unread here: only local progress counts.
+    /// Travels with the position. Nil (absent) means false.
+    public var ignoresServerProgress: Bool?
 
-    public init(chapterID: String, page: Int, positionAt: Date, marks: [String: ReadMark] = [:]) {
+    public init(chapterID: String, page: Int, positionAt: Date, marks: [String: ReadMark] = [:],
+                ignoresServerProgress: Bool? = nil) {
         self.chapterID = chapterID
         self.page = page
         self.positionAt = positionAt
         self.marks = marks
+        self.ignoresServerProgress = ignoresServerProgress
     }
 
     public var readChapterIDs: Set<String> { Set(marks.filter { $0.value.read }.keys) }
+    public var unreadChapterIDs: Set<String> { Set(marks.filter { !$0.value.read }.keys) }
 }

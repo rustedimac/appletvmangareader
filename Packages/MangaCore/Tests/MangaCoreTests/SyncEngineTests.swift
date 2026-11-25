@@ -111,6 +111,25 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(a.state.profileData[p.uuidString]?.progress[key]?.readChapterIDs, [])
     }
 
+    func testMarkUnreadAndSeriesUnreadSync() async throws {
+        let (a, b) = try await pair()
+        let p = a.profile
+        let ref = SeriesRef(serverID: a.state.servers[0].id, seriesID: "1")
+        a.advance()
+        a.change { $0.markUnread(ref, chapterIDs: ["c1"], profile: p, now: a.now) }
+        try await a.sync()
+        try await b.sync()
+        XCTAssertEqual(b.state.progress(ref, profile: p)?.readChapterIDs, [])
+        XCTAssertEqual(b.state.progress(ref, profile: p)?.unreadChapterIDs, ["c1"])
+
+        b.advance(120)
+        b.change { $0.markSeriesUnread(ref, profile: p, now: b.now) }
+        try await b.sync()
+        try await a.sync()
+        XCTAssertEqual(a.state.progress(ref, profile: p)?.ignoresServerProgress, true)
+        XCTAssertEqual(a.state.progress(ref, profile: p)?.readChapterIDs, [])
+    }
+
     func testOfflineChangesWaitWithTheirTime() async throws {
         let (a, b) = try await pair()
         let p = a.profile
