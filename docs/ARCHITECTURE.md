@@ -283,6 +283,43 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Picture controls, split pages and the page scrubber
+
+- **Picture controls** (`PictureSettings`, inside `ReaderSettings.picture`):
+  brightness, contrast, color (normal, grayscale, night/invert), sharpen
+  and upscaling. They sit in the Settings pane of the reader menu under
+  "Picture" (rows from `ReaderMenuOptions.pictureItems(for:)`) and in
+  Settings → Default Reader Settings. Brightness, contrast and color are
+  SwiftUI view effects (`pictureAdjustments(_:)`), applied to the paged
+  spread and to the webtoon strip, so they're instant in both readers.
+  Sharpen (`CISharpenLuminance`) and Sharp (Lanczos) upscaling
+  (`CILanczosScaleTransform`, for scans smaller than the screen) re-render
+  page images in `Reader/Picture/PictureProcessor` (Core Image on Metal, off
+  the main thread, cached), so they're paged-reader only.
+- **Split wide pages** (`ReaderSettings.splitWidePages`, single-page paged
+  layout): `SpreadLayout.singles(splitting:direction:)` turns a wide page
+  into `.half(page, .right)` then `.half(page, .left)` for right-to-left
+  (the other way for left-to-right). Both halves are the same page for
+  progress and bookmarks; the indicator says "4 / 6 · Right half". The
+  image decodes at twice the screen width and is clipped to the half. A
+  re-layout keeps the half on screen (`spreadIndex(keeping:page:)`), and
+  the chapter only completes on the last page's second half.
+- **Page scrubber** (`Reader/Scrubber/PageScrubberView`, rules in
+  `PageScrubber`): Pages in the menu header opens a thumbnail strip along
+  the bottom with a progress bar, in either reader. Thumbnails run in
+  screen order, so right-to-left series put page 1 on the right; left and
+  right move a page, up/down jump 10 pages back/forward, click opens the
+  page (`ReaderSession.jump(toPage:)`), Menu closes. It's shown through the
+  menu's presentation flag (`ReaderSession.overlay == .scrubber`), so the
+  reader is disabled and takes focus back the same way as for the menu.
+- All of it is in `ReaderSettings`, so it saves per series and as the
+  profile default, and syncs through the existing `readerDefaults` and
+  `readerOverride` SyncMapper domains. `ReaderSettings` and
+  `PictureSettings` decode missing or unknown fields to defaults, so
+  settings from older or newer builds always load.
+- UI tests: `ReaderPictureScrubberUITests` (`-readerSplitWide YES` turns on
+  splitting in the demo reader).
+
 ## Library browsing and Home layout
 
 Per-profile browsing preferences live in `ProfileData.browse`

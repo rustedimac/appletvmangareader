@@ -78,8 +78,8 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(title.exists, "\(name) has no settings page title", file: file, line: line)
 
         for step in ["top", "bottom", "back-to-top"] {
-            if step == "bottom" { focus(last, maxPresses: 14) }
-            if step == "back-to-top" { focus(first, .up, maxPresses: 14) }
+            if step == "bottom" { focus(last, maxPresses: 20) }
+            if step == "back-to-top" { focus(first, .up, maxPresses: 20) }
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "\(name)-\(step)", file: file, line: line)
             let form = app.element("settingsPage.form").frame
@@ -116,6 +116,27 @@ final class DesignLayoutUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "reader-menu-chapters")
         }
+    }
+
+    func testReaderScrubber() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-readerDemo"]
+        app.launch()
+        XCTAssertTrue(app.element("reader.paged").waitForExistence(timeout: 15))
+        remote.press(.down)
+        XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
+        select(app.element("reader.menu.browsePages"), .up)
+        XCTAssertTrue(app.element("reader.scrubber").waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.8)
+        // The strip scrolls to the screen edges, so only sizes and overlaps
+        // are checked here; the label row sits inside the safe area.
+        audit(app, "reader-scrubber", checkSafeArea: false)
+        let label = app.element("reader.scrubber.label").frame
+        let screen = app.windows.firstMatch.frame
+        let scale = screen.width / 1920
+        XCTAssertGreaterThanOrEqual(label.minX, (safeSide - 1) * scale, "Scrubber label is outside the safe area")
+        XCTAssertLessThanOrEqual(app.element("reader.scrubber.progress").frame.maxX,
+                                 screen.width - (safeSide - 1) * scale, "Progress bar is outside the safe area")
     }
 
     // MARK: Checks

@@ -133,7 +133,11 @@ struct ReaderMenu: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .lineLimit(1)
-            bookmarkButton.padding(.top, 12)
+            HStack(spacing: Space.l) {
+                bookmarkButton
+                browsePagesButton
+            }
+            .padding(.top, 12)
         }
         // Full width and its own focus section, so pressing up from any tab
         // (even the right-most) reaches the bookmark button.
@@ -156,6 +160,19 @@ struct ReaderMenu: View {
         .accessibilityValue(on ? "on" : "off")
     }
 
+    /// Closes the menu and opens the page scrubber.
+    private var browsePagesButton: some View {
+        Button {
+            session.openScrubber()
+        } label: {
+            Label("Pages", systemImage: "square.grid.3x1.below.line.grid.1x2")
+                .font(.callout)
+        }
+        .disabled(session.loadState != .loaded || session.pageCount == 0)
+        .focused($focus, equals: "browsePages")
+        .accessibilityIdentifier("reader.menu.browsePages")
+    }
+
     // MARK: Settings
 
     private var settingsPane: some View {
@@ -163,6 +180,8 @@ struct ReaderMenu: View {
             ForEach(ReaderMenuOptions.items(for: settings)) { item in
                 row(item)
             }
+            Divider()
+            picturePane
             Divider()
             defaultsSection
         }
@@ -190,6 +209,15 @@ struct ReaderMenu: View {
                         selected: settings.firstPageAlone) { set(\.firstPageAlone, $0) }
             case .shiftPairing:
                 shiftButton
+            case .splitWidePages:
+                VStack(alignment: .leading, spacing: 10) {
+                    choices(item, [(true, "on", "On"), (false, "off", "Off")],
+                            selected: settings.splitWidePages) { set(\.splitWidePages, $0) }
+                    Text("Shows a scanned two-page spread one half at a time, in reading order.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             case .background:
                 choices(item, ReaderBackground.allCases.map { ($0, $0.rawValue, $0.title) },
                         selected: settings.background) { set(\.background, $0) }
@@ -334,6 +362,110 @@ struct ReaderMenu: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("reader.menu.isDefault")
             }
+        }
+    }
+
+    // MARK: Picture
+
+    private var picture: PictureSettings { settings.picture }
+
+    /// Brightness, contrast, color, sharpening and upscaling, below the
+    /// layout settings in the same pane.
+    private var picturePane: some View {
+        VStack(alignment: .leading, spacing: 36) {
+            Text("Picture")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("reader.menu.picture")
+            ForEach(ReaderMenuOptions.pictureItems(for: settings)) { item in
+                pictureRow(item)
+            }
+            Button("Reset Picture") { set(\.picture, .default) }
+                .disabled(picture.isDefault)
+                .font(.callout)
+                .focused($focus, equals: "picture.reset")
+                .accessibilityIdentifier("reader.menu.picture.reset")
+        }
+    }
+
+    @ViewBuilder
+    private func pictureRow(_ item: PictureMenuItem) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(item.title)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.secondary)
+            switch item {
+            case .brightness:
+                pictureStepper(item, value: picture.brightness, steps: PictureSettings.brightnessSteps,
+                               label: PictureSettings.brightnessLabel(picture.brightness),
+                               less: ("sun.min", "Darker"), more: ("sun.max", "Brighter")) {
+                    set(\.picture.brightness, $0)
+                }
+            case .contrast:
+                pictureStepper(item, value: picture.contrast, steps: PictureSettings.contrastSteps,
+                               label: PictureSettings.contrastLabel(picture.contrast),
+                               less: ("minus", "Less Contrast"), more: ("plus", "More Contrast")) {
+                    set(\.picture.contrast, $0)
+                }
+            case .color:
+                pictureChoices(item, PictureColorMode.allCases.map { ($0, $0.rawValue, $0.title) },
+                               selected: picture.color) { set(\.picture.color, $0) }
+            case .sharpen:
+                pictureChoices(item, PictureSharpen.allCases.map { ($0, $0.rawValue, $0.title) },
+                               selected: picture.sharpen) { set(\.picture.sharpen, $0) }
+            case .upscaling:
+                VStack(alignment: .leading, spacing: 10) {
+                    pictureChoices(item, PictureUpscaling.allCases.map { ($0, $0.rawValue, $0.title) },
+                                   selected: picture.upscaling) { set(\.picture.upscaling, $0) }
+                    Text("Sharp (Lanczos) enlarges low-resolution scans to fill a 4K screen with crisper line art.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func pictureChoices<V: Hashable>(_ item: PictureMenuItem, _ options: [(V, String, String)],
+                                             selected: V, select: @escaping (V) -> Void) -> some View {
+        HStack(spacing: 20) {
+            ForEach(options, id: \.1) { option in
+                let (value, key, title) = option
+                OptionButton(title: title, isSelected: value == selected) { select(value) }
+                    .focused($focus, equals: "picture.\(item.rawValue).\(key)")
+                    .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).\(key)")
+            }
+        }
+    }
+
+    private func pictureStepper(_ item: PictureMenuItem, value: Double, steps: [Double], label: String,
+                                less: (String, String), more: (String, String),
+                                set: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: 28) {
+            Button {
+                set(PictureSettings.stepped(value, in: steps, by: -1))
+            } label: {
+                Image(systemName: less.0).frame(width: 50)
+            }
+            .disabled(!PictureSettings.canStep(value, in: steps, by: -1))
+            .focused($focus, equals: "picture.\(item.rawValue).decrease")
+            .accessibilityLabel(less.1)
+            .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).decrease")
+
+            Text(label)
+                .font(.callout.monospacedDigit())
+                .frame(minWidth: 110)
+                .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).value")
+
+            Button {
+                set(PictureSettings.stepped(value, in: steps, by: 1))
+            } label: {
+                Image(systemName: more.0).frame(width: 50)
+            }
+            .disabled(!PictureSettings.canStep(value, in: steps, by: 1))
+            .focused($focus, equals: "picture.\(item.rawValue).increase")
+            .accessibilityLabel(more.1)
+            .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).increase")
         }
     }
 
