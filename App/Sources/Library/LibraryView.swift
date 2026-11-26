@@ -97,18 +97,12 @@ struct ServerLibraryView: View {
                         } else {
                             categoryBar
                             if let selected {
-<<<<<<< HEAD
-                                let options = model.libraryOptions(server, selected)
-                                CategoryGridView(server: server, category: selected, options: options, jump: jump, proxy: proxy)
-                                    // A new login or selection reloads the grid from page 1.
-                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)|\(loadedKey ?? "")")
-=======
                                 let options = model.resolvedLibraryOptions(server, selected)
                                 let filter = options.activeFilter.limited(to: model.client(for: server).libraryFilterSupport)
                                 CategoryGridView(server: server, category: selected, options: options, filter: filter,
                                                  jump: jump, proxy: proxy)
-                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)|\(filter.key)")
->>>>>>> origin/main
+                                    // A new login or selection reloads the grid from page 1.
+                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)|\(filter.key)|\(loadedKey ?? "")")
                             }
                         }
                     }
