@@ -82,7 +82,10 @@ struct KavitaPersonDTO: Decodable {
     var name: String
 }
 
+/// `GenreTagDto`. Series metadata and `api/Metadata/genres` both send
+/// `id`; older fixtures only `title`.
 struct KavitaGenreDTO: Decodable {
+    var id: Int?
     var title: String
 }
 
@@ -143,7 +146,7 @@ struct KavitaMarkSeriesDTO: Encodable {
     var seriesId: Int
 }
 
-/// `MarkVolumesReadDto`, for `api/Reader/mark-multiple-unread`.
+/// `MarkVolumesReadDto`, for `api/Reader/mark-multiple-read` and `-unread`.
 struct KavitaMarkMultipleDTO: Encodable {
     var seriesId: Int
     var volumeIds: [Int]
@@ -169,12 +172,19 @@ struct KavitaFilterV2: Encodable {
     var sortOptions: SortOptions? = nil
     var limitTo: Int = 0
 
+    /// `FilterField`.
     enum Field {
+        static let publicationStatus = 2
+        static let genres = 18
         static let libraries = 19
+        static let readProgress = 20
     }
 
+    /// `FilterComparison`.
     enum Comparison {
         static let equal = 0
+        static let greaterThan = 1
+        static let lessThan = 3
         static let contains = 5
     }
 

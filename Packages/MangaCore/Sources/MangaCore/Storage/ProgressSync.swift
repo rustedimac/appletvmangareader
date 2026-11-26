@@ -128,3 +128,35 @@ public extension SeriesSummary {
         return s
     }
 }
+
+/// How long to wait before retrying queued progress pushes after
+/// consecutive failures: 5 s, 10 s, 20 s, ... up to 5 minutes, with up to
+/// 20% random jitter so several Apple TVs don't retry in lockstep.
+public struct RetryBackoff: Sendable, Equatable {
+    public var base: Double
+    public var maximum: Double
+    public var jitter: Double
+
+    public init(base: Double = 5, maximum: Double = 300, jitter: Double = 0.2) {
+        self.base = base
+        self.maximum = maximum
+        self.jitter = jitter
+    }
+
+    /// Seconds to wait after `failures` failed attempts in a row (1 or more).
+    /// `random` is a value in 0...1 (pass a fixed one in tests).
+    public func delay(afterFailures failures: Int, random: Double = Double.random(in: 0...1)) -> Double {
+        let n = max(1, failures)
+        let exponential = base * pow(2, Double(min(n - 1, 30)))
+        let capped = min(maximum, exponential)
+        let factor = 1 - jitter * min(1, max(0, random))
+        return capped * factor
+    }
+}
+
+public extension AppState {
+    /// Whether any series on these servers has changes waiting to be pushed.
+    func hasPending(servers: [UUID], profile: UUID) -> Bool {
+        servers.contains { !seriesWithPending(server: $0, profile: profile).isEmpty }
+    }
+}

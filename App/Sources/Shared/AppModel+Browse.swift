@@ -24,6 +24,23 @@ extension AppModel {
         browsePreferences.options(for: LibraryKey(serverID: server.id, categoryID: category.id))
     }
 
+    /// The library's options with its unset sort, grid order and filter
+    /// taken from Library Defaults. Use this for the grid.
+    func resolvedLibraryOptions(_ server: ServerConfig, _ category: MangaCategory) -> LibraryOptions {
+        browsePreferences.resolvedOptions(for: LibraryKey(serverID: server.id, categoryID: category.id))
+    }
+
+    var libraryDefaults: LibraryDefaults { browsePreferences.libraryDefaults }
+
+    func updateLibraryDefaults(_ body: (inout LibraryDefaults) -> Void) {
+        updateBrowse { prefs in
+            var defaults = prefs.libraryDefaults
+            body(&defaults)
+            defaults.filter = defaults.filter.forDefault
+            prefs.libraryDefaults = defaults
+        }
+    }
+
     func setLibraryOptions(_ options: LibraryOptions, _ server: ServerConfig, _ category: MangaCategory) {
         updateBrowse { $0.setOptions(options, for: LibraryKey(serverID: server.id, categoryID: category.id)) }
     }
@@ -60,6 +77,7 @@ extension AppModel {
     func noteSeriesDetail(_ detail: SeriesDetail, summary: SeriesSummary) {
         seriesCounts.record(SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format ?? summary.format),
                             for: summary.ref)
+        noteProgress(of: detail, for: summary.ref)
         var prefs = browsePreferences
         let before = prefs.caughtUp
         prefs.noteCaughtUp(detail, summary: summary, now: Date())

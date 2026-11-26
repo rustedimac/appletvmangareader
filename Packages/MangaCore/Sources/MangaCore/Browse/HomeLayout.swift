@@ -192,8 +192,12 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public var gridDensity: GridDensity
     /// What posters show under the title.
     public var posterCaption: PosterCaption
+    /// Shows "40%" next to poster progress bars. On by default.
+    public var showsProgressPercent: Bool
     /// Keyed by `LibraryKey.storageKey`.
     public var libraries: [String: LibraryOptions]
+    /// Sort, grid order and filter for libraries without their own.
+    public var libraryDefaults: LibraryDefaults
     /// Series removed from Continue Reading, keyed by `SeriesRef.storageKey`,
     /// with when. A series comes back once it's read again after that.
     public var dismissedContinueReading: [String: Date]
@@ -205,26 +209,30 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public static let dismissedLimit = 100
 
     public init(home: HomeLayout = .default, gridDensity: GridDensity = .default,
-                posterCaption: PosterCaption = .default, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
-                caughtUp: [CaughtUpEntry] = []) {
+                posterCaption: PosterCaption = .default, showsProgressPercent: Bool = true, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
+                caughtUp: [CaughtUpEntry] = [], libraryDefaults: LibraryDefaults = .default) {
         self.home = home
+        self.libraryDefaults = libraryDefaults
         self.gridDensity = gridDensity
         self.posterCaption = posterCaption
+        self.showsProgressPercent = showsProgressPercent
         self.libraries = libraries
         self.dismissedContinueReading = dismissedContinueReading
         self.caughtUp = caughtUp
     }
 
-    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, libraries, dismissedContinueReading, caughtUp }
+    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, showsProgressPercent, libraries, dismissedContinueReading, caughtUp, libraryDefaults }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         home = (try? c.decodeIfPresent(HomeLayout.self, forKey: .home)) ?? .default
         gridDensity = (try? c.decodeIfPresent(GridDensity.self, forKey: .gridDensity)) ?? .default
         posterCaption = (try? c.decodeIfPresent(PosterCaption.self, forKey: .posterCaption)) ?? .default
+        showsProgressPercent = (try? c.decodeIfPresent(Bool.self, forKey: .showsProgressPercent)) ?? true
         libraries = (try? c.decodeIfPresent([String: LibraryOptions].self, forKey: .libraries)) ?? [:]
         dismissedContinueReading = (try? c.decodeIfPresent([String: Date].self, forKey: .dismissedContinueReading)) ?? [:]
         caughtUp = (try? c.decodeIfPresent([CaughtUpEntry].self, forKey: .caughtUp)) ?? []
+        libraryDefaults = (try? c.decodeIfPresent(LibraryDefaults.self, forKey: .libraryDefaults)) ?? .default
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -232,13 +240,21 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         if !home.isDefault { try c.encode(home, forKey: .home) }
         if gridDensity != .default { try c.encode(gridDensity, forKey: .gridDensity) }
         if posterCaption != .default { try c.encode(posterCaption, forKey: .posterCaption) }
+        if !showsProgressPercent { try c.encode(showsProgressPercent, forKey: .showsProgressPercent) }
         if !libraries.isEmpty { try c.encode(libraries, forKey: .libraries) }
         if !dismissedContinueReading.isEmpty { try c.encode(dismissedContinueReading, forKey: .dismissedContinueReading) }
         if !caughtUp.isEmpty { try c.encode(caughtUp, forKey: .caughtUp) }
+        if !libraryDefaults.isDefault { try c.encode(libraryDefaults, forKey: .libraryDefaults) }
     }
 
     public func options(for key: LibraryKey) -> LibraryOptions {
         libraries[key.storageKey] ?? LibraryOptions()
+    }
+
+    /// The library's own options with unset sort, grid order and filter
+    /// taken from `libraryDefaults`.
+    public func resolvedOptions(for key: LibraryKey) -> LibraryOptions {
+        options(for: key).resolved(with: libraryDefaults)
     }
 
     public mutating func setOptions(_ options: LibraryOptions, for key: LibraryKey) {

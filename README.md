@@ -6,7 +6,8 @@ A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com),
 Library of public-domain comics. Add as many servers as you like, read in a
 two-page spread reader or a seamless vertical (webtoon) scroll, open PDFs and
 EPUBs, keep favorites (sortable by title, date favorited, latest chapter, last
-read, unread count or server), bookmark pages, and give each person their own
+read, unread count or server), filter libraries by status (ongoing,
+completed, on hiatus, cancelled), read progress and genre, bookmark pages, and give each person their own
 profile (each Apple TV user gets one automatically).
 
 ## Building
@@ -93,5 +94,7 @@ Profiles, servers (without logins), favorites, progress and reader settings
 can sync through iCloud once the app is signed with iCloud turned on; until
 then Settings → iCloud Sync and Backup offers a Wi‑Fi backup page you open
 from a phone or computer. See [docs/ICLOUD.md](docs/ICLOUD.md).
+
+Every remote and controller button is listed in [docs/CONTROLS.md](docs/CONTROLS.md) (and in the app under Settings > Remote and Controller).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

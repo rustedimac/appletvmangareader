@@ -23,7 +23,7 @@ SETTINGS = REPO / "Packages/MangaCore/Sources/MangaCore/Reader/ReaderSettings.sw
 DEFAULTS_VIEW = REPO / "App/Sources/Settings/ReaderDefaultsView.swift"
 
 EXEMPT = {
-    "shiftPairing": "corrects one book's page pairing; a global shift would mis-pair every other book",
+    "shiftPairing": "retired: folded into firstPageAlone (PagePairing.swift) and always saved false; kept only so older saves decode",
 }
 
 

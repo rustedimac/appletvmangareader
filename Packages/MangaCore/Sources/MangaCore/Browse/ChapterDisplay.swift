@@ -73,6 +73,22 @@ public extension SeriesDetail {
         return d
     }
 
+    /// The same detail with these chapters shown as read, for an instant
+    /// update before the server confirms.
+    func markingRead(_ chapterIDs: Set<String>) -> SeriesDetail {
+        var d = self
+        for i in d.chapters.indices where chapterIDs.contains(d.chapters[i].id) {
+            d.chapters[i].isRead = true
+        }
+        return d
+    }
+
+    /// Chapters before `chapter` in reading order.
+    func chapters(before chapter: Chapter) -> [Chapter] {
+        guard let i = chapters.firstIndex(where: { $0.id == chapter.id }) else { return [] }
+        return Array(chapters[..<i])
+    }
+
     /// Unread count for a poster badge: the server's count when it has one,
     /// otherwise the number of unread chapters.
     var posterUnreadCount: Int {

@@ -77,12 +77,28 @@ public final class FreeLibraryClient: MangaServer {
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: .default, filter: .empty)
+    }
+
+    /// The catalog lists genres; progress is kept by the app, not here, so
+    /// read progress can't be filtered, and every title is a finished work
+    /// except Pepper&Carrot, so status isn't offered.
+    public var libraryFilterSupport: LibraryFilterSupport { .genres }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                       filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
+        let wanted = filter.limited(to: libraryFilterSupport)
         let all = visibleSeries(await catalog()).filter { $0.collection == category.id }
+            .filter { wanted.matches(status: nil, unread: nil, total: nil, genres: $0.genres) }
             .naturallySorted(by: \.title)
         let start = max(0, (page - 1) * pageSize)
         guard start < all.count else { return Paged(items: [], hasMore: false) }
         let end = min(all.count, start + pageSize)
         return Paged(items: all[start..<end].map(summary), hasMore: end < all.count)
+    }
+
+    public func filterGenres(in category: MangaCategory) async throws -> [String] {
+        LibraryFilter.genreList(visibleSeries(await catalog()).filter { $0.collection == category.id }.flatMap { $0.genres ?? [] })
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {

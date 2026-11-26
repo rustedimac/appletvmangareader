@@ -26,7 +26,10 @@ struct RootView: View {
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await model.refreshStaleFavorites() } }
+                if phase == .active {
+                    Task { await model.refreshStaleFavorites() }
+                    Task { await model.retryPendingProgressNow() }
+                }
             }
     }
 
@@ -35,29 +38,33 @@ struct RootView: View {
         if model.isPickingProfile {
             ProfilePickerView()
         } else {
+            // Titles only, like Apple's own tvOS apps: with a symbol next to
+            // every title the six tabs no longer fit the bar and it scrolls
+            // sideways (Settings ends up cut off). TabBarLayoutUITests checks
+            // that all six fit.
             TabView(selection: $tab) {
                 HomeView()
-                    .tabItem { Label("Home", systemImage: "house") }
+                    .tabItem { Text("Home") }
                     .tag("home")
                     .navigationResetTab("home")
                 LibraryView()
-                    .tabItem { Label("Library", systemImage: "books.vertical") }
+                    .tabItem { Text("Library") }
                     .tag("library")
                     .navigationResetTab("library")
                 FavoritesView()
-                    .tabItem { Label("Favorites", systemImage: "heart") }
+                    .tabItem { Text("Favorites") }
                     .tag("favorites")
                     .navigationResetTab("favorites")
                 BookmarksView()
-                    .tabItem { Label("Bookmarks", systemImage: "bookmark") }
+                    .tabItem { Text("Bookmarks") }
                     .tag("bookmarks")
                     .navigationResetTab("bookmarks")
                 SearchView()
-                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                    .tabItem { Text("Search") }
                     .tag("search")
                     .navigationResetTab("search")
                 SettingsView()
-                    .tabItem { Label("Settings", systemImage: "gear") }
+                    .tabItem { Text("Settings") }
                     .tag("settings")
                     .navigationResetTab("settings")
             }

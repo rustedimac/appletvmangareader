@@ -2,8 +2,11 @@ import SwiftUI
 import MangaCore
 
 /// Cover, synopsis, genres, a favorite toggle, Continue/Start, and the
-/// chapter list. Chapters open the reader full screen. Long-pressing a
-/// chapter, or the "More" button, offers Mark as Unread.
+/// chapter list. Chapters open the reader full screen. Each chapter row has
+/// a "…" button to its right (and the same items on a long press) with Mark
+/// as Read, Mark as Unread and Mark Previous as Read; the "More" button
+/// marks the whole series. The "…" button means none of this needs a long
+/// press, which is easy to miss on the remote and in the Simulator.
 struct SeriesDetailView: View {
     @Environment(AppModel.self) private var model
     let series: SeriesSummary
@@ -12,9 +15,15 @@ struct SeriesDetailView: View {
     @State private var errorMessage: String?
     @State private var newestFirst = false
     @State private var reader: ReaderRoute?
-    @State private var markError: String?
+    @State private var markError: MarkError?
     /// Which libraries/categories of its server the series is in.
     @State private var placement: SeriesPlacement?
+
+    private struct MarkError: Identifiable {
+        let id = UUID()
+        var title: String
+        var message: String
+    }
     @FocusState private var focus: Field?
 
     private enum Field: Hashable { case primary }
@@ -38,13 +47,20 @@ struct SeriesDetailView: View {
         }
         .defaultFocus($focus, .primary)
         .task { await load() }
-        .fullScreenCover(item: $reader, onDismiss: { Task { await load() } }) { route in
+        .fullScreenCover(item: $reader, onDismiss: {
+            // After the reader's last save lands, or the server answers
+            // with the old page.
+            Task {
+                await model.waitForProgressSaves(series.ref)
+                await load()
+            }
+        }) { route in
             ReaderHost(route: route)
         }
-        .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
+        .alert(markError?.title ?? "", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(markError ?? "")
+            Text(markError?.message ?? "")
         }
     }
 
@@ -149,6 +165,13 @@ struct SeriesDetailView: View {
             if let detail {
                 Menu {
                     Button {
+                        markRead(detail.chapters.filter { !$0.isRead })
+                    } label: {
+                        Label("Mark Series as Read", systemImage: "checkmark.circle")
+                    }
+                    .disabled(detail.chapters.allSatisfy(\.isRead))
+                    .accessibilityIdentifier("series.more.read")
+                    Button {
                         markUnread(nil)
                     } label: {
                         Label("Mark Series as Unread", systemImage: "circle")
@@ -174,9 +197,13 @@ struct SeriesDetailView: View {
                     .font(.headline)
                     .foregroundStyle(.secondary)
                 ForEach(detail.displayChapters(newestFirst: newestFirst)) { chapter in
+                    let earlier = detail.chapters(before: chapter)
                     ChapterRow(chapter: chapter, seriesHasProgress: detail.hasProgress,
+                               hasUnreadBefore: earlier.contains { !$0.isRead },
                                open: { open(chapter) },
+                               markRead: { markRead([chapter]) },
                                markUnread: { markUnread([chapter]) },
+                               markPreviousRead: { markRead(earlier.filter { !$0.isRead }) },
                                markSeriesUnread: { markUnread(nil) })
                 }
             }
@@ -187,6 +214,21 @@ struct SeriesDetailView: View {
     private func open(_ chapter: Chapter, page: Int? = nil) {
         guard let detail else { return }
         reader = ReaderRoute(series: summary, chapters: detail.chapters, start: chapter, startPage: page)
+    }
+
+    /// Shows the chapters as read right away, then saves and reloads.
+    private func markRead(_ chapters: [Chapter]) {
+        guard let detail, !chapters.isEmpty else { return }
+        self.detail = detail.markingRead(Set(chapters.map(\.id)))
+        Task {
+            do {
+                try await model.markRead(chapters, in: series.ref, libraryID: summary.libraryID)
+            } catch {
+                markError = MarkError(title: "Couldn't mark as read",
+                                      message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            }
+            await load()
+        }
     }
 
     /// Shows the chapters (nil: the whole series) as unread right away,
@@ -202,7 +244,8 @@ struct SeriesDetailView: View {
                     try await model.markSeriesUnread(series.ref)
                 }
             } catch {
-                markError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                markError = MarkError(title: "Couldn't mark as unread",
+                                      message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
             }
             await load()
         }
@@ -239,48 +282,80 @@ struct SeriesDetailView: View {
 private struct ChapterRow: View {
     let chapter: Chapter
     let seriesHasProgress: Bool
+    /// Some chapter before this one is unread.
+    let hasUnreadBefore: Bool
     let open: () -> Void
+    let markRead: () -> Void
     let markUnread: () -> Void
+    let markPreviousRead: () -> Void
     let markSeriesUnread: () -> Void
 
     var body: some View {
-        Button(action: open) {
-            HStack(spacing: 24) {
-                Image(systemName: icon)
-                    .foregroundStyle(chapter.isRead ? Color.secondary : Color.accentColor)
-                    .frame(width: 40)
-                Text(chapter.title)
-                    .lineLimit(1)
-                    .foregroundStyle(chapter.isRead ? Color.secondary : Color.primary)
-                Spacer()
-                if let badge = chapter.format?.badge {
-                    FormatBadge(text: badge)
-                }
-                Text(chapter.rowDetail)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                if let date = chapter.updatedAt {
-                    Text(date, format: .dateTime.year().month().day())
+        HStack(spacing: Space.m) {
+            Button(action: open) {
+                HStack(spacing: 24) {
+                    Image(systemName: icon)
+                        .foregroundStyle(chapter.isRead ? Color.secondary : Color.accentColor)
+                        .frame(width: 40)
+                    Text(chapter.title)
+                        .lineLimit(1)
+                        .foregroundStyle(chapter.isRead ? Color.secondary : Color.primary)
+                    Spacer()
+                    if let badge = chapter.format?.badge {
+                        FormatBadge(text: badge)
+                    }
+                    Text(chapter.rowDetail)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                    if let date = chapter.updatedAt {
+                        Text(date, format: .dateTime.year().month().day())
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("chapter.\(chapter.id)")
+            .accessibilityValue(chapter.readState == .read ? "read" : chapter.readState == .unread ? "unread" : "in progress")
+            .contextMenu { items(prefix: "chapter.menu") }
+
+            // The same items without a long press: move right, then click.
+            Menu {
+                items(prefix: "chapter.actions")
+            } label: {
+                Label("Chapter Options", systemImage: "ellipsis")
+                    .labelStyle(.iconOnly)
+            }
+            .accessibilityIdentifier("chapterOptions.\(chapter.id)")
+            .accessibilityLabel("Options for \(chapter.title)")
         }
-        .accessibilityIdentifier("chapter.\(chapter.id)")
-        .accessibilityValue(chapter.readState == .read ? "read" : chapter.readState == .unread ? "unread" : "in progress")
-        .contextMenu {
+    }
+
+    @ViewBuilder
+    private func items(prefix: String) -> some View {
+        if chapter.readState != .read {
+            Button(action: markRead) {
+                Label("Mark as Read", systemImage: "checkmark.circle")
+            }
+            .accessibilityIdentifier("\(prefix).read")
+        }
+        if chapter.readState != .unread {
             Button(action: markUnread) {
                 Label("Mark as Unread", systemImage: "circle")
             }
-            .disabled(chapter.readState == .unread)
-            .accessibilityIdentifier("chapter.menu.unread")
-            Button(action: markSeriesUnread) {
-                Label("Mark Series as Unread", systemImage: "circle.dashed")
-            }
-            .disabled(!seriesHasProgress)
-            .accessibilityIdentifier("chapter.menu.seriesUnread")
+            .accessibilityIdentifier("\(prefix).unread")
         }
+        if hasUnreadBefore {
+            Button(action: markPreviousRead) {
+                Label("Mark Previous as Read", systemImage: "text.badge.checkmark")
+            }
+            .accessibilityIdentifier("\(prefix).previousRead")
+        }
+        Button(action: markSeriesUnread) {
+            Label("Mark Series as Unread", systemImage: "circle.dashed")
+        }
+        .disabled(!seriesHasProgress)
+        .accessibilityIdentifier("\(prefix).seriesUnread")
     }
 
     private var icon: String {

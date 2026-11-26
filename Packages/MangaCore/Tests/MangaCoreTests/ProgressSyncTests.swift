@@ -234,3 +234,36 @@ final class ProgressSyncTests: XCTestCase {
         XCTAssertNil(d.credential?.suwayomiLogin, "detected again on save")
     }
 }
+
+final class RetryBackoffTests: XCTestCase {
+    func testDoublesUpToTheCap() {
+        let b = RetryBackoff()
+        XCTAssertEqual(b.delay(afterFailures: 1, random: 0), 5)
+        XCTAssertEqual(b.delay(afterFailures: 2, random: 0), 10)
+        XCTAssertEqual(b.delay(afterFailures: 3, random: 0), 20)
+        XCTAssertEqual(b.delay(afterFailures: 7, random: 0), 300)
+        XCTAssertEqual(b.delay(afterFailures: 1_000, random: 0), 300)
+        XCTAssertEqual(b.delay(afterFailures: 0, random: 0), 5, "treated as the first failure")
+    }
+
+    func testJitterOnlyShortensTheWait() {
+        let b = RetryBackoff()
+        XCTAssertEqual(b.delay(afterFailures: 2, random: 1), 8, accuracy: 0.0001)
+        for _ in 0..<50 {
+            let d = b.delay(afterFailures: 3)
+            XCTAssertTrue((16...20).contains(d), "\(d)")
+        }
+    }
+
+    func testHasPending() {
+        var s = AppState.initial()
+        let p = s.profiles[0].id
+        let server = UUID(), other = UUID()
+        XCTAssertFalse(s.hasPending(servers: [server], profile: p))
+        s.queuePending(PendingProgress(chapterID: "1", page: 3, completed: false, at: Date()),
+                       for: SeriesRef(serverID: server, seriesID: "9"), profile: p)
+        XCTAssertTrue(s.hasPending(servers: [server, other], profile: p))
+        XCTAssertFalse(s.hasPending(servers: [other], profile: p))
+        XCTAssertFalse(s.hasPending(servers: [server], profile: UUID()))
+    }
+}
