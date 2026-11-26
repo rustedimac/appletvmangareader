@@ -4,6 +4,9 @@ import MangaCore
 /// Add or edit a server, and the active profile's login, sync setting and
 /// which libraries/categories to import from it. The checklist appears once
 /// a connection test succeeds (and right away when editing).
+///
+/// The only screen with a Save button: Save tests the address and login and
+/// stores the credential (docs/DESIGN_GUIDE.md, "No Save buttons").
 struct ServerEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -192,6 +195,7 @@ struct ServerEditorView: View {
             connectionChanged()
         }
         .onChange(of: draft.kind) { _, _ in connectionChanged() }
+        .onChange(of: categories) { _, new in applyCategoriesLive(new) }
         .onChange(of: draft.apiKey) { _, _ in connectionChanged() }
         .onChange(of: draft.username) { _, _ in connectionChanged() }
         .onChange(of: draft.password) { _, _ in connectionChanged() }
@@ -283,8 +287,23 @@ struct ServerEditorView: View {
         if let editing {
             draft = ServerDraft(editing: editing, credential: model.credential(for: editing),
                                 syncProgress: model.syncsProgress(to: editing.id))
+            savedConnectionKey = connectionKey
             if draft.isValid { loadCategories() }
         }
+    }
+
+    /// The address and login the edited server was saved with.
+    @State private var savedConnectionKey: String?
+
+    /// For a server that's already saved, ticks apply as they change, the
+    /// same as on the Library tab's picker, so leaving without Save keeps
+    /// them. Only while the address and login are the saved ones: a checklist
+    /// loaded for a different address waits for Save, which validates it.
+    private func applyCategoriesLive(_ load: CategoryLoad) {
+        guard let editing, savedConnectionKey != nil, categoriesKey == savedConnectionKey,
+              let selection = load.selection, selection.canSave,
+              selection.storedValue != model.selectedCategories(for: editing) else { return }
+        model.setSelectedCategories(selection.storedValue, for: editing)
     }
 
     /// A different address or login may see different libraries: hide the

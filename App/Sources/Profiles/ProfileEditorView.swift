@@ -1,7 +1,9 @@
 import SwiftUI
 import MangaCore
 
-/// Add or edit a profile: name, avatar symbol and color.
+/// Add or edit a profile: name, avatar symbol and color. Editing applies
+/// each change right away (no Save button, docs/DESIGN_GUIDE.md); a new
+/// profile is created with "Add Profile".
 struct ProfileEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -64,17 +66,21 @@ struct ProfileEditorView: View {
 
                 // ActionRow is a focus section, so focus moves down into the
                 // buttons from anywhere in the rows above.
-                ActionRow {
-                    Button { save() } label: {
-                        Text(editing == nil ? "Add Profile" : "Save").actionButtonSizing()
-                    }
-                    .disabled(trimmedName.isEmpty)
-                    .accessibilityIdentifier("profileEditor.save")
-                    if canDelete {
-                        Button(role: .destructive) { confirmingDelete = true } label: {
-                            Text("Delete Profile").actionButtonSizing()
+                if editing == nil || canDelete {
+                    ActionRow {
+                        if editing == nil {
+                            Button { add() } label: {
+                                Text("Add Profile").actionButtonSizing()
+                            }
+                            .disabled(trimmedName.isEmpty)
+                            .accessibilityIdentifier("profileEditor.add")
                         }
-                        .accessibilityIdentifier("profileEditor.delete")
+                        if canDelete {
+                            Button(role: .destructive) { confirmingDelete = true } label: {
+                                Text("Delete Profile").actionButtonSizing()
+                            }
+                            .accessibilityIdentifier("profileEditor.delete")
+                        }
                     }
                 }
             }
@@ -85,6 +91,9 @@ struct ProfileEditorView: View {
             ProfileAvatarView(symbol: symbol, colorIndex: colorIndex, size: Size.heroSymbol)
         }
         .onAppear(perform: load)
+        .onChange(of: name) { _, _ in applyEdit() }
+        .onChange(of: symbol) { _, _ in applyEdit() }
+        .onChange(of: colorIndex) { _, _ in applyEdit() }
         .confirmationDialog("Delete \(editing?.name ?? "")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 if let editing { model.removeProfile(editing.id) }
@@ -114,16 +123,21 @@ struct ProfileEditorView: View {
         }
     }
 
-    private func save() {
-        guard !trimmedName.isEmpty else { return }
-        if var profile = editing {
-            profile.name = trimmedName
-            profile.symbol = symbol
-            profile.colorIndex = colorIndex
-            model.updateProfile(profile)
-        } else {
-            model.addProfile(name: trimmedName, symbol: symbol, colorIndex: colorIndex)
-        }
+    /// An existing profile takes each change as it's made. An empty name
+    /// isn't stored; the last non-empty one stays.
+    private func applyEdit() {
+        guard loaded, let editing, !trimmedName.isEmpty,
+              var profile = model.state.profiles.first(where: { $0.id == editing.id }) else { return }
+        guard profile.name != trimmedName || profile.symbol != symbol || profile.colorIndex != colorIndex else { return }
+        profile.name = trimmedName
+        profile.symbol = symbol
+        profile.colorIndex = colorIndex
+        model.updateProfile(profile)
+    }
+
+    private func add() {
+        guard editing == nil, !trimmedName.isEmpty else { return }
+        model.addProfile(name: trimmedName, symbol: symbol, colorIndex: colorIndex)
         dismiss()
     }
 }

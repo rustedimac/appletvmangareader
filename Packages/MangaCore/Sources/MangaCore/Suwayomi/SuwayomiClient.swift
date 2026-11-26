@@ -23,7 +23,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     let gridCache = SuwayomiGridCache()
 
     /// Suwayomi's built-in category for manga not put in any other.
-    static let defaultCategoryID = "0"
+    public static let defaultCategoryID = "0"
 
     public init(config: ServerConfig, username: String?, password: String?,
                 loginMode: SuwayomiLoginMode? = nil, categoryScope: Set<String>? = nil, transport: HTTPTransport) {

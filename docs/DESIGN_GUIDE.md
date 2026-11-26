@@ -205,6 +205,28 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   enough to fit without truncation at `Size.buttonMaxWidth`.
 - Icons in buttons use `Label(_, systemImage:)`, never a manual HStack.
 
+### No Save buttons
+
+Settings apply the moment they change, like Apple's Settings app: a toggle,
+tick box, picker or text field stores its value as soon as it's set, and
+Menu simply goes back.
+
+- The one exception is the server form (`ServerEditorView`): its Save (or
+  "Add Server") tests the address and login and stores the credential, so
+  it has to be an explicit step.
+- Inside the server form, things that belong to an already saved server
+  and don't depend on a changed address or login (the libraries/categories
+  checklist) still apply live; Save covers the connection.
+- Creating something new is an action, not a save: "Add Profile",
+  "Add Server". Name it after what it does.
+- When a value can't be stored as it stands (no category ticked, an empty
+  profile name), keep the last valid value and say so in the footer. Don't
+  add a Save button to gate it.
+- No "Apply", "Done" or "Save Changes" buttons either.
+- `tools/check_save_buttons.py` (CI) fails on a "Save"/"Apply"/"Done"/
+  "Save Changes" label or a `.save` accessibility id anywhere but the
+  server form.
+
 ### Text fields
 
 - Inside a settings `Form`, add `.settingsTextFieldRow()` to every field. It
@@ -292,6 +314,7 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - [ ] Only system text styles; nothing below `.caption2`.
 - [ ] Corners: system shapes, or `Radius` tokens, or `Capsule()`.
 - [ ] First focus is the obvious action; Menu goes back.
+- [ ] Changes apply as they're made; no Save button (server form excepted).
 - [ ] Scrolling to the first item shows the title again.
 - [ ] Looks right with the largest Dynamic Type size and with Bold Text on.
 
