@@ -248,7 +248,6 @@ private struct ProgressPercentLabel: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .fixedSize()
-            .accessibilityLabel("\(Int((fraction * 100).rounded())) percent read")
     }
 }
 
@@ -267,7 +266,6 @@ private struct CoverPercentBadge: View {
             .padding(.vertical, 4)
             .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: Radius.small))
             .foregroundStyle(.white)
-            .accessibilityLabel("\(Int((fraction * 100).rounded())) percent read")
     }
 }
 
