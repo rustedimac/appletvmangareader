@@ -150,7 +150,7 @@ final class MarkUnreadUITests: XCTestCase {
     // MARK: Mark as read, and the options button
 
     private func optionsButton(_ series: String, _ n: Int) -> XCUIElement {
-        app.descendants(matching: .any)["chapter.\(series)-\(n).more"]
+        app.descendants(matching: .any)["chapterOptions.\(series)-\(n)"]
     }
 
     /// Opens a chapter's "…" menu with clicks only.
@@ -182,7 +182,10 @@ final class MarkUnreadUITests: XCTestCase {
         select(unread)
         XCTAssertTrue(waitFor(chapter(id, 1), "value == 'unread'"), "chapter 1 should show as unread")
 
-        focus(chapter(id, 3), .down)
+        // Focus is still on chapter 1's "…" button: go down that column,
+        // then left onto the chapter itself.
+        focus(optionsButton(id, 3), .down)
+        XCTAssertTrue(focus(chapter(id, 3), .left), "chapter 3 not reachable. \(screen)")
         longPressSelect()
         let previous = menuItem("chapter.menu.previousRead", "Mark Previous as Read")
         XCTAssertTrue(previous.waitForExistence(timeout: 5), "long-press menu didn't offer it. \(screen)")

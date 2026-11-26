@@ -303,7 +303,7 @@ private struct ChapterRow: View {
                 Label("Chapter Options", systemImage: "ellipsis")
                     .labelStyle(.iconOnly)
             }
-            .accessibilityIdentifier("chapter.\(chapter.id).more")
+            .accessibilityIdentifier("chapterOptions.\(chapter.id)")
             .accessibilityLabel("Options for \(chapter.title)")
         }
     }
