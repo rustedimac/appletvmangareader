@@ -33,12 +33,22 @@ struct ReaderDefaultsView: View {
                     .accessibilityIdentifier("readerDefaults.layout")
                 Toggle("Show first page alone", isOn: settings.firstPageAlone)
                     .accessibilityIdentifier("readerDefaults.firstPageAlone")
+                SettingsPicker("Page fit", selection: settings.fit, options: PageFit.allCases,
+                               systemImage: "arrow.up.left.and.arrow.down.right") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.fit")
+                Toggle("Crop borders", isOn: settings.cropBorders)
+                    .accessibilityIdentifier("readerDefaults.cropBorders")
+                SettingsPicker("Click to zoom", selection: settings.zoomScale,
+                               options: Self.options(ReaderMenuOptions.zoomScales,
+                                                     current: model.defaultReaderSettings.zoomScale),
+                               systemImage: "plus.magnifyingglass") { ReaderMenuOptions.zoomLabel($0) }
+                    .accessibilityIdentifier("readerDefaults.zoomScale")
                 Toggle("Split wide pages", isOn: settings.splitWidePages)
                     .accessibilityIdentifier("readerDefaults.splitWidePages")
             } header: {
                 SettingsHeader("Paged")
             } footer: {
-                Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Split wide pages shows a scanned two-page spread one half at a time in single-page layout.")
+                Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls with up and down. Click while reading to zoom; press Menu to zoom out. Split wide pages shows a scanned two-page spread one half at a time in single-page layout.")
             }
 
             Section {

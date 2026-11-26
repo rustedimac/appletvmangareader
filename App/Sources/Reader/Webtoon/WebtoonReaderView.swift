@@ -15,11 +15,14 @@ import MangaCore
 /// - Click up or down to move `settings.webtoonScrollStep` of a screen;
 ///   hold to scroll continuously (it speeds up the longer you hold).
 /// - Click left or right to snap to the previous or next page.
-/// - Click the center to open the reader menu.
+/// - Click the center, or hold Select, to open the reader menu (holding
+///   works while auto-scroll runs too). Same as the paged reader.
 /// - Play/Pause starts or stops auto-scroll. While it runs, a click stops
 ///   it, and swiping (or clicking) up/down makes it faster/slower. The
 ///   speed is saved for the profile.
 /// - Menu closes the reader (handled by `ReaderView`).
+/// The full map, shown in Settings > Remote and Controller, is
+/// `ReaderControls` (docs/CONTROLS.md).
 ///
 /// Game controller: either stick scrolls smoothly, shoulders snap to the
 /// previous/next page, triggers jump chapters, X toggles auto-scroll.

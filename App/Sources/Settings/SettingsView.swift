@@ -49,6 +49,20 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.customizeHome")
 
+                    NavigationLink {
+                        LibraryDefaultsView()
+                    } label: {
+                        Label("Library Defaults", systemImage: "square.grid.3x3")
+                    }
+                    .accessibilityIdentifier("settings.libraryDefaults")
+
+                    NavigationLink {
+                        ControlsHelpView()
+                    } label: {
+                        Label("Remote and Controller", systemImage: "appletvremote.gen4")
+                    }
+                    .accessibilityIdentifier("settings.controls")
+
                     SettingsPicker("Theme", selection: themeBinding, options: AppTheme.allCases,
                                    systemImage: "paintpalette") { $0.title }
                         .accessibilityIdentifier("settings.theme")

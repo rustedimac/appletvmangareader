@@ -8,6 +8,7 @@ struct SearchView: View {
     @State private var results: [ServerSearchResults] = []
     @State private var searchedQuery: String?
     @State private var isSearching = false
+    @State private var searchedContentKey: String?
 
     var body: some View {
         NavigationStack {
@@ -22,7 +23,9 @@ struct SearchView: View {
             .themedScreen()
         }
         .resetsNavigationWhenLeft()
-        .task(id: query) {
+        .task(id: "\(model.contentKey)|\(query)") {
+            // Results from before a server or library change are dropped.
+            if searchedContentKey != model.contentKey { results = [] }
             // Wait for typing to pause before hitting every server.
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
@@ -67,11 +70,13 @@ struct SearchView: View {
             return
         }
         isSearching = true
+        let key = model.contentKey
         let servers = model.servers.map { model.client(for: $0) }
         let found = await CrossServerSearch.run(q, on: servers)
         guard !Task.isCancelled else { return }
         results = found
         searchedQuery = q
+        searchedContentKey = key
         isSearching = false
     }
 }

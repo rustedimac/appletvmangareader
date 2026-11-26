@@ -19,7 +19,9 @@ struct LibraryView: View {
                     ServerListView(servers: model.servers)
                 }
             }
-            .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: $0) }
+            // The pushed value is a snapshot; show the server as it is now,
+            // so an edit in Settings (address, login) applies right away.
+            .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: model.state.server($0.id) ?? $0) }
             .seriesNavigation()
             .themedScreen()
         }
@@ -34,8 +36,7 @@ private struct ServerListView: View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Servers")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                 ForEach(servers) { server in
                     NavigationLink(value: server) {
                         HStack(spacing: 24) {
@@ -71,6 +72,8 @@ struct ServerLibraryView: View {
     @State private var selected: MangaCategory?
     @State private var errorMessage: String?
     @State private var loaded = false
+    /// `model.contentKey(for:)` the categories were loaded for.
+    @State private var loadedKey: String?
     @State private var jump: LetterJump?
 
     var body: some View {
@@ -94,9 +97,12 @@ struct ServerLibraryView: View {
                         } else {
                             categoryBar
                             if let selected {
-                                let options = model.libraryOptions(server, selected)
-                                CategoryGridView(server: server, category: selected, options: options, jump: jump, proxy: proxy)
-                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)")
+                                let options = model.resolvedLibraryOptions(server, selected)
+                                let filter = options.activeFilter.limited(to: model.client(for: server).libraryFilterSupport)
+                                CategoryGridView(server: server, category: selected, options: options, filter: filter,
+                                                 jump: jump, proxy: proxy)
+                                    // A new login or selection reloads the grid from page 1.
+                                    .id("\(selected.id)|\((options.sort ?? .default).rawValue)|\(filter.key)|\(loadedKey ?? "")")
                             }
                         }
                     }
@@ -107,14 +113,22 @@ struct ServerLibraryView: View {
                 }
             }
         }
-        .task(id: "\(server.id)|\(server.baseURL)|\(model.scopeKey(for: server))") { await load() }
+        .task(id: model.contentKey(for: server)) {
+            // After a change in Settings, show loading rather than the
+            // libraries from before it.
+            if loadedKey != model.contentKey(for: server) {
+                loaded = false
+                errorMessage = nil
+            }
+            await load()
+        }
         .themedScreen()
     }
 
     /// The A–Z bar only makes sense when the grid is sorted by title.
     private var showsJumpBar: Bool {
         guard loaded, errorMessage == nil, let selected else { return false }
-        return (model.libraryOptions(server, selected).sort ?? .default).isTitleOrder
+        return (model.resolvedLibraryOptions(server, selected).sort ?? .default).isTitleOrder
     }
 
     /// Opens the picker for which libraries/categories this profile imports.
@@ -143,12 +157,16 @@ struct ServerLibraryView: View {
                     .accessibilityValue(isSelected ? "selected" : "")
                 }
                 if let selected {
+                    let filters = model.resolvedLibraryOptions(server, selected).activeFilter
+                        .limited(to: model.client(for: server).libraryFilterSupport).activeCount
                     NavigationLink {
                         LibraryOptionsView(server: server, category: selected)
                     } label: {
-                        Label("Sort & View", systemImage: "slider.horizontal.3")
+                        Label(filters == 0 ? "Sort & View" : "Sort & View (\(filters == 1 ? "1 filter" : "\(filters) filters"))",
+                              systemImage: filters == 0 ? "slider.horizontal.3" : "line.3.horizontal.decrease.circle.fill")
                     }
                     .accessibilityIdentifier("library.options")
+                    .accessibilityValue(filters == 0 ? "" : filters == 1 ? "1 filter" : "\(filters) filters")
                 }
                 chooseLink
             }
@@ -159,13 +177,18 @@ struct ServerLibraryView: View {
     }
 
     private func load() async {
+        let key = model.contentKey(for: server)
         do {
             let list = try await model.client(for: server).categories().sorted { ($0.order, $0.name) < ($1.order, $1.name) }
+            guard !Task.isCancelled else { return }
             categories = list
+            loadedKey = key
             if selected == nil || !list.contains(where: { $0.id == selected?.id }) { selected = list.first }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            loadedKey = key
         }
         loaded = true
     }
@@ -185,7 +208,10 @@ private struct CategoryGridView: View {
     @Environment(AppModel.self) private var model
     let server: ServerConfig
     let category: MangaCategory
+    /// Resolved (`AppModel.resolvedLibraryOptions`).
     let options: LibraryOptions
+    /// Limited to what the server supports.
+    let filter: LibraryFilter
     let jump: LetterJump?
     let proxy: ScrollViewProxy
 
@@ -197,7 +223,20 @@ private struct CategoryGridView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            if pager.isEmpty {
+            if pager.isEmpty, !filter.isEmpty {
+                BrowseMessage(title: "Nothing matches your filters",
+                              message: "No series in \(category.name) match the filters in Sort & View.",
+                              systemImage: "line.3.horizontal.decrease.circle")
+                Button {
+                    var own = model.libraryOptions(server, category)
+                    own.filter = .empty
+                    model.setLibraryOptions(own, server, category)
+                } label: {
+                    Label("Show Everything", systemImage: "xmark.circle")
+                }
+                .accessibilityIdentifier("library.clearFilters")
+                .centeredFocusRow()
+            } else if pager.isEmpty {
                 BrowseMessage(title: "\(category.name) is empty", systemImage: "tray")
             } else {
                 SeriesGrid(series: pager.items, rightToLeft: options.gridIsRightToLeft, focus: $focused) { index in
@@ -224,7 +263,7 @@ private struct CategoryGridView: View {
         guard let ticket = pager.beginLoad() else { return }
         do {
             let page = try await model.client(for: server).series(in: category, page: ticket.page,
-                                                                  pageSize: pager.pageSize, sort: sort)
+                                                                  pageSize: pager.pageSize, sort: sort, filter: filter)
             pager.finish(ticket, page)
         } catch {
             pager.fail(ticket, error)

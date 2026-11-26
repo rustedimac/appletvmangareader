@@ -205,10 +205,19 @@ struct ReaderMenu: View {
                 choices(item, ReadingDirection.allCases.map { ($0, $0.rawValue, $0.title) },
                         selected: settings.direction) { set(\.direction, $0) }
             case .firstPageAlone:
+                firstPageAloneControl
+            case .fit:
+                choices(item, PageFit.allCases.map { ($0, $0.rawValue, $0.title) },
+                        selected: settings.fit) { set(\.fit, $0) }
+            case .cropBorders:
                 choices(item, [(true, "on", "On"), (false, "off", "Off")],
-                        selected: settings.firstPageAlone) { set(\.firstPageAlone, $0) }
-            case .shiftPairing:
-                shiftButton
+                        selected: settings.cropBorders) { set(\.cropBorders, $0) }
+            case .zoom:
+                choices(item, ReaderMenuOptions.zoomScales.map { z in
+                            (z, ReaderMenuOptions.zoomLabel(z).replacingOccurrences(of: "×", with: "x"),
+                             ReaderMenuOptions.zoomLabel(z))
+                        },
+                        selected: settings.zoomScale) { set(\.zoomScale, $0) }
             case .splitWidePages:
                 VStack(alignment: .leading, spacing: 10) {
                     choices(item, [(true, "on", "On"), (false, "off", "Off")],
@@ -241,25 +250,21 @@ struct ReaderMenu: View {
         }
     }
 
-    /// One press flips pairing by a page, for chapters whose spreads come
-    /// out with the wrong two pages together.
-    private var shiftButton: some View {
-        Button {
-            set(\.shiftPairing, !settings.shiftPairing)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "arrow.left.arrow.right")
-                Text("Pages paired wrong? Shift by one")
-                if settings.shiftPairing {
-                    Text("Shifted").foregroundStyle(.secondary)
-                }
+    /// The one pairing control. It is saved per series, so it also fixes a
+    /// book whose spreads come out split (the old "Shift by one" did the
+    /// same thing and was folded into it).
+    private var firstPageAloneControl: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            choices(.firstPageAlone, [(true, "on", "On"), (false, "off", "Off")],
+                    selected: settings.showsFirstPageAlone) {
+                session.updateSettings(settings.withFirstPageAlone($0))
             }
-            .font(.callout)
+            Text("If the two halves of a spread land on different screens, switch this.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("reader.menu.firstPageAlone.hint")
         }
-        .focused($focus, equals: "shiftPairing")
-        .accessibilityLabel("Pages paired wrong? Shift by one")
-        .accessibilityValue(settings.shiftPairing ? "On" : "Off")
-        .accessibilityIdentifier("reader.menu.shiftPairing")
     }
 
     private var widthStepper: some View {
@@ -475,7 +480,7 @@ struct ReaderMenu: View {
     }
 
     private func set<V>(_ keyPath: WritableKeyPath<ReaderSettings, V>, _ value: V) {
-        session.updateSettings(settings.with(keyPath, value))
+        session.updateSettings(settings.with(keyPath, value).normalizedPairing)
     }
 }
 
@@ -598,7 +603,7 @@ extension AppModel {
     /// The active profile's reader settings for series that have none of
     /// their own.
     var menuDefaultReaderSettings: ReaderSettings {
-        state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default
+        (state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default).normalizedPairing
     }
 
     func setMenuDefaultReaderSettings(_ settings: ReaderSettings) {

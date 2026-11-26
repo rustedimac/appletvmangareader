@@ -23,7 +23,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     let gridCache = SuwayomiGridCache()
 
     /// Suwayomi's built-in category for manga not put in any other.
-    static let defaultCategoryID = "0"
+    public static let defaultCategoryID = "0"
 
     public init(config: ServerConfig, username: String?, password: String?,
                 loginMode: SuwayomiLoginMode? = nil, categoryScope: Set<String>? = nil, transport: HTTPTransport) {
@@ -387,6 +387,22 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         let ids = r.manga.chapters.nodes.map { JSONValue.int($0.id) }
         guard !ids.isEmpty else { return }
         try await updateChaptersUnread(ids)
+    }
+
+    public func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        guard !chapters.isEmpty else { return }
+        let ids = try chapters.map { chapter -> JSONValue in
+            guard let id = Int(chapter.id) else { throw MangaError.notFound }
+            return .int(id)
+        }
+        struct Response: Decodable {
+            struct Payload: Decodable { var clientMutationId: String? }
+            var updateChapters: Payload
+        }
+        let _: Response = try await graphQL(
+            "mutation($ids: [Int!]!) { updateChapters(input: {ids: $ids, patch: {isRead: true}}) { clientMutationId } }",
+            variables: ["ids": .array(ids)]
+        )
     }
 
     func updateChaptersUnread(_ ids: [JSONValue]) async throws {

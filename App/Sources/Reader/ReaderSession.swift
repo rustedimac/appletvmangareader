@@ -57,6 +57,8 @@ final class ReaderSession {
     /// Known pixel sizes by page index. Kavita gives them up front; Suwayomi
     /// fills them in as images download.
     private(set) var sizes: [Int: PageSize] = [:]
+    /// Detected page margins by page index (paged reader, Crop Borders).
+    private(set) var crops: [Int: CropInsets] = [:]
     private(set) var settings: ReaderSettings
     private(set) var navigator: ReaderNavigator
     private(set) var loadState: LoadState = .loading
@@ -202,6 +204,7 @@ final class ReaderSession {
         loadState = .loading
         pages = []
         sizes = [:]
+        crops = [:]
         pageFailures = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
@@ -252,6 +255,7 @@ final class ReaderSession {
         let ordered = loaded.sorted { $0.index < $1.index }
         pages = ordered
         sizes = known
+        crops = [:]
         pageFailures = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
@@ -353,6 +357,15 @@ final class ReaderSession {
         navigator.setSize(size, forPage: page)
     }
 
+    func crop(ofPage index: Int) -> CropInsets? { crops[index] }
+
+    /// Records a page's detected margins. Only changes layout while Crop
+    /// Borders is on.
+    func reportCrop(_ crop: CropInsets, forPage page: Int) {
+        guard pages.indices.contains(page), crops[page] != crop else { return }
+        crops[page] = crop
+    }
+
     // MARK: Settings
 
     /// Applies settings live and saves them for this series.
@@ -450,13 +463,21 @@ final class ReaderSession {
         let chapter = self.chapter
         let series = self.series
         let model = self.model
-        Task { await model.recordProgress(chapter: chapter, series: series,
-                                          page: progress.page, completed: progress.completed) }
+        model.startRecordingProgress(chapter: chapter, series: series,
+                                     page: progress.page, completed: progress.completed)
     }
 
-    /// Call when the reader closes.
+    @ObservationIgnored private var refreshedOnClose = false
+
+    /// Call when the reader closes. Posters of the series pick up the new
+    /// progress once the save lands.
     func close() {
         flushProgress()
         loadTask?.cancel()
+        // The view closes it on Menu and again on disappear.
+        if !refreshedOnClose {
+            refreshedOnClose = true
+            model.refreshSeriesProgress(series.ref)
+        }
     }
 }
