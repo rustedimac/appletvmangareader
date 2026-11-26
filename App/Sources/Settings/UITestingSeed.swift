@@ -9,6 +9,10 @@ import MangaCore
 /// - `-uiTestingTab settings`: start on the Settings tab.
 /// - `-uiTestingNavigationResetDelay 2`: tabs return to their top screen
 ///   after 2 s out of sight instead of 10 (`NavigationReset`).
+/// - `-serverEditorPrefill <kind>|<address>[|<api key>]`: Add Server opens
+///   with these fields filled in, as if pasted (the tvOS simulator can't
+///   paste from the Mac). Works in Debug builds even without `-uiTesting`,
+///   e.g. `-serverEditorPrefill "kavita|http://kavita.local:5000/api/opds/fake-key"`.
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 
@@ -25,6 +29,22 @@ enum UITestingSeed {
         guard isUITesting, let raw = value(after: "-uiTestingNavigationResetDelay"),
               let seconds = Double(raw) else { return nil }
         return .seconds(seconds)
+    }
+
+    struct ServerPrefill {
+        var kind: ServerKind
+        var address: String
+        var apiKey: String
+    }
+
+    static var serverEditorPrefill: ServerPrefill? {
+        #if !DEBUG
+        guard isUITesting else { return nil }
+        #endif
+        guard let raw = value(after: "-serverEditorPrefill") else { return nil }
+        let parts = raw.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+        guard parts.count >= 2, let kind = ServerKind(rawValue: parts[0]) else { return nil }
+        return ServerPrefill(kind: kind, address: parts[1], apiKey: parts.count > 2 ? parts[2] : "")
     }
 
     static func state() -> AppState? {

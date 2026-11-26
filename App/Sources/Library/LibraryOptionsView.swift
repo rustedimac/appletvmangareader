@@ -3,7 +3,7 @@ import MangaCore
 
 /// "Sort & View" for one library or category: sort order, the reading
 /// direction its series open in, which way the grid fills, and the
-/// profile's poster size.
+/// profile's poster size and caption.
 struct LibraryOptionsView: View {
     @Environment(AppModel.self) private var model
     let server: ServerConfig
@@ -62,6 +62,19 @@ struct LibraryOptionsView: View {
                 SettingsHeader("Poster Size")
             } footer: {
                 Text("Small fits more series on screen. Applies to every library and to Favorites.")
+            }
+
+            Section {
+                ForEach(PosterCaption.allCases) { caption in
+                    ChoiceRow(title: caption.title, isSelected: model.posterCaption == caption,
+                              identifier: "libraryOptions.caption.\(caption.rawValue)") {
+                        model.updateBrowse { $0.posterCaption = caption }
+                    }
+                }
+            } header: {
+                SettingsHeader("Under Each Poster")
+            } footer: {
+                Text(PosterCaption.footnote)
             }
         }
         .settingsPage("\(category.name): Sort & View", systemImage: "arrow.up.arrow.down")
