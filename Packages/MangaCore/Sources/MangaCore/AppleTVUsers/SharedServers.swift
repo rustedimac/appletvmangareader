@@ -25,6 +25,18 @@ public struct SharedServerDirectory: Codable, Hashable, Sendable {
         self.credentials = credentials
     }
 
+    private enum CodingKeys: String, CodingKey { case servers, removedServerIDs, credentials }
+
+    /// Every Apple TV user's servers live here: if it can't be read, the
+    /// next launch writes a fresh one over it. So a missing field or one
+    /// unreadable server or login costs only that, never the directory.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        servers = c.tolerantArray(.servers)
+        removedServerIDs = Set(c.tolerantArray(.removedServerIDs) as [UUID])
+        credentials = c.tolerantDictionary(.credentials)
+    }
+
     public func credential(for server: UUID) -> ServerCredential? { credentials[server.uuidString] }
 
     /// Records this user's server list after a change: servers that were in

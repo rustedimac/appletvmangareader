@@ -31,14 +31,16 @@
 - **All persisted changes go through `AppModel.update { }`**, which mutates
   `AppState` and saves it. Add new persisted fields to `AppState` /
   `ProfileData` with tests in `AppStateTests`.
-- **An update must never reset saved state.** New stored fields decode with
-  a default when missing (`decodeIfPresent`, or an optional). Every shape a
-  merged build has written is a fixture in `AppStateUpgradeTests`; when you
-  change what `AppState` stores, add the JSON the build before your change
-  writes. Renames or moves bump `AppState.currentVersion` with an
+- **An update must never reset saved state.** Every saved type decodes with
+  the `tolerant` helpers: a missing field or an unknown value falls back to
+  a default instead of failing its entry. Every saved shape is a fixture in
+  `Tests/MangaCoreTests/Fixtures/SavedData` (older ones inline in
+  `AppStateUpgradeTests`); when you change what the app saves, add a new
+  snapshot. `SavedDataUpgradeTests` checks it field by field and fails until
+  you do. Renames or moves bump `AppState.currentVersion` with an
   `AppStateUpgrade.step`. If the normal decode still fails, `StateStore`
   salvages what it can entry by entry and keeps the original bytes under
-  `StateStore.backupKey`.
+  `StateStore.backupKey`. Rules: [UPGRADE_SAFETY.md](UPGRADE_SAFETY.md).
 - **Secrets never go in `AppState`.** Credentials are per profile, per server,
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
