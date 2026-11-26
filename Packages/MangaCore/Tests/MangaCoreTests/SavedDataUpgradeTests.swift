@@ -31,6 +31,8 @@ enum SavedFormats {
         "appstate-v1-2026-11-26-percent",
         // Adds `unreadChapters` to series summaries (#74).
         "appstate-v1-2026-11-26-unread-chapters",
+        // Adds `alternateURLs` to servers (#34).
+        "appstate-v1-2026-11-26-addresses",
     ]
     static var newestAppState: String { appStateFixtures.last! }
 
@@ -235,10 +237,15 @@ final class SavedDataUpgradeTests: XCTestCase {
     /// If this can't be read, the next launch writes an empty directory
     /// over it, dropping every other user's servers and logins.
     func testSharedServerDirectory() throws {
-        try checkFormat("shared-servers-v1", as: SharedServerDirectory.self,
+        // v2 adds `alternateURLs` (#34); v1 must still load the same servers.
+        try checkFormat("shared-servers-v2", as: SharedServerDirectory.self,
                         required: ["servers[].id", "servers[].kind", "servers[].baseURL"],
                         unknownLosses: ["servers[].kind"])
-        let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v1"))
+        let v1 = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v1"))
+        let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v2"))
+        XCTAssertEqual(v1.servers.map(\.id), dir.servers.map(\.id))
+        XCTAssertEqual(v1.servers.first?.alternateURLs, [])
+        XCTAssertEqual(dir.servers.first?.alternateURLs, [URL(string: "https://kavita.example.org")!])
         XCTAssertEqual(dir.servers.map(\.kind), [.kavita, .suwayomi, .komga])
         XCTAssertEqual(dir.removedServerIDs.count, 1)
         XCTAssertEqual(dir.credential(for: UUID(uuidString: F.kavitaID)!)?.apiKey, "fixture-kavita-key")
