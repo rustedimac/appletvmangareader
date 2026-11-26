@@ -70,10 +70,9 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
-        // Select on a failed page retries it in place.
-        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
-        .onTapGesture { toggleZoom() }
+        // Select retries failed pages on screen first, otherwise zooms.
+        .onTapGesture { if !session.retryVisibleFailedPages() { toggleZoom() } }
         // Menu zooms out first; when not zoomed it falls through to
         // ReaderView, which closes the reader.
         .onExitCommand(perform: exitAction)
