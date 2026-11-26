@@ -6,7 +6,7 @@ extension AppModel {
     /// Keychain logins to match.
     @discardableResult
     func applySync(_ patch: SyncPatch) -> SyncApplyEffects {
-        guard !patch.isEmpty else { return SyncApplyEffects() }
+        guard !patch.isEmpty, !isGuest else { return SyncApplyEffects() }
         let profilesBefore = state.profiles.map(\.id)
         var effects = SyncApplyEffects()
         update { effects = SyncMapper.apply(patch, to: &$0) }
@@ -26,7 +26,7 @@ extension AppModel {
     }
 
     func exportBackup() -> Data {
-        MangaBackup.export(state: state, appVersion: appVersion)
+        MangaBackup.export(state: savedState, appVersion: appVersion)
     }
 
     /// Restores (merges) a backup file. Returns a summary for the person.

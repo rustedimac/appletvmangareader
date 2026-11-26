@@ -13,6 +13,8 @@ extension AppModel {
     /// to present, or nil when the link's server is gone.
     func route(for link: DeepLink) -> DeepLinkRoute? {
         guard state.server(link.ref.serverID) != nil else { return nil }
+        // Top Shelf links belong to a real profile.
+        if isGuest { endGuestSession(showPicker: false) }
         if let profile = link.profile, profile != activeProfile.id,
            state.profiles.contains(where: { $0.id == profile }) {
             pickProfile(profile)

@@ -129,7 +129,9 @@ struct SeriesPoster: View {
     /// The series with any progress changed since the row loaded (reading,
     /// "Mark as Unread"), so the badge, bar and percentage are current.
     private var badgeSeries: SeriesSummary {
-        model.withCurrentProgress(series.withCount(model.seriesCounts.count(for: series.ref)))
+        let counted = series.withCount(model.seriesCounts.count(for: series.ref))
+        // A guest's posters don't show the owner's reading.
+        return model.withCurrentProgress(model.isGuest ? GuestSession.withoutServerProgress(counted) : counted)
     }
 
     @ViewBuilder
