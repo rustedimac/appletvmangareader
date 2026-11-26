@@ -16,7 +16,7 @@ final class OPDSUITests: XCTestCase {
 
     func testHomeShowsLatestSeriesAndOpensOne() throws {
         let app = launch()
-        XCTAssertTrue(app.staticTexts["shelf.Test OPDS.newlyAdded"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["shelf.newlyAdded"].waitForExistence(timeout: 20))
         let id = openFocusedPoster(app)
         let expected: [String: (String, Int)] = ["lantern": ("Lantern Courier", 2), "paper": ("Paper Moon Post", 1)]
         let key = String(id.split(separator: "/").last ?? "")
