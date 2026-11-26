@@ -306,7 +306,9 @@ Menu simply goes back.
 - Wherever a narrower value is set, offer "Reset to Default" next to it, and
   show when the current values already match the default.
 - Use the same row names on both screens (`ReaderMenuItem.title`).
-- Exempt only fixes for one book, such as shifting the page pairing by one.
+- Exempt only fixes that make no sense for every book. Before adding one,
+  check it isn't the per-series value of an existing setting (the old "Shift
+  by one" was just First Page Alone flipped).
   `tools/check_setting_scopes.py` checks every `ReaderSettings` field has a
   row in Default Reader Settings.
 

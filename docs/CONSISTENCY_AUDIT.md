@@ -93,7 +93,7 @@ to the default. Added to DESIGN_GUIDE §7 "Setting scopes".
 | G1 | Reading mode, direction, page layout, first page alone, background, column width, scroll per click | Per series (reader menu) | Default Reader Settings; menu has Set as Default / Reset to Default | OK, guarded |
 | G2 | Crop borders, page fit, click-to-zoom (#17) | Per series | Rows added to Default Reader Settings in #17 | OK (checked against #17's head), guarded |
 | G3 | Split wide pages, brightness, contrast, color, sharpen, upscaling (#35) | Per series | Rows added in #35 | OK (checked against #35's head), guarded |
-| G4 | Shift page pairing | Per series | None | Exempt: it fixes one book's pairing; a global shift would mis-pair every other book. |
+| G4 | Shift page pairing | Per series | None | Retired: it did the same as First Page Alone (G1), so it was folded into it. |
 | G5 | Library sort (`LibraryOptions.sort`) | Per library (Sort & View) | Library Defaults | Fixed 2026-11-26: Library Defaults screen, "Default (…)" rows and Reset to Defaults on Sort & View. |
 | G6 | Grid order (`LibraryOptions.gridOrder`) | Per library | Library Defaults | Fixed 2026-11-26 (same as G5). |
 | G6b | Library filters (`LibraryOptions.filter`) | Per library | Library Defaults (status, read progress) | OK. Genres are exempt: each library has its own genre list. |

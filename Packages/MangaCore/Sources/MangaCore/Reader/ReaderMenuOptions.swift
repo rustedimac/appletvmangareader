@@ -6,7 +6,6 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case layout
     case direction
     case firstPageAlone
-    case shiftPairing
     case fit
     case cropBorders
     case zoom
@@ -23,7 +22,6 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .layout: return "Page Layout"
         case .direction: return "Direction"
         case .firstPageAlone: return "First Page Alone"
-        case .shiftPairing: return "Page Pairing"
         case .fit: return "Page Fit"
         case .cropBorders: return "Crop Borders"
         case .zoom: return "Click to Zoom"
@@ -67,7 +65,7 @@ public enum ReaderMenuOptions {
         switch settings.mode {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
-            if settings.layout == .double { items += [.firstPageAlone, .shiftPairing] }
+            if settings.layout == .double { items.append(.firstPageAlone) }
             items += [.fit, .cropBorders, .zoom]
             if settings.layout == .single { items.append(.splitWidePages) }
             items.append(.background)

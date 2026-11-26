@@ -21,14 +21,14 @@ public extension AppState {
     /// The settings a series opens with when it has none of its own: the
     /// profile default, with its library's reading style applied.
     func defaultReaderSettings(for series: SeriesSummary, profile: UUID) -> ReaderSettings {
-        let base = profileData[profile.uuidString]?.defaultReaderSettings ?? .default
+        let base = (profileData[profile.uuidString]?.defaultReaderSettings ?? .default).normalizedPairing
         guard let style = browse(profile: profile).readingStyle(for: series) else { return base }
         return style.apply(to: base)
     }
 
     /// The series' own settings, else its library default.
     func readerSettings(for series: SeriesSummary, profile: UUID) -> ReaderSettings {
-        profileData[profile.uuidString]?.readerOverrides[series.ref.storageKey]
+        profileData[profile.uuidString]?.readerOverrides[series.ref.storageKey]?.normalizedPairing
             ?? defaultReaderSettings(for: series, profile: profile)
     }
 
