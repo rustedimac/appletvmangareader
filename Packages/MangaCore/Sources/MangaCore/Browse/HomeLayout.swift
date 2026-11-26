@@ -183,6 +183,16 @@ public struct CaughtUpEntry: Codable, Hashable, Identifiable, Sendable {
         self.chapterCount = chapterCount
         self.caughtUpAt = caughtUpAt
     }
+
+    private enum CodingKeys: String, CodingKey { case series, chapterCount, caughtUpAt }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        series = try c.decode(SeriesSummary.self, forKey: .series)
+        // Zero means "caught up with whatever there is".
+        chapterCount = c.tolerant(.chapterCount, default: 0)
+        caughtUpAt = c.tolerant(.caughtUpAt, default: .distantPast)
+    }
 }
 
 /// Browsing preferences for one profile: Home layout, library sorts and
@@ -225,9 +235,10 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         home = (try? c.decodeIfPresent(HomeLayout.self, forKey: .home)) ?? .default
         gridDensity = (try? c.decodeIfPresent(GridDensity.self, forKey: .gridDensity)) ?? .default
         posterCaption = (try? c.decodeIfPresent(PosterCaption.self, forKey: .posterCaption)) ?? .default
-        libraries = (try? c.decodeIfPresent([String: LibraryOptions].self, forKey: .libraries)) ?? [:]
-        dismissedContinueReading = (try? c.decodeIfPresent([String: Date].self, forKey: .dismissedContinueReading)) ?? [:]
-        caughtUp = (try? c.decodeIfPresent([CaughtUpEntry].self, forKey: .caughtUp)) ?? []
+        // One unreadable entry costs that entry, not the list.
+        libraries = c.tolerantDictionary(.libraries)
+        dismissedContinueReading = c.tolerantDictionary(.dismissedContinueReading)
+        caughtUp = c.tolerantArray(.caughtUp)
         libraryDefaults = (try? c.decodeIfPresent(LibraryDefaults.self, forKey: .libraryDefaults)) ?? .default
     }
 
