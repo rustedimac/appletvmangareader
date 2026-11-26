@@ -10,6 +10,7 @@ import MangaCore
 /// - `-readerDirection leftToRight|rightToLeft`
 /// - `-readerLayout single|double`
 /// - `-readerMode paged|webtoon` and `-readerWebtoonWidth <0.3...1.0>`
+/// - `-readerSplitWide YES` splits wide pages (single-page layout)
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
 /// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
 ///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
@@ -67,6 +68,9 @@ enum ReaderDemo {
                 }
                 if let w = Double(defaults.string(forKey: "readerWebtoonWidth") ?? "") {
                     settings.webtoonWidth = w
+                }
+                if defaults.bool(forKey: "readerSplitWide") {
+                    settings.splitWidePages = true
                 }
                 model.setReaderSettings(settings, for: DemoMangaServer.series.ref)
                 ready = true

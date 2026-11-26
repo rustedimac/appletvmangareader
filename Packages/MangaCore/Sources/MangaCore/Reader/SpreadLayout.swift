@@ -1,16 +1,34 @@
 import Foundation
 
-/// What the paged reader shows at one time: one page, or two pages side by
-/// side. Indices are zero-based page indices in reading order.
+/// One side of a page image, for wide pages split into two screens.
+public enum PageHalf: String, Hashable, Sendable {
+    case left
+    case right
+}
+
+/// What the paged reader shows at one time: one page, two pages side by
+/// side, or one half of a wide page (a scanned two-page spread split for
+/// single-page reading). Indices are zero-based page indices in reading
+/// order.
 public enum Spread: Hashable, Sendable {
     case single(Int)
     case double(Int, Int)
+    /// One half of a wide page. Both halves belong to the same page, so
+    /// progress, bookmarks and the page indicator all use that page.
+    case half(Int, PageHalf)
 
     public var pages: [Int] {
         switch self {
         case .single(let a): return [a]
         case .double(let a, let b): return [a, b]
+        case .half(let a, _): return [a]
         }
+    }
+
+    /// The side of the image on screen, for split pages.
+    public var half: PageHalf? {
+        if case .half(_, let side) = self { return side }
+        return nil
     }
 
     public var first: Int { pages[0] }
@@ -88,11 +106,36 @@ public struct SpreadLayout: Hashable, Sendable {
         SpreadLayout(spreads: (0..<pageCount).map { .single($0) })
     }
 
+    /// Single-page layout with wide pages split in two. Each wide page
+    /// becomes two screens in reading order: right half first for
+    /// right-to-left manga, left half first otherwise. Pages with unknown
+    /// size stay whole until their size arrives.
+    public static func singles(splitting sizes: [PageSize?], direction: ReadingDirection) -> SpreadLayout {
+        let order: [PageHalf] = direction == .rightToLeft ? [.right, .left] : [.left, .right]
+        var spreads: [Spread] = []
+        for (i, size) in sizes.enumerated() {
+            if size?.isWide == true {
+                spreads += order.map { .half(i, $0) }
+            } else {
+                spreads.append(.single(i))
+            }
+        }
+        return SpreadLayout(spreads: spreads)
+    }
+
     public init(spreads: [Spread]) {
         self.spreads = spreads
     }
 
     public var count: Int { spreads.count }
+
+    /// The spread to keep on screen across a re-layout: the same spread if
+    /// it still exists (so the second half of a split page stays the second
+    /// half), otherwise the first spread containing `page`.
+    public func spreadIndex(keeping spread: Spread?, page: Int) -> Int {
+        if let spread, let idx = spreads.firstIndex(of: spread) { return idx }
+        return spreadIndex(containing: page)
+    }
 
     /// The spread containing a page, for resuming and re-layouts.
     public func spreadIndex(containing page: Int) -> Int {

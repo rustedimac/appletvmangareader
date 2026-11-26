@@ -37,6 +37,7 @@ struct WebtoonReaderView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             WebtoonStripRepresentable(session: session, state: StripState(session: session))
+                .pictureAdjustments(session.settings.picture)
                 .ignoresSafeArea()
             if session.loadState == .loaded, session.pageCount > 0 {
                 VStack(spacing: 12) {
