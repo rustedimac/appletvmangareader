@@ -84,18 +84,24 @@ final class HomeServerRowsUITests: XCTestCase {
 
     private func openCustomizeHome() {
         selectTab("Settings")
-        if app.buttons["homeLayout.serverRows.merged"].waitForExistence(timeout: 2) { return }
+        if app.buttons["homeLayout.serverRows"].waitForExistence(timeout: 2) { return }
         let link = app.buttons["settings.customizeHome"]
         moveFocus(to: link)
         remote.press(.select)
-        XCTAssertTrue(app.buttons["homeLayout.serverRows.merged"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["homeLayout.serverRows"].waitForExistence(timeout: 10))
     }
 
-    private func choose(_ id: String) {
-        let button = app.buttons[id]
+    /// Opens a Customize Home value row, picks `option` on its page and
+    /// waits for the row to show it.
+    private func choose(_ row: String, _ option: String) {
+        let button = app.buttons[row]
         moveFocus(to: button)
         remote.press(.select)
-        wait(button, "value == 'selected'")
+        let choice = app.buttons["settingsPicker.option.\(option)"]
+        XCTAssertTrue(choice.waitForExistence(timeout: 5), "\(row) didn't open its choices")
+        moveFocus(to: choice)
+        remote.press(.select)
+        wait(button, "value == '\(option)'")
     }
 
     // MARK: Tests
@@ -123,8 +129,8 @@ final class HomeServerRowsUITests: XCTestCase {
         launch()
         XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         openCustomizeHome()
-        XCTAssertEqual(app.buttons["homeLayout.serverRows.merged"].value as? String, "selected", "merged is the default")
-        choose("homeLayout.serverRows.perServer")
+        XCTAssertEqual(app.buttons["homeLayout.serverRows"].value as? String, "All in One Row", "merged is the default")
+        choose("homeLayout.serverRows", "Row per Server")
 
         selectTab("Home")
         let kavita = app.staticTexts["shelf.Demo Kavita.recentlyUpdated"]
@@ -134,7 +140,7 @@ final class HomeServerRowsUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["shelf.recentlyUpdated"].exists)
 
         openCustomizeHome()
-        choose("homeLayout.serverRows.merged")
+        choose("homeLayout.serverRows", "All in One Row")
         selectTab("Home")
         XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         XCTAssertFalse(kavita.exists)
@@ -148,8 +154,8 @@ final class HomeServerRowsUITests: XCTestCase {
         XCTAssertFalse(captions(naming: "Demo Kavita").firstMatch.exists, "not under the title too")
 
         openCustomizeHome()
-        XCTAssertEqual(app.buttons["homeLayout.serverLabel.onCover"].value as? String, "selected")
-        choose("homeLayout.serverLabel.off")
+        XCTAssertEqual(app.buttons["homeLayout.serverLabel"].value as? String, "On Cover")
+        choose("homeLayout.serverLabel", "Off")
         selectTab("Home")
         XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.'")).firstMatch

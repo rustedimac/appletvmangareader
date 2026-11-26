@@ -103,7 +103,7 @@ final class ReaderControlsUITests: XCTestCase {
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
         let legend = element("reader.menu.controls")
         XCTAssertTrue(legend.waitForExistence(timeout: 5), "the Controls legend is in the options")
-        let hold = element("reader.menu.controls.remote.Hold Play/Pause")
+        let hold = element("controls.reader.remote.Hold Play/Pause")
         XCTAssertTrue(hold.exists)
         XCTAssertTrue(hold.label.contains("Reader options"), hold.label)
     }
@@ -178,6 +178,16 @@ final class ReaderControlsUITests: XCTestCase {
         XCTAssertTrue(hold.waitForExistence(timeout: 5), "Remote and Controller page didn't open")
         XCTAssertTrue(hold.label.contains("Reader options"), hold.label)
         XCTAssertTrue(app.element("controls.paged.Play/Pause").label.contains("timer"))
-        XCTAssertTrue(app.element("controls.webtoon.Hold Play/Pause").exists)
+        // A legend, not rows: the entries take no focus, only the tabs (and
+        // the tutorial button) do.
+        XCTAssertFalse(app.buttons["controls.paged.Hold Select"].exists, "legend entries must not be buttons")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'controls.paged.'")).count, 0)
+        XCTAssertTrue(app.element("controls.tutorial.paged").exists)
+        // Another tab swaps the legend in place, without scrolling.
+        let gamepad = app.element("controls.tab.gamepad")
+        select(gamepad, .right)
+        XCTAssertTrue(app.element("controls.gamepad.B").waitForExistence(timeout: 5))
+        XCTAssertFalse(app.element("controls.paged.Hold Select").exists)
+        XCTAssertFalse(app.element("controls.tutorial.paged").exists)
     }
 }

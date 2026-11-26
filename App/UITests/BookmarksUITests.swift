@@ -67,7 +67,7 @@ final class BookmarksUITests: XCTestCase {
     private func openMenu() {
         remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        wait(element("reader.menu.mode.paged"), "hasFocus == true")
+        wait(element("reader.menu.mode"), "hasFocus == true")
     }
 
     private func closeMenu() {

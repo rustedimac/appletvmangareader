@@ -53,8 +53,10 @@ final class ReaderFitZoomUITests: XCTestCase {
     private func openMenu() {
         remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        wait(menuItem("mode.paged"), "hasFocus == true", timeout: 5)
+        wait(menuItem("mode"), "hasFocus == true", timeout: 5)
     }
+
+    private var menu: MenuRowDriver { MenuRowDriver(app: app, prefix: "reader.menu") }
 
     private func closeMenu() {
         remote.press(.menu)
@@ -124,11 +126,11 @@ final class ReaderFitZoomUITests: XCTestCase {
     func testFitModeChangesFromTheMenuAndIsSelected() {
         launch()
         openMenu()
-        XCTAssertTrue(menuItem("fit.screen").isSelected)
-        XCTAssertTrue(menuItem("cropBorders.off").isSelected)
-        XCTAssertTrue(menuItem("zoom.2x").isSelected)
-        choose("fit.width")
-        wait(menuItem("fit.width"), "isSelected == true", timeout: 5)
+        menu.expectValue("fit", "Fit Screen")
+        menu.expectValue("cropBorders", "Off")
+        menu.expectValue("zoom", "2×")
+        menu.pick("fit.width")
+        menu.expectValue("fit", "Fit Width")
         closeMenu()
         // Now the cover scrolls before turning.
         remote.press(.left)
@@ -196,8 +198,8 @@ final class ReaderFitZoomUITests: XCTestCase {
     func testZoomLevelFromTheMenu() {
         launch()
         openMenu()
-        choose("zoom.3x")
-        wait(menuItem("zoom.3x"), "isSelected == true", timeout: 5)
+        menu.pick("zoom.3x")
+        menu.expectValue("zoom", "3×")
         closeMenu()
         holdToZoom()
         expectViewport("zoom 3.00")
@@ -212,8 +214,7 @@ final class ReaderFitZoomUITests: XCTestCase {
         wait(cover, "value == 'loaded'")
         let uncroppedWidth = cover.frame.width
         openMenu()
-        choose("cropBorders.on")
-        wait(menuItem("cropBorders.on"), "isSelected == true", timeout: 5)
+        menu.setToggle("cropBorders", on: true)
         closeMenu()
         wait(cover, "value == 'cropped'")
         // The page still fills the screen's height; its shape follows the
@@ -236,9 +237,8 @@ final class ReaderFitZoomUITests: XCTestCase {
         launch(["-readerDemoMargins", "1", "-readerCrop", "1"])
         wait(element("reader.page.0"), "value == 'cropped'")
         openMenu()
-        XCTAssertTrue(menuItem("cropBorders.on").isSelected)
-        choose("cropBorders.off")
-        wait(menuItem("cropBorders.off"), "isSelected == true", timeout: 5)
+        menu.expectValue("cropBorders", "On")
+        menu.setToggle("cropBorders", on: false)
         closeMenu()
         wait(element("reader.page.0"), "value == 'loaded'")
     }

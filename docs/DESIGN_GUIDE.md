@@ -241,6 +241,55 @@ The choices open on their own `SettingsPage` with a checkmark on the current
 one and focus starting there; picking one goes back. A custom row that opens
 another page with a value uses `SettingsValueRow` for the same spacing.
 
+### Value rows outside a form (`PanelValueRow`, `PanelChoiceList`)
+
+Every setting is a row, wherever it lives: the setting's name on the left,
+its current value on the right, like Apple's Settings (John, 2026-11-26).
+That holds outside a `Form` too: the reader menu drawers and custom settings
+pages built from a `ScrollView` (Customize Home).
+
+- A setting with choices: `PanelValueRow(title:value:)`, value and chevron.
+  In a drawer (no navigation stack) a click shows the choices in place of the
+  rows with `PanelChoiceList`; picking one applies it and goes back, Menu goes
+  back without changing anything, a second Menu closes the drawer. On a
+  settings page use `SettingsPicker` and add `.settingsRowsOutsideForm()` to
+  the scroll view so its rows fill the width and get the row inset.
+- An On/Off setting: `PanelValueRow(title:isOn:toggle:)`, "On"/"Off" where
+  the chevron would be, flipped by a click (a form uses `Toggle`).
+- A number you nudge (brightness, contrast, column width, auto-scroll speed,
+  text size) keeps its stepper: title above, then − value +. John likes those.
+- Help text goes under the row with `PanelFootnote`, like a form footer.
+- **Never draw a setting's values as side-by-side chips** (radio rings,
+  `OptionButton`). Labels of different lengths wrap to different heights, a
+  row of chips reads as separate actions, and the list scrolls more.
+  `OptionButton` is left only for the Favorites sort toggle beside the grid;
+  sections use `SectionTabBar`. `tools/check_option_chips.py` enforces this.
+
+Identifiers: the row is `<prefix>.<setting>` with the value as its
+accessibility value; its choices are `<prefix>.<setting>.<option>`, and the
+list's title `<prefix>.<setting>.title`. UI tests drive them with
+`MenuRowDriver` (`pick("layout.single")`, `setToggle`, `expectValue`).
+
+### Uniform heights and headroom
+
+- Every label in a row, chip or button is **one line** (`lineLimit(1)`). If
+  it doesn't fit, shorten it or make it a row; never let it wrap.
+- Text keeps `RowMetrics.textInset` (8 pt) of headroom above and below
+  inside its platter, on top of the system button padding.
+- Buttons side by side are the **same height**. An icon-only button beside a
+  text button uses `.lineHeightLabel()`, which gives the icon one text line's
+  height plus the inset.
+- `DesignLayoutUITests` checks every audited screen: focusable items side by
+  side may differ by at most 4 pt (`assertUniformRowHeights`).
+
+### Information isn't focusable
+
+Text that only explains (a button legend, help) is plain text, never a
+button with no action: anything focusable looks like it does something. If
+the information doesn't fit on screen, split it with `SectionTabBar` so each
+part fits without scrolling (Settings > Remote and Controller:
+`ControlsLegend`, two columns, only the tabs take focus).
+
 ### Buttons
 
 - Default: system `Button` in its default (bordered) style. On tvOS that is a
@@ -320,7 +369,9 @@ Menu simply goes back.
 - Slides in from the trailing edge, 900 pt wide, full height, `.thickMaterial`.
 - Ignores the safe area for its background only; its content is inset
   `Layout.safeTop` from the top and `Layout.safeSide` from the trailing edge.
-- Option chips use `Capsule()` and `Space.m` between chips.
+- Settings are value rows (`PanelValueRow`); a row's choices open in place
+  (`PanelChoiceList`) and Menu goes back to the rows before it closes the
+  drawer. No option chips. Steppers keep − value +.
 - Its section switcher is a `SectionTabBar`, not option chips (see Section tabs).
 
 ### Section tabs (`SectionTabBar`)
@@ -337,8 +388,8 @@ Single/Double, a sort order) is a choice.
   labels); keep them to one short word.
 - Clicking a tab opens it. Focus moving across the tabs doesn't, so the pane
   below doesn't rebuild and take focus while you pass over a tab.
-- Choices keep their own look: `OptionButton` chips (ring that fills with a
-  check) in the reader drawers, `SettingsPicker` or a toggle in settings.
+- Choices keep their own look: value rows (`PanelValueRow`, `SettingsPicker`)
+  or a toggle, never tabs.
 - Identifiers: `<screen>.tab.<name>` for each tab (with the `.isSelected`
   trait when open) and `<screen>.tabs` for the track.
 
@@ -394,6 +445,9 @@ Single/Double, a sort order) is a choice.
 
 - [ ] No text or focusable control outside the 60/80 safe area.
 - [ ] Nothing focusable shorter than 66 pt; text buttons 240–760 pt wide.
+- [ ] Every setting is a row (name left, value right); no side-by-side chips.
+- [ ] Labels on one line; items side by side share one height.
+- [ ] Nothing focusable that does nothing (legends and help are plain text).
 - [ ] Forms sit in `SettingsPage`; no row wider than 1,000 pt.
 - [ ] Spacing uses `Space` tokens; focusable neighbours ≥ 40 pt apart.
 - [ ] Only system text styles; nothing below `.caption2`.
@@ -411,6 +465,8 @@ a server and checks the rules a test can measure: focusable elements are at
 least 60 pt tall (system rows report a few points less than they draw),
 everything focusable stays inside the safe area (with room for focus growth),
 form rows aren't wider than the form column, and sibling rows don't overlap.
+`assertUniformRowHeights` fails a screen where focusable items side by side
+differ in height by more than 4 pt (a wrapped label).
 `testSettingsValueSitsNextToChevron` measures value rows from the screenshot:
 8–30 pt between the value and the chevron, chevrons in the same place on every
 row with and without focus, and a toggle's On/Off ending in line with them.

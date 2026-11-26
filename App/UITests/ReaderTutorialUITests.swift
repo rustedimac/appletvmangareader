@@ -25,9 +25,13 @@ final class ReaderTutorialUITests: XCTestCase {
     private func openFromSettings(_ mode: String) {
         app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.controls"))
+        if mode != "paged" {
+            // The Vertical tab offers the vertical tutorial.
+            select(app.element("controls.tab.\(mode)"), .right)
+        }
         let button = app.element("controls.tutorial.\(mode)")
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Remote and Controller has no tutorial button")
-        focus(button, .up)
+        focus(button, .down)
         remote.press(.select)
         XCTAssertTrue(step.waitForExistence(timeout: 15), "the tutorial didn't start")
     }

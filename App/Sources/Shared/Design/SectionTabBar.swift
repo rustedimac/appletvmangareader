@@ -6,7 +6,7 @@ import SwiftUI
 /// filled pill and the focused tab as the white pill tvOS uses for focus.
 ///
 /// Use it for sections, never for a setting's value: a choice like On/Off or
-/// Single/Double keeps its radio-style option chips (`OptionButton`) or a
+/// Single/Double is a value row (`PanelValueRow`, `SettingsPicker`) or a
 /// picker, so tabs and choices never look alike. See docs/DESIGN_GUIDE.md,
 /// "Section tabs".
 ///

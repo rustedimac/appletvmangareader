@@ -110,7 +110,7 @@ struct WelcomeView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: Space.m)
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle") // option-chip-ok: full-width checklist row
                     .foregroundStyle(isOn ? Color.accentColor : .secondary)
             }
             .padding(.vertical, Space.xs)
