@@ -67,9 +67,9 @@ public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         kind = try c.decode(ServerKind.self, forKey: .kind)
-        name = try c.decode(String.self, forKey: .name)
         baseURL = try c.decode(URL.self, forKey: .baseURL)
-        alternateURLs = (try? c.decodeIfPresent([URL].self, forKey: .alternateURLs)) ?? []
+        name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
+        alternateURLs = c.tolerantArray(.alternateURLs)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -382,16 +382,6 @@ public struct Paged<Item: Sendable>: Sendable {
 // These are saved on the Apple TV (AppState, the shared server directory,
 // the keychain), so a missing field or an unknown value falls back instead
 // of losing the server, login, profile or series (see TolerantDecoding).
-
-extension ServerConfig {
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(UUID.self, forKey: .id)
-        kind = try c.decode(ServerKind.self, forKey: .kind)
-        baseURL = try c.decode(URL.self, forKey: .baseURL)
-        name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
-    }
-}
 
 extension ServerCredential {
     public init(from decoder: Decoder) throws {
