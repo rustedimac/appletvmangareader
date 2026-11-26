@@ -363,3 +363,48 @@ offline and before any server is added; don't stream it.
 | D10 | How to teach the controls | A + C: optional guided tutorial on a sample, plus a live legend from the reader options | B coach marks on the user's chapter; C only; keep D (today's hint) |
 | D11 | When the tutorial is offered | On first reader open (Start / Not now card) and in onboarding; replay in Settings | Onboarding only; Settings only |
 | D12 | Sample work | Pepper&Carrot (CC BY 4.0), bundled pages, credited | NDL public-domain manga for an RTL example too |
+
+---
+
+## 9. Revision after John's review (2026-11-26): one input per action
+
+John pointed out duplicates: Play/Pause and Down both open the options,
+a click stops auto-scroll although Play/Pause already does, and holding
+Select also opens the options in vertical. He suggested either rotated
+arrows per mode, or Play/Pause for auto-scroll / page turn in both modes
+with a long Play/Pause press for the options.
+
+### Holding a direction today
+
+| Mode | Hold up/down | Hold left/right |
+| --- | --- | --- |
+| Vertical | Continuous scroll that speeds up the longer it is held | Nothing |
+| Paged | Nothing (one turn per press) | Nothing |
+
+Proposed addition: in paged mode, holding left/right flips pages with
+increasing speed (like fast-forward), with the HUD page number showing until
+release. It stops at the chapter edge (no automatic chapter change).
+
+### John's two ideas, weighed
+
+| Idea | Good | Problem |
+| --- | --- | --- |
+| Rotated arrows (paged: Up bookmark, L/R turn, Down options; vertical: Up/Down scroll, Left bookmark, Right options) | Paged half is today's layout; no hidden gestures | The options move to a different button after switching mode in the options; with zoom (#17) all four directions pan, so Down/Right can't also be options |
+| Play/Pause = auto in both modes, hold Play/Pause = options | Play/Pause means the same thing everywhere | A long press hides the options again (what #45 fixed); every short Play/Pause has to wait for release |
+
+### Revised recommendation (replaces section 4's table where they differ)
+
+| Input | Paged | Vertical |
+| --- | --- | --- |
+| Click | Reader options (retries a failed page first) | Reader options (pauses auto-scroll) |
+| Play/Pause | Start/stop page-turn timer | Start/stop auto-scroll |
+| Tap | HUD | HUD |
+| Hold Select | Zoom in/out | Nothing |
+| Left/right | Turn page; hold = fast flip | Previous/next page |
+| Up | Bookmark (pans first when zoomed) | Scroll; hold speeds up |
+| Down | Page scrubber (pans first when zoomed) | Scroll; hold speeds up |
+| Back | Close one layer (section 5) | Same |
+
+Removed: Down and Play/Pause opening the options, click stopping
+auto-scroll, hold Select opening the options in vertical. Bookmarking in
+vertical: options header button, or Y on a controller.
