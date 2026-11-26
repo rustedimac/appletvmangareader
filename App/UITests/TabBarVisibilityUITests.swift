@@ -57,7 +57,7 @@ final class TabBarVisibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-demoServers"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         assertTabBarComesBack(app, tabName: "Home", presses: 4)
     }
 
