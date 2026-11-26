@@ -7,6 +7,8 @@ import MangaCore
 /// - `-uiTestingSeed profiles`: two profiles, so the picker shows at launch.
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
 /// - `-uiTestingTab settings`: start on the Settings tab.
+/// - `-uiTestingNavigationResetDelay 2`: tabs return to their top screen
+///   after 2 s out of sight instead of 10 (`NavigationReset`).
 /// - `-homePerServer`: Home rows per server instead of merged (the default).
 /// - `-posterServerLabel onCover|off`: where posters name their server.
 /// - `-serverEditorPrefill <kind>|<address>[|<api key>]`: Add Server opens
@@ -24,6 +26,12 @@ enum UITestingSeed {
     static var isUITesting: Bool { arguments.contains("-uiTesting") }
 
     static var initialTab: String? { isUITesting ? value(after: "-uiTestingTab") : nil }
+
+    static var navigationResetDelay: Duration? {
+        guard isUITesting, let raw = value(after: "-uiTestingNavigationResetDelay"),
+              let seconds = Double(raw) else { return nil }
+        return .seconds(seconds)
+    }
 
     struct ServerPrefill {
         var kind: ServerKind
