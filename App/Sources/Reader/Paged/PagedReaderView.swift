@@ -327,7 +327,7 @@ struct PageFailureCard: View {
                 .foregroundStyle(.black)
                 .padding(.horizontal, 36)
                 .padding(.vertical, 10)
-                .background(.white, in: RoundedRectangle(cornerRadius: Radius.poster))
+                .background(.white, in: Capsule())
             Text("Press Select to retry")
                 .font(.caption)
                 .foregroundStyle(.secondary)

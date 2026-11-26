@@ -1,8 +1,10 @@
 import SwiftUI
 import MangaCore
 
-/// "Customize Home": the order of Home rows, which are shown, the poster
-/// size for grids, and what posters show under the title. Opened from the bottom of Home and from Settings.
+/// "Customize Home": the order of Home rows, which are shown, whether
+/// server rows are merged, where posters name their server, the poster
+/// size for grids, and what posters show under the title. Opened from the
+/// bottom of Home and from Settings.
 struct BrowseSettingsView: View {
     @Environment(AppModel.self) private var model
 
@@ -22,10 +24,36 @@ struct BrowseSettingsView: View {
                     }
                 }
                 Button("Reset Home Rows") {
-                    model.updateBrowse { $0.home = .default }
+                    model.updateBrowse { $0.home.resetRows() }
                 }
-                .disabled(layout.isDefault)
+                .disabled(layout.rowsAreDefault)
                 .accessibilityIdentifier("homeLayout.reset")
+
+                Text("Servers on Home")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 30)
+                HomeChoiceRow(options: HomeServerRows.allCases, selected: layout.serverRows, title: \.title,
+                          identifier: { "homeLayout.serverRows.\($0.rawValue)" }) { choice in
+                    model.updateBrowse { $0.home.serverRows = choice }
+                }
+                Text(layout.serverRows == .merged
+                     ? "Continue Reading, Recently Updated and Newly Added each show every server's series in one row, newest first."
+                     : "Continue Reading, Recently Updated and Newly Added get a row for each server.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Text("Server Name on Posters")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 30)
+                HomeChoiceRow(options: PosterServerLabel.allCases, selected: layout.serverLabel, title: \.title,
+                          identifier: { "homeLayout.serverLabel.\($0.rawValue)" }) { choice in
+                    model.updateBrowse { $0.home.serverLabel = choice }
+                }
+                Text("Shows which server a series is from in rows and grids that mix servers.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
 
                 Text("Poster Size")
                     .font(.headline)
@@ -73,6 +101,32 @@ struct BrowseSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .settingsPage("Customize Home", systemImage: "house")
+    }
+}
+
+/// A row of radio-style buttons, one per option.
+private struct HomeChoiceRow<Option: Hashable & Identifiable>: View {
+    let options: [Option]
+    let selected: Option
+    let title: KeyPath<Option, String>
+    let identifier: (Option) -> String
+    let choose: (Option) -> Void
+
+    var body: some View {
+        HStack(spacing: 30) {
+            ForEach(options) { option in
+                let isSelected = option == selected
+                Button {
+                    choose(option)
+                } label: {
+                    Label(option[keyPath: title], systemImage: isSelected ? "checkmark.circle.fill" : "circle")
+                        .lineLimit(1)
+                }
+                .accessibilityIdentifier(identifier(option))
+                .accessibilityValue(isSelected ? "selected" : "")
+            }
+        }
+        .focusSection()
     }
 }
 
