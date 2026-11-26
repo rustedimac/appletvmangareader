@@ -6,7 +6,8 @@
 | --- | --- |
 | `Packages/MangaCore` | Swift package with all non-UI logic. No SwiftUI. Tested with `swift test`. |
 | `MangaCore/Models` | Shared value types: `ServerConfig`, `Profile`, `SeriesSummary`, `SeriesDetail`, `Chapter`, `PageDescriptor`, `HomeFeed`. |
-| `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
+| `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), the `MangaServer` protocol every backend implements, and `ServerAddressRouter` / `FailoverTransport` for servers with several addresses (see [SERVERS.md](SERVERS.md#several-addresses-per-server)). |
+| `MangaCore/Pairing` | `PhoneSetupHTTP` / `PhoneSetupServer`: the "Set Up from Your Phone" form the Apple TV serves on the local network. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, auth key in `x-api-key`, username/password sign-in via `KavitaClient.signIn`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`; no auth, basic auth, or `login` + Bearer tokens). |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |

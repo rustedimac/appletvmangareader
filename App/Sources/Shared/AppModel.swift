@@ -28,7 +28,9 @@ final class AppModel {
     /// login to keep (an auth key, never the password). UI tests swap in a
     /// fake (see `AppModel+Demo.swift`).
     @ObservationIgnored var kavitaSignIn: (ServerConfig, String, String, HTTPTransport) async throws -> ServerCredential = {
-        try await KavitaClient.signIn(baseURL: $0.baseURL, username: $1, password: $2, transport: $3)
+        // Through the failover, so sign-in works from whichever address answers.
+        try await KavitaClient.signIn(baseURL: $0.baseURL, username: $1, password: $2,
+                                      transport: $0.hasAlternateAddresses ? FailoverTransport(inner: $3, config: $0) : $3)
     }
 
     /// The app runs as the current Apple TV user, so `state` belongs to that
@@ -69,6 +71,7 @@ final class AppModel {
     static func live() -> AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
             let store = StateStore(backing: InMemoryKeyValueStore())
+            ServerAddressRouter.shared.reset(store: InMemoryKeyValueStore())
             if let seeded = UITestingSeed.state() { store.save(seeded) }
             let model = AppModel(stateStore: store, secrets: InMemorySecretStore(),
                                  identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
@@ -174,7 +177,7 @@ final class AppModel {
     /// the libraries/categories that profile imports.
     func client(for server: ServerConfig) -> MangaServer {
         let scope = selectedCategories(for: server)
-        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)|\(Self.scopeKey(scope))"
+        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.addresses.map(\.absoluteString).joined(separator: ","))|\(Self.scopeKey(scope))"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: loginProfileID, server: server.id)
         let client = makeClient(server, credential, scope, transport)
@@ -220,8 +223,14 @@ final class AppModel {
     }
 
     /// Checks a server and login without saving them.
+    /// With several addresses, says which one answered.
     func testConnection(_ server: ServerConfig, credential: ServerCredential?) async throws -> String {
-        try await makeClient(server, credential, nil, transport).validate()
+        let message = try await makeClient(server, credential, nil, transport).validate()
+        guard server.hasAlternateAddresses else { return message }
+        let used = ServerAddressRouter.shared.currentAddress(for: server)
+        let which = used == server.baseURL ? "the first address" : (used.host ?? used.absoluteString)
+        let lead = message.hasSuffix(".") ? String(message.dropLast()) : message
+        return lead + ". Connected through \(which)."
     }
 
     /// Every library/category on a server, selected or not, for the picker.
@@ -283,6 +292,7 @@ final class AppModel {
     }
 
     func removeServer(_ server: ServerConfig) {
+        ServerAddressRouter.shared.forget(server.id)
         secrets.removeCredentials(server: server.id, profiles: state.profiles.map(\.id))
         if server.kind == .freeLibrary {
             update { $0.removeFreeLibrary() }
