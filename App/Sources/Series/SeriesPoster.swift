@@ -48,7 +48,8 @@ struct SeriesPoster: View {
     @FocusState private var isPosterFocused: Bool
 
     var body: some View {
-        let badges = PosterBadges(series: badgeSeries)
+        let style = model.posterCaption
+        let badges = PosterBadges(series: badgeSeries, caption: style)
         VStack(alignment: .leading, spacing: 14) {
             link(badges)
                 .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
@@ -71,6 +72,14 @@ struct SeriesPoster: View {
                         .lineLimit(1)
                         .accessibilityIdentifier("poster.caption.\(series.ref.seriesID)")
                 }
+                if let read = badges.titleProgress {
+                    TitleProgressBar(fraction: read)
+                        .padding(.top, 6)
+                        .accessibilityElement()
+                        .accessibilityLabel("Reading progress")
+                        .accessibilityValue("\(Int((read * 100).rounded())) percent")
+                        .accessibilityIdentifier("poster.titleProgress.\(series.ref.seriesID)")
+                }
                 if showsServer, let server = model.state.server(series.ref.serverID) {
                     Text(server.name)
                         .font(.caption2)
@@ -86,13 +95,25 @@ struct SeriesPoster: View {
         }
         // Grids that fill right to left flip only the layout, not the text.
         .environment(\.layoutDirection, .leftToRight)
+        .onAppear { requestCountIfNeeded(style) }
+        .onChange(of: style) { _, new in requestCountIfNeeded(new) }
+        .onDisappear { model.seriesCounts.cancel(series.ref) }
+    }
+
+    /// Kavita listings have no chapter count; fetch it for posters on
+    /// screen (see `SeriesCountStore`).
+    private func requestCountIfNeeded(_ style: PosterCaption) {
+        guard style.needsChapterCount(series), model.seriesCounts.count(for: series.ref) == nil,
+              let client = model.client(for: series.ref) else { return }
+        model.seriesCounts.request(series.ref, client: client)
     }
 
     /// The series with any count changed by "Mark as Unread" since the row
     /// loaded. Its page progress is stale then, so badges use the count.
     private var badgeSeries: SeriesSummary {
-        guard let override = model.unreadCountOverrides[series.ref] else { return series }
-        var s = series
+        let counted = series.withCount(model.seriesCounts.count(for: series.ref))
+        guard let override = model.unreadCountOverrides[series.ref] else { return counted }
+        var s = counted
         s.unreadCount = override
         s.pagesRead = nil
         return s
@@ -203,6 +224,22 @@ private struct ProgressBadge: View {
     }
 }
 
+/// The `.progress` caption: a thin bar under the title, full width of the
+/// poster, empty for unread series.
+private struct TitleProgressBar: View {
+    let fraction: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.35))
+                Capsule().fill(.tint).frame(width: geo.size.width * min(1, max(0, fraction)))
+            }
+        }
+        .frame(height: 6)
+    }
+}
+
 /// A titled horizontal row of posters (Home rows, search results).
 struct SeriesShelf: View {
     let title: String
@@ -289,7 +326,8 @@ struct BrowseMessage: View {
             }
         }
         .padding(60)
-        .frame(maxWidth: .infinity)
+        // Try Again is reachable from anywhere in the rows above or below.
+        .centeredFocusRow()
     }
 }
 

@@ -92,6 +92,7 @@ Type and bold text keep working. tvOS sizes for reference:
 | Token | Value | Use for |
 | --- | --- | --- |
 | System | — | Buttons, list/form rows, text fields, pickers, toggles: keep the system shape |
+| `Radius.small` | 8 | Small highlights inside a control: focused jump-bar letter, poster badges |
 | `Radius.poster` | 12 | Cover art (`.buttonStyle(.card)` rounds it too) |
 | `Radius.card` | 20 | Custom tiles and grouped panels |
 | `Radius.panel` | 32 | Large floating panels, e.g. the reader menu drawer if it gets corners |
@@ -123,6 +124,12 @@ vertical) gives seven columns of 217 pt across the 1,760 pt safe width. We use
 that for shelves and library grids: `Grid.posterWidth` 217, height 1.5×,
 `Grid.columnSpacing` 40, `Grid.rowSpacing` 100 (poster bottom to next poster
 top, caption included).
+
+Under each poster: the title (`.caption`, two lines at most), then one line
+picked by the profile's poster caption setting (`PosterCaption`): a count
+("42 chapters", "12 volumes", "3 books"; `.caption2` `.secondary`, one line),
+the page count, a 6 pt progress bar, or nothing. Corner badges and the bar on
+the cover don't change with it. Don't add more lines under a poster than these.
 
 Posters (`SeriesPoster`):
 
@@ -183,6 +190,24 @@ Form { … }
 - `.settingsPage(_:hero:)` takes any view for the hero (the profile editor
   shows the avatar being edited).
 
+### Pickers and value rows (`SettingsPicker`)
+
+A row that shows a value and opens a list of choices uses `SettingsPicker`,
+not `Picker`. It's laid out like Apple's own Settings rows: title leading,
+value in `.secondary` with the chevron `Space.s` (16 pt) after it, both
+trailing, in the same place whether or not the row has focus. The chevron
+ends where a `Toggle`'s On/Off ends, so the right edge of a form lines up.
+The system `Picker` leaves about 60 pt between its value and chevron, and
+SwiftUI can't change that.
+
+```swift
+SettingsPicker("Mode", selection: $settings.mode, options: ReadingMode.allCases) { $0.title }
+```
+
+The choices open on their own `SettingsPage` with a checkmark on the current
+one and focus starting there; picking one goes back. A custom row that opens
+another page with a value uses `SettingsValueRow` for the same spacing.
+
 ### Buttons
 
 - Default: system `Button` in its default (bordered) style. On tvOS that is a
@@ -200,6 +225,9 @@ Form { … }
 - Inside a settings `Form`, add `.settingsTextFieldRow()` to every field. It
   removes the row platter so the field's own capsule is the only outline
   (otherwise tvOS draws a capsule inside a capsule).
+- Segmented pickers in a settings `Form` get `.settingsSegmentedRow()` for
+  the same reason: without it the row platter shows as a third rounded
+  layer behind the picker's track, with corners that don't match.
 - Outside a form, cap the width at `Size.textField` and give them a visible
   label or a prompt that says what to type. Prefer pickers or buttons when
   the choices are known (HIG: minimize text entry on tvOS).
@@ -229,6 +257,20 @@ Form { … }
   `Layout.safeTop` from the top and `Layout.safeSide` from the trailing edge.
 - Option chips use `Capsule()` and `Space.m` between chips.
 
+### Setting scopes
+
+- Every setting a series (or a library) can override also has a global
+  default for the profile, on the matching settings screen: reader settings
+  in Default Reader Settings, library sort and grid order in Customize Home.
+- The narrower value only overrides; while it's unset, changing the global
+  default changes that series too.
+- Wherever a narrower value is set, offer "Reset to Default" next to it, and
+  show when the current values already match the default.
+- Use the same row names on both screens (`ReaderMenuItem.title`).
+- Exempt only fixes for one book, such as shifting the page pairing by one.
+  `tools/check_setting_scopes.py` checks every `ReaderSettings` field has a
+  row in Default Reader Settings.
+
 ## 8. Focus
 
 - Rely on system focus: `.buttonStyle(.card)` for artwork, the default style
@@ -238,12 +280,23 @@ Form { … }
   series, the current profile in the picker, the first row in a form).
 - Group regions with `.focusSection()` so moving down from a wide row of
   buttons lands somewhere predictable.
+- A lone centered control under or above a row (Customize Home under the last
+  Home shelf, Try Again in an error message) uses `.centeredFocusRow()`, which
+  makes the full width a focus section. Otherwise focus only reaches it from
+  the items directly above it.
 - Never move focus without the user doing something, except restoring it when
   a screen appears.
 - Scrolling containers must scroll back to the top when focus moves to their
   first item, so titles and the tab bar come back into view. Don't put
   `.scrollClipDisabled()` on a vertical scroll view that sits under a
   navigation title.
+- Focusing the tab bar scrolls the visible screen back to its top, so the bar
+  is never left half off screen (`TabBarScrollReset`, installed once in
+  `RootView`). It finds the UIKit scroll view behind any SwiftUI
+  `ScrollView`, `List` or `Form`, so new screens need nothing extra. Don't
+  wrap a tab's content in a scroll view that offsets itself (custom
+  `.offset` scrolling or a `ScrollViewReader` that pins content), since
+  it can't reset those.
 
 ## 9. Checklist for a new or changed screen
 
@@ -264,6 +317,9 @@ a server and checks the rules a test can measure: focusable elements are at
 least 60 pt tall (system rows report a few points less than they draw),
 everything focusable stays inside the safe area (with room for focus growth),
 form rows aren't wider than the form column, and sibling rows don't overlap.
+`testSettingsValueSitsNextToChevron` measures value rows from the screenshot:
+8–30 pt between the value and the chevron, chevrons in the same place on every
+row with and without focus, and a toggle's On/Off ending in line with them.
 
 Set `DESIGN_AUDIT_DIR` (as `TEST_RUNNER_DESIGN_AUDIT_DIR` for `xcodebuild`) to
 also save a screenshot of every screen it visits to that folder. Those

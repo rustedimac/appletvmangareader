@@ -35,6 +35,9 @@ enum Space {
 
 /// Corner radii for custom shapes. System controls keep their own shape.
 enum Radius {
+    /// Small highlights inside a control: a focused jump-bar letter, a
+    /// format badge on a poster.
+    static let small: CGFloat = 8
     static let poster: CGFloat = 12
     static let card: CGFloat = 20
     static let panel: CGFloat = 32
