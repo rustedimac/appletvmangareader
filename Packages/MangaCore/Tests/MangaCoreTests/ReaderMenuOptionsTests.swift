@@ -5,7 +5,7 @@ final class ReaderMenuOptionsTests: XCTestCase {
     func testPagedDoubleShowsPairingRows() {
         let s = ReaderSettings(mode: .paged, layout: .double)
         XCTAssertEqual(ReaderMenuOptions.items(for: s),
-                       [.mode, .layout, .direction, .firstPageAlone, .shiftPairing,
+                       [.mode, .layout, .direction, .firstPageAlone,
                         .fit, .cropBorders, .zoom, .background])
     }
 
@@ -63,16 +63,16 @@ final class ReaderMenuOptionsTests: XCTestCase {
 
     func testWithChangesOneField() {
         let s = ReaderSettings.default
-        let changed = s.with(\.shiftPairing, true)
-        XCTAssertTrue(changed.shiftPairing)
-        XCTAssertEqual(changed.with(\.shiftPairing, false), s)
+        let changed = s.with(\.background, .white)
+        XCTAssertEqual(changed.background, .white)
+        XCTAssertEqual(changed.with(\.background, s.background), s)
     }
 
-    func testShiftChangesPairingThroughSettings() {
-        let sizes = Array(repeating: Optional(PageSize(width: 400, height: 600)), count: 5)
-        let normal = ReaderSettings.default
-        XCTAssertEqual(normal.layout(for: sizes).spreads.first, .single(0))
-        XCTAssertEqual(normal.with(\.shiftPairing, true).layout(for: sizes).spreads.first, .double(0, 1))
+    func testNoSeparateShiftRow() {
+        // "Shift by one" did exactly what First Page Alone does, so the menu
+        // has one pairing row.
+        XCTAssertNil(ReaderMenuItem(rawValue: "shiftPairing"))
+        XCTAssertEqual(ReaderMenuOptions.items(for: .default).filter { $0 == .firstPageAlone }.count, 1)
     }
 }
 

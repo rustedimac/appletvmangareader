@@ -6,9 +6,10 @@ import MangaCore
 /// single-page layout).
 ///
 /// Siri Remote: left/right (click or swipe) turns the page, following the
-/// reading direction. Swipe down or Play/Pause opens the reader menu; swipe
-/// or click up bookmarks the page (again removes it) unless there is more
-/// of the page above to pan to. Going
+/// reading direction. Holding Select, Play/Pause or swipe down opens the
+/// reader menu; a click zooms (#17). Swipe or click up bookmarks the page
+/// (again removes it) unless there is more of the page above to pan to.
+/// The full map is `ReaderControls` / docs/CONTROLS.md. Going
 /// past the first or last spread shows a chapter transition card; pressing
 /// again opens the previous or next chapter.
 ///
@@ -71,6 +72,8 @@ struct PagedReaderView: View {
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
         .onPlayPauseCommand { session.isMenuPresented = true }
+        // Holding Select opens the menu, as in every reader.
+        .onLongPressGesture(minimumDuration: 0.5) { session.isMenuPresented = true }
         // Select retries failed pages on screen first, otherwise zooms.
         .onTapGesture { if !session.retryVisibleFailedPages() { toggleZoom() } }
         // Menu zooms out first; when not zoomed it falls through to

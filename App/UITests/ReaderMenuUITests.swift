@@ -93,8 +93,9 @@ final class ReaderMenuUITests: XCTestCase {
         XCTAssertFalse(menuItem("mode.webtoon").isSelected)
         XCTAssertTrue(menuItem("layout.double").isSelected)
         XCTAssertTrue(menuItem("direction.rightToLeft").isSelected)
-        XCTAssertTrue(menuItem("firstPageAlone.on").exists)
-        XCTAssertTrue(menuItem("shiftPairing").exists)
+        XCTAssertTrue(menuItem("firstPageAlone.on").isSelected)
+        XCTAssertTrue(menuItem("firstPageAlone.hint").exists)
+        XCTAssertFalse(menuItem("shiftPairing").exists)   // folded into First Page Alone
         XCTAssertTrue(menuItem("background.black").isSelected)
         XCTAssertFalse(menuItem("webtoonWidth.value").exists)
         XCTAssertEqual(menuItem("position").label, "Page 1 of 6")
@@ -105,8 +106,7 @@ final class ReaderMenuUITests: XCTestCase {
         openMenu()
         choose("layout.single")
         wait(menuItem("layout.single"), "isSelected == true")
-        wait(menuItem("shiftPairing"), "exists == false")
-        XCTAssertFalse(menuItem("firstPageAlone.on").exists)
+        wait(menuItem("firstPageAlone.on"), "exists == false")
         closeMenu()
         remote.press(.left)
         expectIndicator("2 / 6")
@@ -114,32 +114,24 @@ final class ReaderMenuUITests: XCTestCase {
         expectIndicator("3 / 6")
     }
 
-    func testShiftByOneRepairsPairs() {
+    /// First Page Alone is the one pairing fix: Off re-pairs the spreads
+    /// (what "Shift by one" used to do), On puts them back.
+    func testFirstPageAloneRepairsPairsBothWays() {
         launch()
         openMenu()
-        choose("shiftPairing")
-        wait(menuItem("shiftPairing"), "value == 'On'")
+        choose("firstPageAlone.off")
+        wait(menuItem("firstPageAlone.off"), "isSelected == true")
         // The cover now pairs with page 2 behind the menu.
         wait(menuItem("position"), "label == 'Pages 1–2 of 6'")
         closeMenu()
         expectIndicator("1–2 / 6")
         remote.press(.left)
         expectIndicator("3 / 6")       // page 3 can't pair with the wide page 4
-        // Pressing again undoes it.
         openMenu()
-        choose("shiftPairing")
-        wait(menuItem("shiftPairing"), "value == 'Off'")
+        choose("firstPageAlone.on")
+        wait(menuItem("firstPageAlone.on"), "isSelected == true")
         closeMenu()
         expectIndicator("2–3 / 6")
-    }
-
-    func testFirstPageAloneOff() {
-        launch()
-        openMenu()
-        choose("firstPageAlone.off")
-        wait(menuItem("firstPageAlone.off"), "isSelected == true")
-        closeMenu()
-        expectIndicator("1–2 / 6")
     }
 
     func testDirectionLeftToRight() {
@@ -161,7 +153,7 @@ final class ReaderMenuUITests: XCTestCase {
         wait(menuItem("mode.webtoon"), "isSelected == true")
         XCTAssertTrue(element("reader.webtoon").waitForExistence(timeout: 5))
         wait(menuItem("layout.double"), "exists == false")
-        XCTAssertFalse(menuItem("shiftPairing").exists)
+        XCTAssertFalse(menuItem("firstPageAlone.on").exists)
         XCTAssertEqual(menuItem("webtoonWidth.value").label, "60%")
         choose("webtoonWidth.increase")
         wait(menuItem("webtoonWidth.value"), "label == '70%'")

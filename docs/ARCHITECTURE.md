@@ -113,8 +113,12 @@ OPDS (verified against Komga 1.30.2 and Stump)
 ## Double-page spreads
 
 `SpreadLayout` pairs pages. Wide images are always alone; pairing restarts
-after one. The first page is alone by default (cover). `shiftPairing` flips the
-parity of the first run when a chapter's pairs come out wrong. Unknown sizes
+after one. The first page is alone by default (cover). First Page Alone is
+the only pairing control: flipping it per series is how a book whose pairs come
+out wrong is fixed. The old "Shift by one" (`shiftPairing`) did exactly the
+same thing, so it was folded in: `PagePairing.swift` reads and writes it as
+`firstPageAlone != shiftPairing` with the shift cleared, and the field stays
+only so older saves and iCloud peers decode. Unknown sizes
 count as tall; the reader re-lays out when sizes arrive and keeps the current
 page on screen. See `SpreadLayoutTests` for the exact rules.
 
@@ -283,8 +287,11 @@ the image arrives.
 - **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
-  page; select opens the menu; Play/Pause toggles auto-scroll; Menu passes
-  through to `ReaderView`.
+  page; select opens the menu (acted on at release, so holding Select for
+  0.5 s can open it too, even while auto-scroll runs); Play/Pause toggles
+  auto-scroll; Menu passes through to `ReaderView`. The full button map
+  is `ReaderControls` (MangaCore), shown in Settings > Remote and
+  Controller and in docs/CONTROLS.md.
 - **Auto-scroll.** `WebtoonScrollDriver` moves the strip at
   `WebtoonAutoScroll.speed(level:viewport:)` (ten levels, fractions of a
   screen per second), tracking the position below a pixel so slow speeds
@@ -328,16 +335,18 @@ device with a controller.
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
-view and changes show behind it as they're made. Swipe down or Play/Pause
-(paged), a click (vertical), or Y on a controller opens it; Menu or
-Play/Pause closes it. While it's open the reader under it
+view and changes show behind it as they're made. A click or holding Select
+(every reader), swipe down or Play/Pause (paged and book), or Y on a
+controller opens it; Menu or Play/Pause closes it. The first few times
+each mode opens, `ReaderControlsHint` names the route at the top of the
+screen (`ReaderHintTracker`; off in UI tests unless `-readerHints`). While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
   comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction,
-  in two-page layout first page alone and "Shift by one", then page fit,
-  crop borders and click-to-zoom level; vertical: column width and
-  auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
+  in two-page layout First Page Alone, then page fit, crop borders and
+  click-to-zoom level; vertical: column width and auto-scroll speed).
+  Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one
@@ -629,11 +638,18 @@ UI tests: `-uiTesting -demoServers -demoFavorites` seeds four favorites with
 distinct sort values and two bookmarks (`AppModel+DemoBookmarks.swift`), used
 by `FavoritesSortUITests` and `BookmarksUITests`.
 
-## Mark as unread
+## Mark as read and unread
 
-Long-pressing a chapter row offers "Mark as Unread" and "Mark Series as
-Unread"; the series "More" button and a poster's long-press offer "Mark
-Series as Unread". `AppModel.markUnread` / `markSeriesUnread` always update
+Each chapter row has a "…" button on its right (reached by moving right,
+so no long press is needed) and the same items on a long press: "Mark as
+Read", "Mark as Unread", "Mark Previous as Read" and "Mark Series as
+Unread". The series "More" button offers "Mark Series as Read" and "Mark
+Series as Unread", and a poster's long-press "Mark Series as Unread".
+`AppModel.markRead` uses `MangaServer.markRead(chapters:libraryID:)`:
+Kavita's `mark-multiple-read`, Suwayomi's `updateChapters(isRead: true)`,
+and for the rest the default, which saves each chapter's progress as
+completed. Locally it adds to `readChapterIDs` and leaves the resume
+position alone. `AppModel.markUnread` / `markSeriesUnread` always update
 the profile's local progress and call the server only when the profile
 syncs there. Locally, `SeriesProgress.unreadChapterIDs` hides the server's
 read state for those chapters until they are opened again, and

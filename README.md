@@ -95,4 +95,6 @@ can sync through iCloud once the app is signed with iCloud turned on; until
 then Settings → iCloud Sync and Backup offers a Wi‑Fi backup page you open
 from a phone or computer. See [docs/ICLOUD.md](docs/ICLOUD.md).
 
+Every remote and controller button is listed in [docs/CONTROLS.md](docs/CONTROLS.md) (and in the app under Settings > Remote and Controller).
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.

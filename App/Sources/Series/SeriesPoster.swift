@@ -5,6 +5,16 @@ enum PosterMetrics {
     static let width: CGFloat = 230
     static var height: CGFloat { width * 1.5 }
     static let spacing: CGFloat = 48
+    /// How much `.buttonStyle(.card)` scales a focused poster (measured
+    /// on tvOS 26: about 1.1).
+    static let focusScale: CGFloat = 1.1
+
+    /// How far the title under a poster moves down while the poster has
+    /// focus: the half of the scale-up that grows below the cover, plus a
+    /// gap, so the lifted cover and its shadow never sit on the title.
+    static func focusedTitleDrop(forWidth width: CGFloat) -> CGFloat {
+        (width * 1.5 * (focusScale - 1) / 2).rounded(.up) + Space.xs
+    }
 }
 
 private struct PosterWidthKey: EnvironmentKey {
@@ -34,6 +44,8 @@ struct SeriesPoster: View {
     /// Lets a grid move focus to this poster (A–Z jump).
     var focus: FocusState<SeriesRef?>.Binding? = nil
     @State private var markError: String?
+    /// Whether this poster's button has focus (moves the title down).
+    @FocusState private var isPosterFocused: Bool
 
     var body: some View {
         let style = model.posterCaption
@@ -50,6 +62,10 @@ struct SeriesPoster: View {
                 Text(series.title)
                     .font(width < PosterMetrics.width ? .caption2 : .caption)
                     .lineLimit(2)
+                    // Take the height two lines need; without it a shelf can
+                    // squeeze a long title onto one truncated line.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("poster.title.\(series.ref.seriesID)")
                 if let caption = badges.caption {
                     // The server name shares the caption's line, so a
                     // merged row doesn't get taller.
@@ -82,6 +98,10 @@ struct SeriesPoster: View {
                 }
             }
             .frame(width: width, alignment: .leading)
+            // The focused cover grows over the space under it; move the
+            // title out of its way (like the TV app does).
+            .offset(y: isPosterFocused ? PosterMetrics.focusedTitleDrop(forWidth: width) : 0)
+            .animation(.easeOut(duration: 0.2), value: isPosterFocused)
         }
         // Grids that fill right to left flip only the layout, not the text.
         .environment(\.layoutDirection, .leftToRight)
@@ -142,6 +162,7 @@ struct SeriesPoster: View {
                 }
         }
         .buttonStyle(.card)
+        .focused($isPosterFocused)
         // VoiceOver hears the server wherever the poster shows it.
         .accessibilityLabel(serverName.map { "\(series.title), \($0)" } ?? series.title)
         .accessibilityValue(badges.accessibilityValue)
@@ -177,14 +198,7 @@ struct SeriesPoster: View {
     private func corner(_ corner: PosterBadges.Corner) -> some View {
         switch corner {
         case .unread(let n):
-            Text("\(n)")
-                .font(.caption2.bold())
-                .monospacedDigit()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(.tint, in: Capsule())
-                .foregroundStyle(.white)
-                .padding(10)
+            UnreadBadge(count: n)
         case .finished:
             Image(systemName: "checkmark")
                 .font(.caption2.bold())
@@ -195,6 +209,29 @@ struct SeriesPoster: View {
         case .none:
             EmptyView()
         }
+    }
+}
+
+/// The unread-chapter count in a cover's top-right corner. White bold
+/// digits on a near-opaque dark capsule with a light rim: the plate keeps
+/// the digits readable on white covers (about 13:1), and the rim keeps the
+/// plate visible on dark ones. A translucent tint fill washed out on light
+/// covers.
+private struct UnreadBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count)")
+            .font(.caption.bold())
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+            .frame(minWidth: 52)
+            .background(Color.black.opacity(0.82), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.55), lineWidth: 2))
+            .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
+            .padding(10)
     }
 }
 

@@ -137,6 +137,21 @@ picked by the profile's poster caption setting (`PosterCaption`): a count
 the page count, a 6 pt progress bar, or nothing. Corner badges and the bar on
 the cover don't change with it. Don't add more lines under a poster than these.
 
+Posters (`SeriesPoster`):
+
+- The card button style scales a focused cover by about 1.1, so the cover
+  grows over the space under it. The title block moves down by
+  `PosterMetrics.focusedTitleDrop` while the poster has focus and comes back
+  when focus leaves. Don't put fixed-height text right under a card without
+  that drop.
+- Titles get two lines (`.lineLimit(2)` plus
+  `.fixedSize(horizontal: false, vertical: true)`, so a row never squeezes them
+  to one truncated line).
+- Badges on covers sit on a near-opaque dark plate with white bold text (the
+  unread count adds a light rim so it shows on dark covers too). Never put
+  badge text on a translucent tint: it disappears on light covers.
+  `PosterLayoutUITests` checks the title rules.
+
 Every poster progress bar carries its percentage ("40%", from
 `PosterBadges.percentText`, never "0%" once something is read or "100%"
 before the end) unless the profile turns off Show Percentage Read
@@ -302,7 +317,9 @@ Menu simply goes back.
 - Wherever a narrower value is set, offer "Reset to Default" next to it, and
   show when the current values already match the default.
 - Use the same row names on both screens (`ReaderMenuItem.title`).
-- Exempt only fixes for one book, such as shifting the page pairing by one.
+- Exempt only fixes that make no sense for every book. Before adding one,
+  check it isn't the per-series value of an existing setting (the old "Shift
+  by one" was just First Page Alone flipped).
   `tools/check_setting_scopes.py` checks every `ReaderSettings` field has a
   row in Default Reader Settings.
 
