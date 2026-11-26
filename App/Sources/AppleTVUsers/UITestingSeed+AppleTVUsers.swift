@@ -24,4 +24,20 @@ extension UITestingSeed {
         return SharedServerDirectory(servers: [server],
                                      credentials: [server.id.uuidString: ServerCredential(apiKey: "shared-test-key")])
     }
+
+    /// `-uiTestingOpenLink series:<server name>:<series id>` or
+    /// `read:<server name>:<series id>:<chapter id>` opens that Top Shelf
+    /// link at launch. Server ids are random in tests, so names are used.
+    @MainActor
+    static func openLink(in model: AppModel) -> DeepLink? {
+        guard isUITesting, let spec = value(after: "-uiTestingOpenLink") else { return nil }
+        let parts = spec.split(separator: ":").map(String.init)
+        guard parts.count >= 3, let server = model.servers.first(where: { $0.name == parts[1] }) else { return nil }
+        let ref = SeriesRef(serverID: server.id, seriesID: parts[2])
+        switch parts[0] {
+        case "series": return .series(ref, profile: model.activeProfile.id)
+        case "read" where parts.count >= 4: return .read(ref, chapterID: parts[3], page: nil, profile: model.activeProfile.id)
+        default: return nil
+        }
+    }
 }

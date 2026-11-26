@@ -34,6 +34,11 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
     public var page: Int
     public var updatedAt: Date
     public var readChapterIDs: Set<String>
+    /// Enough to draw the series on a local Continue Reading row (no
+    /// secrets, see `SeriesSummary.withoutSecrets`).
+    public var series: SeriesSummary?
+    /// Changes not yet confirmed by the server, oldest first.
+    public var pending: [PendingProgress]
     /// Chapters this profile marked unread. They show as unread even when
     /// the server (another profile's progress) says they're read.
     public var unreadChapterIDs: Set<String>
@@ -42,20 +47,23 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
     public var ignoresServerProgress: Bool
 
     public init(chapterID: String, page: Int, updatedAt: Date = Date(), readChapterIDs: Set<String> = [],
-                unreadChapterIDs: Set<String> = [], ignoresServerProgress: Bool = false) {
+                unreadChapterIDs: Set<String> = [], ignoresServerProgress: Bool = false,
+                series: SeriesSummary? = nil, pending: [PendingProgress] = []) {
         self.chapterID = chapterID
         self.page = page
         self.updatedAt = updatedAt
         self.readChapterIDs = readChapterIDs
         self.unreadChapterIDs = unreadChapterIDs
         self.ignoresServerProgress = ignoresServerProgress
+        self.series = series
+        self.pending = pending
     }
 
     private enum CodingKeys: String, CodingKey {
-        case chapterID, page, updatedAt, readChapterIDs, unreadChapterIDs, ignoresServerProgress
+        case chapterID, page, updatedAt, readChapterIDs, unreadChapterIDs, ignoresServerProgress, series, pending
     }
 
-    // Older saved state has no unread fields.
+    // Older saved state has no unread, series or pending fields.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         chapterID = try c.decode(String.self, forKey: .chapterID)
@@ -64,9 +72,11 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
         readChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .readChapterIDs) ?? []
         unreadChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .unreadChapterIDs) ?? []
         ignoresServerProgress = try c.decodeIfPresent(Bool.self, forKey: .ignoresServerProgress) ?? false
+        series = try c.decodeIfPresent(SeriesSummary.self, forKey: .series)
+        pending = try c.decodeIfPresent([PendingProgress].self, forKey: .pending) ?? []
     }
 
-    // Skip the unread fields when empty to keep AppState small.
+    // Skip empty optional fields to keep AppState small.
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(chapterID, forKey: .chapterID)
@@ -75,6 +85,8 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
         try c.encode(readChapterIDs, forKey: .readChapterIDs)
         if !unreadChapterIDs.isEmpty { try c.encode(unreadChapterIDs, forKey: .unreadChapterIDs) }
         if ignoresServerProgress { try c.encode(true, forKey: .ignoresServerProgress) }
+        try c.encodeIfPresent(series, forKey: .series)
+        if !pending.isEmpty { try c.encode(pending, forKey: .pending) }
     }
 }
 
@@ -100,6 +112,10 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// Webtoon auto-scroll speed (1...10); nil uses the default. Use
     /// `autoScrollLevel`.
     public var webtoonAutoScrollLevel: Int? = nil
+    /// Title and cover of series this profile has read, keyed by
+    /// `SeriesRef.storageKey`, so Continue Reading on the Top Shelf can draw
+    /// them without the server. Optional so older saved state decodes.
+    public var recentSeries: [String: SeriesSummary]?
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
@@ -109,6 +125,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 bookSettings: BookSettings? = nil,
                 bookmarks: [Bookmark] = [],
                 favoritesSort: FavoritesSort = .default,
+                recentSeries: [String: SeriesSummary]? = nil,
                 browse: BrowsePreferences? = nil) {
         self.bookSettings = bookSettings
         self.serverSettings = serverSettings
@@ -118,11 +135,12 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.readerOverrides = readerOverrides
         self.bookmarks = bookmarks
         self.favoritesSort = favoritesSort
+        self.recentSeries = recentSeries
         self.browse = browse
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, browse
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse
     }
 
     // State saved by older versions lacks the newer fields.
@@ -138,6 +156,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
         webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        // A damaged list only loses Top Shelf titles, never the profile.
+        recentSeries = try? c.decodeIfPresent([String: SeriesSummary].self, forKey: .recentSeries)
         // A browse shape this build can't read falls back to defaults.
         browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
     }
@@ -153,6 +173,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         if !bookmarks.isEmpty { try c.encode(bookmarks, forKey: .bookmarks) }
         if favoritesSort != .default { try c.encode(favoritesSort, forKey: .favoritesSort) }
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
+        try c.encodeIfPresent(recentSeries, forKey: .recentSeries)
         try c.encodeIfPresent(browse, forKey: .browse)
     }
 }
@@ -276,6 +297,7 @@ public struct AppState: Codable, Hashable, Sendable {
             data.bookmarks.removeAll { $0.series.ref.serverID == id }
             data.progress = data.progress.filter { !$0.key.hasPrefix(prefix) }
             data.readerOverrides = data.readerOverrides.filter { !$0.key.hasPrefix(prefix) }
+            data.recentSeries = data.recentSeries?.filter { !$0.key.hasPrefix(prefix) }
             data.browse?.removeServer(id)
             profileData[key] = data
         }
@@ -332,13 +354,16 @@ public struct AppState: Codable, Hashable, Sendable {
         profileData[profile.uuidString]?.progress[ref.storageKey]
     }
 
+    /// Records where the profile is. `series` (when given) is kept, minus
+    /// secrets, for the local Continue Reading row.
     public mutating func recordProgress(_ ref: SeriesRef, chapterID: String, page: Int, completed: Bool,
-                                        profile: UUID, now: Date = Date()) {
+                                        profile: UUID, now: Date = Date(), series: SeriesSummary? = nil) {
         mutateData(profile) { data in
             var p = data.progress[ref.storageKey] ?? SeriesProgress(chapterID: chapterID, page: page, updatedAt: now)
             p.chapterID = chapterID
             p.page = page
             p.updatedAt = now
+            if let series { p.series = series.withoutSecrets }
             if completed { p.readChapterIDs.insert(chapterID) }
             // Reading a chapter again means its progress is real, not a reset.
             p.unreadChapterIDs.remove(chapterID)
