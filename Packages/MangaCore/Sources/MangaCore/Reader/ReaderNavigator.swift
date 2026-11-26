@@ -86,9 +86,13 @@ public struct ReaderNavigator: Hashable, Sendable {
     public var isOnLastSpread: Bool { !layout.spreads.isEmpty && spreadIndex == layout.spreads.count - 1 }
     public var isOnFirstSpread: Bool { spreadIndex == 0 }
 
-    /// True once the last page has been on screen.
+    /// True once the last page has been on screen (both halves, when the
+    /// last page is split).
     public var isChapterComplete: Bool {
-        pageCount > 0 && (progressPage >= pageCount - 1 || edge == .end)
+        guard pageCount > 0 else { return false }
+        if edge == .end { return true }
+        guard progressPage >= pageCount - 1 else { return false }
+        return currentSpread?.half == nil || isOnLastSpread
     }
 
     // MARK: Turning pages
@@ -165,10 +169,11 @@ public struct ReaderNavigator: Hashable, Sendable {
 
     private mutating func relayout() -> Bool {
         let anchor = currentPage
+        let anchorSpread = currentSpread
         let newLayout = settings.layout(for: sizes)
         guard newLayout != layout else { return false }
         layout = newLayout
-        spreadIndex = layout.spreadIndex(containing: anchor)
+        spreadIndex = layout.spreadIndex(keeping: anchorSpread, page: anchor)
         return true
     }
 
@@ -184,7 +189,8 @@ public struct ReaderNavigator: Hashable, Sendable {
         for offset in offsets {
             let i = spreadIndex + offset
             guard layout.spreads.indices.contains(i) else { continue }
-            result += layout.spreads[i].pages
+            // Both halves of a split page are the same page: list it once.
+            for page in layout.spreads[i].pages where !result.contains(page) { result.append(page) }
         }
         return result
     }
