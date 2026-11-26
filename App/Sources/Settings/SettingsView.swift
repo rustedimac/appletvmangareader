@@ -55,6 +55,13 @@ struct SettingsView: View {
                         Label("Library Defaults", systemImage: "square.grid.3x3")
                     }
                     .accessibilityIdentifier("settings.libraryDefaults")
+
+                    NavigationLink {
+                        ControlsHelpView()
+                    } label: {
+                        Label("Remote and Controller", systemImage: "appletvremote.gen4")
+                    }
+                    .accessibilityIdentifier("settings.controls")
                 }
 
                 Section {
