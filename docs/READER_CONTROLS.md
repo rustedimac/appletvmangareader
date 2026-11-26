@@ -440,3 +440,13 @@ Implementation notes:
 - Game controller: X = play, ☰ (or Y, D5) = options, A = click.
 - PR #45 (click/hold Select = options) and the paged parts of #17 need
   adjusting to this; the implementing PR goes on top of them.
+
+### HUD hint and legend placement (John, 2026-11-26)
+
+- The tap HUD also shows a small corner hint: the Play/Pause glyph
+  (SF Symbol `playpause.fill`) with "Hold for options". It shows and hides
+  with the HUD.
+- The button legend lives at the **bottom of the reader options** (below
+  the settings rows, after scrolling down): "Controls" with a row per input
+  for the current mode and state, built from `ReaderControls`. No separate
+  Controls button in the options header.
