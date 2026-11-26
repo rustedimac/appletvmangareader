@@ -311,3 +311,55 @@ Notes:
 | D7 | Should Back stop auto-scroll before closing the reader? | **Yes** (one extra press, no surprise exits mid-chapter) | No, Back always leaves once overlays are closed |
 | D8 | HUD default | **On tap**, auto-hide 3 s; setting Always / On tap / Never | Show briefly on every page turn |
 | D9 | Paged Down at the bottom of the page | **Page scrubber** | Show HUD; open options (today) |
+
+---
+
+## 8. Teaching the controls
+
+John wants new users shown how to control the reader, with captions on a
+sample manga, a way to replay it from Settings, and maybe a button legend
+from the reader options. Today there is only the one-line first-use hint
+from PR #45 (3 shows per mode) and the text table in Settings > Remote and
+Controller.
+
+### Sample content (hard rule)
+
+Only real, human-made works with a clear licence that allows bundling. No
+AI-made pages and no commercial manga. Code-drawn pages are for tests only.
+
+| Candidate | Licence | Fits | Notes |
+| --- | --- | --- | --- |
+| **Pepper&Carrot** (David Revoy), a few pages of episode 1 | CC BY 4.0, commercial use allowed | Paged LTR; vertical by stacking the pages | Already in the Free Library catalog. Needs an attribution line in the tutorial and in Settings > About. Recommended. |
+| National Diet Library manga from 1918 / 1927 (in `samples/LICENSES.md`) | Public domain (PDM) | Paged RTL, double page | Good for showing right-to-left. Old scans: check readability on a TV first. |
+| Korean contest webtoons | CC, but AI status unverified, some NC/ND | Vertical | **Not usable** under the rule. |
+
+Bundle about 6 to 8 pages at TV resolution (a few MB) so the tutorial works
+offline and before any server is added; don't stream it.
+
+### Options
+
+| Option | What the user sees | Good | Weak |
+| --- | --- | --- | --- |
+| **A. Guided tutorial on a sample** | A short reader session on the bundled pages. Each step shows a remote drawing with the button lit and a caption ("Tap the touch surface to show the page number"), then waits for that input (Skip always works). Steps per mode: paged (turn, HUD, options, zoom, bookmark, Back), vertical (scroll, auto-scroll and speed, options), controller (only if one is connected). About 30 to 60 s. | Learn by doing, on a real page | Takes time; needs care to feel optional |
+| **B. Coach marks on the user's own chapter** | The first time a mode opens, the same captions appear over the chapter they chose, one at a time, advancing as they try each one. | No sample needed; in context | Covers their page; can't show features that don't apply to that chapter (zoom on a vertical one) |
+| **C. Button legend** | A full-screen overlay with a Siri Remote drawing (and a gamepad drawing when one is connected), each button labelled with what it does **in the current mode and state** (zoomed, auto-scrolling). Opened from a "Controls" button in the reader options header and from Settings. Back closes it. | Always available, quick to check, zero learning cost | Passive; people skim it |
+| D. Text hint only (today, #45) | One line at the top for the first 3 opens | Cheap, already built | Easy to miss; can't show tap vs click |
+
+### Recommendation: A + C
+
+- **First open of the reader** (any mode): a small card "New to reading on Apple TV? Learn the controls (about 30 s)" with **Start** / **Not now**. Not now never asks again for that mode. Replaces the #45 text hint.
+- **Onboarding** (first-run welcome, PR #43): an optional "Learn the controls" step that starts the same tutorial.
+- **Replay:** Settings > Remote and Controller gets "Try the Controls" (tutorial) above the existing table, plus a per-mode picker.
+- **Legend (C):** a "Controls" button in the reader options header, next to Bookmark and Pages. It shows the live legend for the mode you're in. On a controller, holding View also opens it.
+- One source of truth: tutorial steps, legend labels, the Settings table and `docs/CONTROLS.md` all come from `ReaderControls` in MangaCore, so they can't drift from what the buttons do. A unit test checks every `ReaderInputAction` has a legend entry.
+- Drawings: built in SwiftUI from SF Symbols (`appletvremote.gen4`, `gamecontroller`) and shapes, so no artwork to license. Show the remote generation the user holds when GameController can tell (it reports the Siri Remote model), otherwise the current silver remote.
+- Accessibility: captions are real text (VoiceOver reads them); steps that wait for input also accept "Skip" via Play/Pause; Reduce Motion turns off the pulsing highlight.
+- Tests: UI tests drive the tutorial with `-uiTesting` and the bundled sample; the legend's labels are checked per mode.
+
+### Decisions to add
+
+| # | Decision | Recommended | Alternatives |
+| --- | --- | --- | --- |
+| D10 | How to teach the controls | A + C: optional guided tutorial on a sample, plus a live legend from the reader options | B coach marks on the user's chapter; C only; keep D (today's hint) |
+| D11 | When the tutorial is offered | On first reader open (Start / Not now card) and in onboarding; replay in Settings | Onboarding only; Settings only |
+| D12 | Sample work | Pepper&Carrot (CC BY 4.0), bundled pages, credited | NDL public-domain manga for an RTL example too |
