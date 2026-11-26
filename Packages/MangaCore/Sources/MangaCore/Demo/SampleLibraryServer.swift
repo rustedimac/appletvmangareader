@@ -90,7 +90,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         [genreNames[n % genreNames.count], "Demo"]
     }
 
-    private func summary(_ n: Int) -> SeriesSummary {
+    func summary(_ n: Int) -> SeriesSummary {
         let read = chapters(n).filter(\.isRead).count
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
                              title: Self.title(for: n), coverURL: nil,
@@ -100,7 +100,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
                              chapterCount: Self.chapterCount(for: n))
     }
 
-    private func chapters(_ n: Int) -> [Chapter] {
+    func chapters(_ n: Int) -> [Chapter] {
         let ref = SeriesRef(serverID: config.id, seriesID: String(n))
         let base = Date(timeIntervalSince1970: 1_700_000_000)
         return (1...Self.chapterCount(for: n)).map { c in
@@ -112,7 +112,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         }
     }
 
-    private func wait() async throws {
+    func wait() async throws {
         if latency > .zero { try await Task.sleep(for: latency) }
         if let failure { throw failure }
     }

@@ -264,7 +264,7 @@ private struct ProgressBadge: View {
 
 /// The `.progress` caption: a thin bar under the title, full width of the
 /// poster, empty for unread series.
-private struct TitleProgressBar: View {
+struct TitleProgressBar: View {
     let fraction: Double
 
     var body: some View {
