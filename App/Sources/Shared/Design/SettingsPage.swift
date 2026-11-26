@@ -158,11 +158,13 @@ extension View {
     /// removed so the field's capsule is the only outline, filling the row
     /// with its text lined up with the section header.
     ///
-    /// The font is set explicitly: without it tvOS draws a field's text at
-    /// its own small default once the keyboard closes, so filled-in fields
-    /// looked smaller than empty ones.
+    /// The font matches Apple's own tvOS text fields (Settings sign-in:
+    /// 38 pt regular, the headline size). Measured on the simulator at 4K:
+    /// with it, placeholder, typed text and password dots match Settings in
+    /// every state; `.body` drew them about 0.76x Apple's size, and no font
+    /// let typed text grow 1.7x past its own placeholder.
     func settingsTextFieldRow() -> some View {
-        font(.body)
+        font(SettingsFieldFont.text)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
     }
@@ -176,4 +178,9 @@ extension View {
         listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
     }
+}
+
+/// The text style of every settings text field and secure field.
+enum SettingsFieldFont {
+    static let text: Font = .headline.weight(.regular)
 }

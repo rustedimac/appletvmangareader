@@ -179,6 +179,36 @@ preloaded pages are memory-cache hits, and cancels prefetches that leave the
 window. Sizes learned while preloading feed `reportSize`, so Suwayomi
 chapters pair correctly before the reader reaches a wide page.
 
+### Fit, zoom and crop
+
+- **Fit** (`ReaderSettings.fit`): Fit Screen shows the whole spread; Fit
+  Width fills the screen's width and Fit Height its height.
+  `SpreadGeometry.canvas(for:in:_:fit:scale:)` lays the spread out on a
+  canvas at least the size of the screen, with the same seamless,
+  pixel-snapped frames.
+- **Zoom and pan**: `PagedViewport` holds the zoom and the position as a
+  0–1 fraction of what can be panned on each axis, so it survives the
+  canvas changing size. Click zooms to `zoomScale` (1.5×, 2×, 3×) around
+  the screen's center; click again or Menu zooms out; turning resets it.
+  `PagedRemote.action(for:...)` decides what a press does: pan while more
+  of the spread lies that way (forward at the end of a row drops a row and
+  returns to the reading-start side), turn only at the end, and down opens
+  the menu only when nothing is below. A spread reached going forward
+  opens at its top, going backward at its bottom.
+- **Crop borders**: `BorderCropDetector` finds plain white or black
+  margins on a 256 px grayscale thumbnail and returns `CropInsets`
+  (fractions). Results are cached per image URL (`PageCropCache`) and per
+  page in `ReaderSession.crops`, detected for preloaded pages too, and
+  before a page first shows so it doesn't jump. `SpreadCrop` keeps a
+  two-page spread seamless: both pages share the smaller top and bottom
+  crop and the inner edges are never cropped.
+  A split wide page's half (`SpreadCrop.half`) keeps the fold uncropped
+  and crops its outer side by the page's own margin.
+
+UI tests: `ReaderFitZoomUITests` (`-readerFit width`, `-readerCrop 1`,
+`-readerZoom 3`, and `-readerDemoMargins 1` to draw pages with margins).
+The page indicator's accessibility value reports the viewport.
+
 ## Failed pages
 
 A page that still fails after the automatic retries never closes the
@@ -304,9 +334,10 @@ Play/Pause closes it. While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
-  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
-  in two-page layout first page alone and "Shift by one"; vertical: column
-  width and auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
+  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction,
+  in two-page layout first page alone and "Shift by one", then page fit,
+  crop borders and click-to-zoom level; vertical: column width and
+  auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one
@@ -413,6 +444,26 @@ hold the accessors.
   `lastReadChapter`, sorts on the client, and keeps page 1's answer for
   five minutes so later pages don't download the category again. If the
   server rejects those fields it falls back to the basic ones.
+- **Filters.** `LibraryFilter` (Browse/LibraryFilter.swift): publication
+  status (`PublicationStatus`: ongoing, completed, hiatus, cancelled; a set,
+  any of them), read progress (`ReadProgressFilter`: any, not started, in
+  progress, not finished, finished) and genres (names, any of them). Parts
+  combine with And. Each backend says what it can filter with
+  `MangaServer.libraryFilterSupport`; Sort & View offers only those and
+  `series(in:page:pageSize:sort:filter:)` ignores the rest. Kavita sends
+  FilterV2 statements (PublicationStatus 2 Contains, ReadProgress 20 as a
+  percentage, Genres 18 Contains genre ids from `api/Metadata/genres`).
+  Komga sends `seriesStatus` / `readStatus` / `genre` search conditions.
+  Suwayomi filters its in-memory category (it also asks for `status genre`)
+  and counts read progress in chapters. Free Library filters genres from
+  its catalog. OPDS has nothing to filter on. Status mappings are in the
+  `PublicationStatus` doc comment.
+- **Library Defaults** (`Settings/LibraryDefaultsView`, from Settings,
+  Customize Home and Sort & View): `BrowsePreferences.libraryDefaults`
+  (`LibraryDefaults`: sort, grid order, status and read-progress filter).
+  `LibraryOptions` fields stay nil until a library sets its own;
+  `BrowsePreferences.resolvedOptions(for:)` fills them from the defaults.
+  Genres are per library only (each library has its own list).
 - **A–Z jump.** `AlphabetIndex` maps titles to `#`/A–Z (accents and
   full-width letters folded, CJK under `#`) and finds the first title at or
   past a letter; `.needsMore` means the grid loads the next page and tries

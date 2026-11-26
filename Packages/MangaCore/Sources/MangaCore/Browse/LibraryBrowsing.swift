@@ -118,19 +118,35 @@ public enum GridOrder: String, Codable, CaseIterable, Sendable, Identifiable {
 }
 
 /// A profile's settings for one library (Kavita) or category (Suwayomi).
+/// Nil fields use the profile's `LibraryDefaults` (reading style: the
+/// profile's default reader settings); `resolved(with:)` fills them in.
 public struct LibraryOptions: Codable, Hashable, Sendable {
     public var sort: LibrarySort?
     /// Nil uses the profile's default reader settings.
     public var readingStyle: LibraryReadingStyle?
     public var gridOrder: GridOrder?
+    /// Nil uses the default filter (status and read progress).
+    public var filter: LibraryFilter?
 
-    public init(sort: LibrarySort? = nil, readingStyle: LibraryReadingStyle? = nil, gridOrder: GridOrder? = nil) {
+    public init(sort: LibrarySort? = nil, readingStyle: LibraryReadingStyle? = nil, gridOrder: GridOrder? = nil,
+                filter: LibraryFilter? = nil) {
         self.sort = sort
         self.readingStyle = readingStyle
         self.gridOrder = gridOrder
+        self.filter = filter
     }
 
-    public var isEmpty: Bool { sort == nil && readingStyle == nil && gridOrder == nil }
+    public var isEmpty: Bool { sort == nil && readingStyle == nil && gridOrder == nil && filter == nil }
+
+    /// These options with every unset sort, grid order and filter taken
+    /// from `defaults`. The reading style stays as it is.
+    public func resolved(with defaults: LibraryDefaults) -> LibraryOptions {
+        LibraryOptions(sort: sort ?? defaults.sort, readingStyle: readingStyle,
+                       gridOrder: gridOrder ?? defaults.gridOrder, filter: filter ?? defaults.filter)
+    }
+
+    /// The effective filter (`.empty` when unset and not resolved).
+    public var activeFilter: LibraryFilter { filter ?? .empty }
 
     /// Whether the grid fills right to left: when asked to, or
     /// automatically when the library reads right to left.

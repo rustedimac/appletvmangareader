@@ -108,8 +108,9 @@ final class ContentRefreshUITests: XCTestCase {
         if focus(link, .down, maxPresses: 25) { remote.press(.select) }
         let large = app.element("browse.density.large")
         XCTAssertTrue(large.waitForExistence(timeout: 10))
-        // The sizes sit side by side: down to Medium, then right to Large.
-        focus(app.element("browse.density.standard"), .down, maxPresses: 25)
+        // The sizes sit side by side and Down enters the row at Small:
+        // down to Small, then right to Large.
+        focus(app.element("browse.density.compact"), .down, maxPresses: 25)
         if focus(large, .right, maxPresses: 4) { remote.press(.select) }
         XCTAssertTrue(waitUntil(large, "value == 'selected'"))
 
