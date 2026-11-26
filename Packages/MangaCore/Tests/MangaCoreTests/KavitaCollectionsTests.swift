@@ -229,4 +229,38 @@ final class KavitaCollectionsTests: XCTestCase {
         }
         XCTAssertEqual(ServerCollection.sorted(items.reversed()).map(\.title), ["arc 2", "Arc 10", "Beta"])
     }
+
+    func testDemoServerListsOnlyForKavitaKind() async throws {
+        let kavita = SampleLibraryServer(config: ServerConfig(kind: .kavita, name: "Demo Kavita", baseURL: config.baseURL),
+                                         latency: .zero)
+        let suwayomi = SampleLibraryServer(config: ServerConfig(kind: .suwayomi, name: "S", baseURL: config.baseURL),
+                                           latency: .zero)
+        XCTAssertEqual(suwayomi.collectionSupport, [])
+        let none = try await suwayomi.collections(.collection)
+        XCTAssertTrue(none.isEmpty)
+
+        let lists = try await kavita.collections(.readingList)
+        XCTAssertEqual(lists.map(\.collectionID), ["rl-1", "rl-2"])
+        let entries = try await kavita.readingListEntries(lists[0])
+        XCTAssertEqual(entries.map(\.chapterID), ["1-1", "2-1", "3-1", "1-2"])
+        XCTAssertEqual(ReadingListEntry.resumeLabel(in: entries), "Start")
+        let empty = try await kavita.readingListEntries(lists[1])
+        XCTAssertTrue(empty.isEmpty)
+
+        let harbor = try await kavita.collections(.collection)
+        let page = try await kavita.series(in: harbor[0], page: 1, pageSize: 5)
+        XCTAssertEqual(page.items.map(\.ref.seriesID), ["2", "10", "18", "26", "34"])
+        XCTAssertTrue(page.hasMore)
+        let filter = try await kavita.collections(.smartFilter)
+        let fifth = try await kavita.series(in: filter[0], page: 1, pageSize: 100)
+        XCTAssertEqual(fifth.items.count, 18)
+        XCTAssertFalse(fifth.hasMore)
+
+        // Progress shows up in the list.
+        let chapter = Chapter(id: "1-1", seriesRef: entries[0].seriesRef, title: "Chapter 1", number: 1, pageCount: 20)
+        try await kavita.saveProgress(chapter: chapter, libraryID: nil, page: 19, completed: true)
+        let after = try await kavita.readingListEntries(lists[0])
+        XCTAssertTrue(after[0].isRead)
+        XCTAssertEqual(ReadingListEntry.resumeEntry(in: after)?.chapterID, "2-1")
+    }
 }
