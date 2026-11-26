@@ -14,8 +14,8 @@ people can move their data with **Back Up and Restore over Wi‑Fi**.
 | Per profile and server: library/category choice, "sync progress to server" | Image caches |
 | Favorites | Which profile is active on this device |
 | Reading progress: position and every read/unread chapter | |
-| Default reader settings and per-series reader settings | |
-| Home rows, poster size, per-library sort, reading direction and grid order; Continue Reading removals; Caught Up | |
+| Default reader settings and per-series reader settings (picture controls and split pages included) | |
+| Home rows (order, hidden, merged or per-server rows, where posters name their server), poster size, poster caption, per-library sort, reading direction and grid order; Continue Reading removals; Caught Up | |
 | Whether the profile finished the first-run welcome (its Free Library picks travel as the library choice above) | |
 
 Logins stay on each device on purpose: the Keychain is the only safe place

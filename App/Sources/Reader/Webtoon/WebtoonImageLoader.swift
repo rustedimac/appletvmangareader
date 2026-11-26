@@ -32,14 +32,21 @@ final class WebtoonImageLoader {
     private var pixelSizes: [URL: PageSize] = [:]
     private var downloads: [URL: Task<Data, Error>] = [:]
     private var prefetches: [URL: Task<Void, Never>] = [:]
+    /// When a size prefetch last failed, so scrolling doesn't restart it on
+    /// every frame while the server is down.
+    private var prefetchFailures: [URL: Date] = [:]
 
     private final class ImageBox {
         let image: WebtoonPageImage
         init(_ image: WebtoonPageImage) { self.image = image }
     }
 
-    init(server: MangaServer) {
+    /// Per-attempt timeout and automatic retries for downloads.
+    private let retryPolicy: RetryPolicy
+
+    init(server: MangaServer, retryPolicy: RetryPolicy = .images) {
         self.server = server
+        self.retryPolicy = retryPolicy
         dataCache.totalCostLimit = 96 << 20
         imageCache.totalCostLimit = 160 << 20
     }
@@ -83,11 +90,20 @@ final class WebtoonImageLoader {
             task.cancel()
             prefetches[url] = nil
         }
+        let now = Date()
         for url in urls where pixelSizes[url] == nil && prefetches[url] == nil {
+            if let failed = prefetchFailures[url], now.timeIntervalSince(failed) < 15 { continue }
             prefetches[url] = Task { [weak self] in
                 defer { self?.prefetches[url] = nil }
-                guard let self, let size = try? await self.pixelSize(url), !Task.isCancelled else { return }
-                onSize(url, size)
+                guard let self else { return }
+                do {
+                    let size = try await self.pixelSize(url)
+                    guard !Task.isCancelled else { return }
+                    self.prefetchFailures[url] = nil
+                    onSize(url, size)
+                } catch {
+                    if !Task.isCancelled { self.prefetchFailures[url] = Date() }
+                }
             }
         }
     }
@@ -103,15 +119,21 @@ final class WebtoonImageLoader {
         if let hit = dataCache.object(forKey: url as NSURL) { return hit as Data }
         if let running = downloads[url] { return try await running.value }
         let request = server.imageRequest(url)
+        let policy = retryPolicy
+        // Timeouts, dropped connections and 5xx are retried before the page
+        // shows as failed; the user can then retry it by hand.
         let task = Task<Data, Error>.detached(priority: .userInitiated) {
-            if url.scheme == DemoPageRenderer.scheme {
-                return DemoPageRenderer.pngData(for: url)
+            try await policy.run { _ in
+                if url.scheme == DemoPageRenderer.scheme {
+                    try await DemoPageFaults.shared.apply(to: url)
+                    return DemoPageRenderer.pngData(for: url)
+                }
+                let (body, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    throw MangaError.http(status: http.statusCode, body: "")
+                }
+                return body
             }
-            let (body, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                throw MangaError.http(status: http.statusCode, body: "")
-            }
-            return body
         }
         downloads[url] = task
         defer { downloads[url] = nil }

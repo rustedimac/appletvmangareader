@@ -44,6 +44,8 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
+        // Select on a failed page retries it in place.
+        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
         .onAppear {
             focused = true
@@ -89,7 +91,9 @@ struct PagedReaderView: View {
     /// shown.
     private func preload() {
         guard session.loadState == .loaded, screenPixels != .zero else { return }
-        let indices = session.navigator.pagesToPreload(radius: 2)
+        // Pages on screen are loaded by their own views at full priority.
+        let visible = Set(session.visiblePages)
+        let indices = session.navigator.pagesToPreload(radius: 2).filter { !visible.contains($0) }
         let urls = indices.compactMap { session.page($0)?.url }
         let byURL = Dictionary(indices.compactMap { i in session.page(i).map { ($0.url, i) } },
                                uniquingKeysWith: { a, _ in a })
@@ -99,11 +103,22 @@ struct PagedReaderView: View {
         preloading = wanted
         let chapterID = session.chapter.id
         let reader = session
-        pipeline.prefetch(urls, server: reader.server, targetSize: screenPixels) { url, size in
+        let onSize: @Sendable (URL, PageSize) -> Void = { url, size in
             Task { @MainActor in
                 guard reader.chapter.id == chapterID, let index = byURL[url] else { return }
                 reader.reportSize(size, forPage: index)
             }
+        }
+        // Split wide pages decode at twice the screen width (see
+        // `PageImages.forHalves`), so preload them at that size.
+        let split = Set(session.navigator.layout.spreads.compactMap { $0.half == nil ? nil : $0.first })
+        let halfURLs = indices.filter { split.contains($0) }.compactMap { session.page($0)?.url }
+        let wholeURLs = urls.filter { !halfURLs.contains($0) }
+        pipeline.prefetch(wholeURLs, server: reader.server, targetSize: screenPixels, onPixelSize: onSize)
+        if !halfURLs.isEmpty {
+            pipeline.prefetch(halfURLs, server: reader.server,
+                              targetSize: CGSize(width: screenPixels.width * 2, height: screenPixels.height),
+                              onPixelSize: onSize)
         }
     }
 
@@ -129,6 +144,13 @@ struct PageImages {
     func load(_ url: URL) async throws -> LoadedImage {
         try await pipeline.load(url, server: server, targetSize: targetSize, scaling: .fit)
     }
+
+    /// For wide pages split in two: each half fills the screen, so the
+    /// whole image is decoded at twice the screen's width.
+    func forHalves() -> PageImages {
+        PageImages(pipeline: pipeline, server: server,
+                   targetSize: CGSize(width: targetSize.width * 2, height: targetSize.height))
+    }
 }
 
 /// One spread, laid out with `SpreadGeometry` so both pages share a height
@@ -142,19 +164,32 @@ private struct SpreadView: View {
 
     var body: some View {
         let order = spread.screenOrder(session.settings.direction)
-        let frames = SpreadGeometry.frames(for: order.map { session.size(ofPage: $0) },
-                                           in: Double(container.width), Double(container.height),
+        let half = spread.half
+        // A split page is laid out as half its width; the image inside is
+        // drawn at full width and shifted so only that half shows.
+        let sizes = order.map { page -> PageSize? in
+            guard half != nil, let size = session.size(ofPage: page) else { return session.size(ofPage: page) }
+            return PageSize(width: size.width / 2, height: size.height)
+        }
+        let frames = SpreadGeometry.frames(for: sizes, in: Double(container.width), Double(container.height),
                                            scale: Double(scale))
         ZStack(alignment: .topLeading) {
             ForEach(0..<min(order.count, frames.count), id: \.self) { i in
                 let index = order[i]
                 let frame = frames[i]
-                PageImageView(session: session, index: index, images: images)
-                    .frame(width: frame.width, height: frame.height)
+                PageImageView(session: session, index: index, images: half == nil ? images : images.forHalves(),
+                              half: half,
+                              framePixels: CGSize(width: frame.width * Double(scale) * (half == nil ? 1 : 2),
+                                                  height: frame.height * Double(scale)))
+                    .frame(width: frame.width * (half == nil ? 1 : 2), height: frame.height)
+                    .offset(x: half == .right ? -frame.width : 0)
+                    .frame(width: frame.width, height: frame.height, alignment: .topLeading)
+                    .clipped()
                     .offset(x: frame.x, y: frame.y)
             }
         }
         .frame(width: container.width, height: container.height, alignment: .topLeading)
+        .pictureAdjustments(session.settings.picture)
     }
 }
 
@@ -165,50 +200,144 @@ private struct PageImageView: View {
     let session: ReaderSession
     let index: Int
     let images: PageImages
+    /// Which half shows, for a split wide page (the view is laid out at
+    /// the page's full width either way).
+    var half: PageHalf? = nil
+    /// The device pixels this view covers, for Lanczos upscaling.
+    var framePixels: CGSize = .zero
 
     @State private var loaded: LoadedImage?
-    @State private var failed = false
+    @State private var processed: CGImage?
+
+    private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
+
+    /// Label, value ("loaded", "failed", "loading", with ", adjusted" when
+    /// picture controls change the page) and hint for VoiceOver and UI tests.
+    private var accessibilityText: (label: String, value: String, hint: String) {
+        let name = half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)"
+        let adjusted = session.settings.picture.isDefault ? "" : ", adjusted"
+        if loaded != nil { return (name, "loaded" + adjusted, "") }
+        if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
+        return (name, "loading", "")
+    }
 
     var body: some View {
         ZStack {
-            if let loaded {
+            if let processed {
+                Image(decorative: processed, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
+            } else if let loaded {
                 Image(uiImage: loaded.image)
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
-            } else if failed {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                    Text("Page \(index + 1) didn't load").font(.caption)
-                }
-                .foregroundStyle(.secondary)
+            } else if let failure {
+                PageFailureCard(page: index + 1, message: failure)
             } else {
                 ProgressView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Page \(index + 1)")
-        .accessibilityIdentifier("reader.page.\(index)")
-        .task(id: session.page(index)?.url) { await load() }
+        .accessibilityLabel(accessibilityText.label)
+        .accessibilityValue(accessibilityText.value)
+        .accessibilityHint(accessibilityText.hint)
+        .accessibilityIdentifier(half.map { "reader.page.\(index).\($0.rawValue)" } ?? "reader.page.\(index)")
+        .task(id: LoadKey(url: session.page(index)?.url, retry: session.pageRetryTokens[index] ?? 0)) { await load() }
+        .task(id: ProcessKey(loaded: loaded != nil, picture: session.settings.picture, pixels: framePixels)) {
+            await process()
+        }
+    }
+
+    private struct LoadKey: Hashable {
+        var url: URL?
+        var retry: Int
+    }
+
+    private struct ProcessKey: Hashable {
+        var loaded: Bool
+        var picture: PictureSettings
+        var pixels: CGSize
+    }
+
+    /// Sharpening and Lanczos upscaling (picture controls). Shows the
+    /// plain image until the processed one is ready.
+    private func process() async {
+        guard let loaded, let url = session.page(index)?.url,
+              let request = PictureProcessor.request(for: url, image: loaded.cgImage,
+                                                     picture: session.settings.picture,
+                                                     framePixels: framePixels) else {
+            processed = nil
+            return
+        }
+        if let hit = PictureProcessor.shared.cached(request) {
+            processed = hit
+            return
+        }
+        let result = await PictureProcessor.shared.process(loaded.cgImage, request)
+        guard !Task.isCancelled else { return }
+        processed = result
     }
 
     private func load() async {
         guard let url = session.page(index)?.url else { return }
         if let hit = images.cached(url) {
             loaded = hit
+            session.reportPageLoaded(index)
             session.reportSize(hit.pixelSize, forPage: index)
             return
         }
-        failed = false
+        guard loaded == nil else { return }
         do {
             let page = try await images.load(url)
             loaded = page
+            session.reportPageLoaded(index)
             session.reportSize(page.pixelSize, forPage: index)
         } catch is CancellationError {
         } catch {
-            failed = true
+            guard !Task.isCancelled else { return }
+            session.reportPageFailure(PageLoadFailure.message(for: error), forPage: index)
         }
+    }
+}
+
+/// Shown in place of a page that didn't load after automatic retries. The
+/// reader keeps focus (left/right still turn pages), so the Retry pill is
+/// drawn as the focused control and Select presses it.
+struct PageFailureCard: View {
+    let page: Int
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Page \(page) didn't load")
+                .font(.headline)
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+            Text("Retry")
+                .font(.headline)
+                .foregroundStyle(.black)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 10)
+                .background(.white, in: Capsule())
+            Text("Press Select to retry")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.white)
+        .minimumScaleFactor(0.6)
+        .padding(32)
+        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: Radius.card))
+        .padding(16)
+        .frame(maxWidth: 640)
     }
 }
 
@@ -239,6 +368,9 @@ private struct PageIndicator: View {
         }
         let pages = session.visiblePages.map { $0 + 1 }
         guard let first = pages.first else { return "" }
+        if let half = session.currentSpread?.half {
+            return "\(first) / \(total) · \(half == .left ? "Left" : "Right") half"
+        }
         if let last = pages.last, last != first { return "\(first)–\(last) / \(total)" }
         return "\(first) / \(total)"
     }
@@ -285,7 +417,7 @@ struct ChapterTransitionCard: View {
         .padding(80)
         .frame(maxWidth: 1240)
         .foregroundStyle(.white)
-        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 32))
+        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: Radius.panel))
         .padding(.horizontal, 120)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.transition")

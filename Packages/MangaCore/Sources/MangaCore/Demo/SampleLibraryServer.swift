@@ -76,6 +76,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
                              title: Self.title(for: n), coverURL: nil,
                              unreadCount: Self.chapterCount(for: n) - read, libraryID: "all",
                              categoryIDs: n % 3 == 0 ? ["all", "short"] : ["all"],
+                             pageCount: Self.chapterCount(for: n) * 20,
                              chapterCount: Self.chapterCount(for: n))
     }
 

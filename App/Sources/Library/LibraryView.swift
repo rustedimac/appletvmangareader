@@ -22,6 +22,7 @@ struct LibraryView: View {
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: $0) }
             .seriesNavigation()
         }
+        .resetsNavigationWhenLeft()
     }
 }
 
@@ -88,7 +89,7 @@ struct ServerLibraryView: View {
                                           message: model.selectedCategories(for: server) == nil
                                               ? "This server has no libraries or categories that your account can see."
                                               : "None of the \(server.kind.categoryNoun.lowercased()) you picked are on this server anymore.")
-                            chooseLink.frame(maxWidth: .infinity)
+                            chooseLink.centeredFocusRow()
                         } else {
                             categoryBar
                             if let selected {

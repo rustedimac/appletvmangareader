@@ -89,13 +89,21 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
                 "api/v1/books/list",
                 query: ["page": "0", "size": String(limit * 2), "sort": "readProgress.readDate,desc"],
                 body: search)
-            return Array(result.content.map(summary(forBook:)).scoped(to: categoryScope).prefix(limit))
+            return Array(result.content.map { book -> SeriesSummary in
+                var s = summary(forBook: book)
+                s.feedDate = book.readProgress?.readDate ?? book.readProgress?.lastModified
+                return s
+            }.scoped(to: categoryScope).prefix(limit))
         case .newlyAdded, .recentlyUpdated:
             let path = feed == .newlyAdded ? "api/v1/series/new" : "api/v1/series/updated"
             // Spring reads a comma-separated value as a list.
             let result: KomgaPage<KomgaSeriesDTO> = try await http.get(
                 path, query: ["page": "0", "size": String(limit), "library_id": scopedLibraryIDs?.joined(separator: ",")])
-            return Array(result.content.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(result.content.map { dto -> SeriesSummary in
+                var s = summary(dto)
+                s.feedDate = feed == .newlyAdded ? dto.created : dto.lastModified
+                return s
+            }.scoped(to: categoryScope).prefix(limit))
         }
     }
 
@@ -108,6 +116,12 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
         return result.content.map(summary).scoped(to: categoryScope)
     }
 
+    /// The series alone has `booksCount`; no need for its book list.
+    public func chapterCount(seriesID: String) async throws -> SeriesCount {
+        let dto: KomgaSeriesDTO = try await http.get("api/v1/series/\(Self.pathSegment(seriesID))")
+        return SeriesCount(count: dto.booksCount ?? 0, unit: .book)
+    }
+
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
         let client = http
         async let seriesTask: KomgaSeriesDTO = client.get("api/v1/series/\(Self.pathSegment(seriesID))")
@@ -116,13 +130,16 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
             query: ["unpaged": "true", "sort": "metadata.numberSort,asc"],
             body: KomgaSearch(condition: .is(field: "seriesId", value: seriesID)))
         let series = try await seriesTask
+        // The library's name, for series detail ("komga.home · Comics").
+        async let libraryTask = library(series.libraryId)
         let books = try await booksTask.content
+        let library = await libraryTask
         let ref = ref(series.id)
         let authors = Self.uniqueAuthors(series.booksMetadata?.authors ?? books.flatMap { $0.metadata?.authors ?? [] })
         let synopsis = [series.metadata?.summary, series.booksMetadata?.summary]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
-        return SeriesDetail(
+        var detail = SeriesDetail(
             summary: summary(series),
             synopsis: synopsis,
             authors: authors,
@@ -130,6 +147,14 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
             status: Self.statusName(series.metadata?.status),
             chapters: Self.chapters(from: books, seriesRef: ref)
         )
+        if let name = library?.name, !name.isEmpty { detail.placement = SeriesPlacement(categories: [name]) }
+        return detail
+    }
+
+    /// A library by id, or nil if it can't be loaded.
+    func library(_ id: String?) async -> KomgaLibraryDTO? {
+        guard let id else { return nil }
+        return try? await http.get("api/v1/libraries/\(Self.pathSegment(id))")
     }
 
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {
@@ -181,7 +206,8 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
     func summary(_ dto: KomgaSeriesDTO) -> SeriesSummary {
         let title = dto.metadata?.title.flatMap { $0.isEmpty ? nil : $0 } ?? dto.name
         return SeriesSummary(ref: ref(dto.id), title: title, coverURL: coverURL(seriesID: dto.id),
-                             unreadCount: dto.booksUnreadCount, libraryID: dto.libraryId)
+                             unreadCount: dto.booksUnreadCount, libraryID: dto.libraryId,
+                             chapterCount: dto.booksCount, countUnit: .book)
     }
 
     func summary(forBook book: KomgaBookDTO) -> SeriesSummary {

@@ -156,6 +156,13 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 - Requests for the same URL share one download, which is cancelled only when
   every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
   go ahead of prefetches.
+- Downloads are resilient (`RetryPolicy.images`): each attempt has a
+  20 s limit, counted from when it gets a download slot so queueing never
+  times out, and timeouts, dropped connections, 408/429 and 5xx are retried
+  twice more after 0.75 s and 1.5 s. 401/403/404, bad image bytes and
+  cancellation fail at once. Nothing about a failure is cached, so a later
+  `load` (a Retry button) starts fresh. `PageLoadFailure.message(for:)`
+  turns the error into a short line for the reader.
 - `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
   size, which is how readers learn Suwayomi page sizes. Without a
   `targetSize` it only downloads and reads the header.
@@ -172,6 +179,25 @@ preloaded pages are memory-cache hits, and cancels prefetches that leave the
 window. Sizes learned while preloading feed `reportSize`, so Suwayomi
 chapters pair correctly before the reader reaches a wide page.
 
+## Failed pages
+
+A page that still fails after the automatic retries never closes the
+reader or blocks page turns. It shows a card ("Page 3 didn't load", the
+reason from `PageLoadFailure`, a Retry pill drawn as the focused control).
+The reader keeps focus, so left/right still turn pages and Select retries
+the failed pages on screen.
+
+- Paged: `ReaderSession.pageFailures` / `retryVisibleFailedPages()`
+  (Select retries before anything else Select does). Each
+  page view's load task is keyed by `pageRetryTokens[page]`, so a retry
+  reloads only the failed pages. Revisiting a spread retries its failed
+  pages once more on its own.
+- Webtoon: `WebtoonStripController.failedPages`. Failed pages are not
+  reloaded on every scroll; Select retries those on screen. Size
+  prefetches that fail wait 15 s before trying again.
+- A chapter's page list is fetched with `RetryPolicy.pageLists` before the
+  chapter error card (with Retry) shows.
+
 ## Reader demo for UI tests
 
 Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
@@ -181,6 +207,10 @@ up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
 tests can reuse it. The demo injects an `ImagePipeline` whose transport
 draws `demo://` pages, so it runs the real image path.
+`-readerPageFaults "1.2=fail3,2.0=hang1"` makes chosen pages (chapter
+1-based, page 0-based) return HTTP 503 or hang for their first N requests
+(`DemoPageFaults`), and the demo uses a short retry policy (2 attempts,
+`-readerAttemptTimeout`, default 1.5 s).
 
 ## Live servers in the simulator
 
@@ -285,6 +315,62 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Picture controls, split pages and the page scrubber
+
+- **Picture controls** (`PictureSettings`, inside `ReaderSettings.picture`):
+  brightness, contrast, color (normal, grayscale, night/invert), sharpen
+  and upscaling. They sit in the Settings pane of the reader menu under
+  "Picture" (rows from `ReaderMenuOptions.pictureItems(for:)`) and in
+  Settings → Default Reader Settings. Brightness, contrast and color are
+  SwiftUI view effects (`pictureAdjustments(_:)`), applied to the paged
+  spread and to the webtoon strip, so they're instant in both readers.
+  Sharpen (`CISharpenLuminance`) and Sharp (Lanczos) upscaling
+  (`CILanczosScaleTransform`, for scans smaller than the screen) re-render
+  page images in `Reader/Picture/PictureProcessor` (Core Image on Metal, off
+  the main thread, cached), so they're paged-reader only.
+- **Split wide pages** (`ReaderSettings.splitWidePages`, single-page paged
+  layout): `SpreadLayout.singles(splitting:direction:)` turns a wide page
+  into `.half(page, .right)` then `.half(page, .left)` for right-to-left
+  (the other way for left-to-right). Both halves are the same page for
+  progress and bookmarks; the indicator says "4 / 6 · Right half". The
+  image decodes at twice the screen width and is clipped to the half. A
+  re-layout keeps the half on screen (`spreadIndex(keeping:page:)`), and
+  the chapter only completes on the last page's second half.
+- **Page scrubber** (`Reader/Scrubber/PageScrubberView`, rules in
+  `PageScrubber`): Pages in the menu header opens a thumbnail strip along
+  the bottom with a progress bar, in either reader. Thumbnails run in
+  screen order, so right-to-left series put page 1 on the right; left and
+  right move a page, up/down jump 10 pages back/forward, click opens the
+  page (`ReaderSession.jump(toPage:)`), Menu closes. It's shown through the
+  menu's presentation flag (`ReaderSession.overlay == .scrubber`), so the
+  reader is disabled and takes focus back the same way as for the menu.
+- All of it is in `ReaderSettings`, so it saves per series and as the
+  profile default, and syncs through the existing `readerDefaults` and
+  `readerOverride` SyncMapper domains. `ReaderSettings` and
+  `PictureSettings` decode missing or unknown fields to defaults, so
+  settings from older or newer builds always load.
+- UI tests: `ReaderPictureScrubberUITests` (`-readerSplitWide YES` turns on
+  splitting in the demo reader).
+
+## Sorting names
+
+`NaturalSort` (MangaCore/Sorting) is the one place names are ordered:
+series titles, chapter names, page and file names. Digit runs compare by
+value ("Ch 2" < "Ch 10", "10.5" between 10 and 11, any length, full-width
+and other Unicode digits), kanji numerals are read as numbers ("第二話" <
+"第十話"), text uses the locale's collation ignoring case, accents and
+width, and spaces/punctuation/brackets only separate runs. The
+`.fileName` option also skips digit-free tags like `[Group]` or
+`(Digital)` and the extension. Ties fall back to the exact characters, so
+the order never depends on input order. Use `naturallySorted(by:)`; don't
+sort names with `<` or `localizedStandardCompare`.
+
+`ChapterOrdering.readingOrder` orders a server's chapters: by the server's
+position when it has one (flipped if most neighbouring chapter numbers go
+down, so one odd number can't flip a series), else by number, else by
+natural name, with natural-name ties. Suwayomi uses it; Kavita keeps its
+own sort numbers and breaks ties by natural name.
+
 ## Reading progress sync
 
 Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
@@ -344,8 +430,26 @@ hold the accessors.
   Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
   check when finished. Unread chapters in series detail show their page count.
 - **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
-  Customize Home, or the button at the bottom of Home). Server feeds get one
-  row per server ("Recently Updated · Server" with several servers).
+  Customize Home, or the button at the bottom of Home). Server feeds
+  (Continue Reading, Recently Updated, Newly Added) are merged into one row
+  each across servers by default (`HomeLayout.serverRows == .merged`):
+  `HomeMerge` interleaves each server's list without reordering it, newest
+  `SeriesSummary.feedDate` first (last read / added / new chapter, set by
+  the Kavita, Suwayomi, Komga and Free Library feeds), else by rank on its
+  server. "Row per Server" brings back "Recently Updated · Server" rows.
+  `HomeLoader.each` streams each server's section as it arrives, so Home
+  shows fast servers without waiting for the slowest. Rows come from
+  `model.client(for:)`, so library selection and content filters apply.
+  Posters in rows that mix servers name their server
+  (`HomeLayout.serverLabel`: on the caption's line, a tag on the cover, or
+  off; the poster's VoiceOver label always says it). UI-test flags:
+  `-homePerServer`, `-posterServerLabel onCover|off`. Shelf ids: merged
+  `shelf.<feed>`, per server `shelf.<server>.<feed>`.
+- **Series location.** Series detail shows "server · library" under the meta
+  line (`SeriesPlacement`): Kavita's `libraryName`, Komga's library, every
+  Suwayomi category (Default when none) plus its source, the Free Library
+  collection; otherwise (OPDS, demo) the summary's library/category ids
+  looked up in `categories()` (`MangaServer.placement(for:detail:)`).
   Long-press a Continue Reading poster to remove it; it comes back once the
   profile reads it again (`dismissedContinueReading` vs local progress).
 - **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series

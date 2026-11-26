@@ -13,6 +13,8 @@ struct SeriesDetailView: View {
     @State private var newestFirst = false
     @State private var reader: ReaderRoute?
     @State private var markError: String?
+    /// Which libraries/categories of its server the series is in.
+    @State private var placement: SeriesPlacement?
     @FocusState private var focus: Field?
 
     private enum Field: Hashable { case primary }
@@ -63,7 +65,7 @@ struct SeriesDetailView: View {
         HStack(alignment: .top, spacing: 60) {
             PosterImage(url: summary.coverURL, server: model.client(for: series.ref), title: summary.title)
                 .frame(width: 360, height: 540)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.poster))
                 .shadow(radius: 20)
 
             VStack(alignment: .leading, spacing: 20) {
@@ -73,6 +75,17 @@ struct SeriesDetailView: View {
                     .accessibilityIdentifier("series.title")
                 if let line = metaLine, !line.isEmpty {
                     Text(line).foregroundStyle(.secondary)
+                }
+                if let server = model.state.server(series.ref.serverID),
+                   let location = SeriesPlacement.line(server: server.name, placement: placement) {
+                    // "kavita-en.home · Manga": the server and the library or
+                    // categories the series is in there.
+                    Label(location, systemImage: server.kind.symbolName)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(location)
+                        .accessibilityIdentifier("series.location")
                 }
                 if let genres = detail?.genres, !genres.isEmpty {
                     Text(genres.joined(separator: " · "))
@@ -93,13 +106,12 @@ struct SeriesDetailView: View {
     }
 
     private var metaLine: String? {
-        guard let detail else { return model.state.server(series.ref.serverID)?.name }
+        guard let detail else { return nil }
         var parts: [String] = []
         if !detail.authors.isEmpty { parts.append(detail.authors.joined(separator: ", ")) }
         if let status = detail.status, !status.isEmpty { parts.append(status) }
         if let format = (detail.summary.format ?? series.format), format != .images { parts.append(format.displayName) }
         parts.append("\(detail.readCount) of \(detail.chapters.count) read")
-        if let server = model.state.server(series.ref.serverID) { parts.append(server.name) }
         return parts.joined(separator: " · ")
     }
 
@@ -204,6 +216,10 @@ struct SeriesDetailView: View {
             model.noteSeriesDetail(loaded, summary: summary)
             errorMessage = nil
             if firstLoad { focus = .primary }
+            if let client = model.client(for: series.ref),
+               let found = await client.placement(for: series, detail: loaded) {
+                placement = found
+            }
             await model.didLoadSeriesDetail(loaded)
         } catch {
             if detail == nil {

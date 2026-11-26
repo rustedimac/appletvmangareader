@@ -82,6 +82,27 @@ final class DesignLayoutUITests: XCTestCase {
                              first: app.element("serverEditor.name"), last: app.element("serverEditor.remove"))
     }
 
+    /// The Server Type picker sits in a row with no platter of its own, so
+    /// only its track and the selected segment are drawn. With the platter,
+    /// the row's insets push the track in from the form column's edges.
+    func testServerTypePickerHasNoRowPlatter() {
+        let app = XCUIApplication.launched(tab: "settings")
+        select(app.element("settings.addServer"))
+        let kind = app.element("serverEditor.kind")
+        let name = app.element("serverEditor.name")
+        XCTAssertTrue(kind.waitForExistence(timeout: 5))
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        audit(app, "settings-add-server-type")
+        // Text fields report a frame a little wider than the row (their
+        // capsule's focus outset), so compare with the form column instead.
+        let form = app.element("settingsPage.form").frame
+        let tolerance = 8 * app.windows.firstMatch.frame.width / 1920
+        XCTAssertEqual(kind.frame.minX, form.minX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the form column \(form): row platter is back")
+        XCTAssertEqual(kind.frame.maxX, form.maxX, accuracy: tolerance,
+                       "Picker \(kind.frame) is inset from the form column \(form): row platter is back")
+    }
+
     private func checkTitleBesideForm(_ app: XCUIApplication, _ name: String, first: XCUIElement, last: XCUIElement,
                                       file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(first.waitForExistence(timeout: 5), file: file, line: line)
@@ -89,8 +110,8 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(title.exists, "\(name) has no settings page title", file: file, line: line)
 
         for step in ["top", "bottom", "back-to-top"] {
-            if step == "bottom" { focus(last, maxPresses: 14) }
-            if step == "back-to-top" { focus(first, .up, maxPresses: 14) }
+            if step == "bottom" { focus(last, maxPresses: 20) }
+            if step == "back-to-top" { focus(first, .up, maxPresses: 20) }
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "\(name)-\(step)", file: file, line: line)
             let form = app.element("settingsPage.form").frame
@@ -98,6 +119,69 @@ final class DesignLayoutUITests: XCTestCase {
                                      "[\(step)] title \(title.frame) runs into the form \(form)", file: file, line: line)
         }
         XCTAssertTrue(first.frame.minY > 0, "The first row didn't scroll back into view", file: file, line: line)
+    }
+
+    /// Value rows look like Apple's own tvOS Settings: the value sits a
+    /// small, fixed gap before the chevron, the chevron stays put whether
+    /// or not the row has focus, and a toggle's On/Off ends where the
+    /// chevrons end. Measured from the screenshot, since a row's value and
+    /// chevron aren't separate accessibility elements.
+    func testSettingsValueSitsNextToChevron() {
+        let app = XCUIApplication.launched(tab: "settings")
+        select(app.element("settings.readerDefaults"))
+        let rows = ["readerDefaults.mode", "readerDefaults.direction", "readerDefaults.background"]
+        XCTAssertTrue(app.element(rows[0]).waitForExistence(timeout: 5))
+
+        // Chevron ends on rows without focus; a focused row grows (about 3 %
+        // on older tvOS), which moves its chevron with the platter.
+        var chevronEnds: [CGFloat] = []
+        for state in ["mode-focused", "direction-focused"] {
+            focus(app.element(state == "mode-focused" ? rows[0] : rows[1]))
+            Thread.sleep(forTimeInterval: 0.8)
+            let shot = XCUIScreen.main.screenshot()
+            saveScreenshot("settings-value-rows-\(state)")
+            guard let pixels = Pixels(shot.image) else { return XCTFail("Couldn't read the screenshot") }
+            let screen = app.windows.firstMatch.frame
+            let scale = CGFloat(pixels.width) / screen.width
+
+            let focusedRow = state == "mode-focused" ? rows[0] : rows[1]
+            var focusedEnd: (end: CGFloat, width: CGFloat)?
+            for id in rows {
+                let frame = app.element(id).frame
+                guard let row = trailingInk(pixels, frame: frame, scale: scale) else {
+                    XCTFail("[\(state)] \(id): found no value and chevron in \(frame)")
+                    continue
+                }
+                let gap = (row.last.lowerBound - row.previous.upperBound) / scale
+                XCTAssertLessThanOrEqual(gap, 30, "[\(state)] \(id): \(Int(gap)) pt between the value and the chevron")
+                XCTAssertGreaterThanOrEqual(gap, 8, "[\(state)] \(id): the value touches the chevron (\(Int(gap)) pt)")
+                if id == focusedRow {
+                    focusedEnd = (row.last.upperBound / scale, frame.width)
+                } else {
+                    chevronEnds.append(row.last.upperBound / scale)
+                }
+            }
+            // The focused row's chevron moves only as far as the focus growth
+            // takes it.
+            if let focusedEnd, let unfocused = chevronEnds.last {
+                let shift = abs(focusedEnd.end - unfocused)
+                XCTAssertLessThanOrEqual(shift, focusedEnd.width * 0.04 + 8,
+                                         "[\(state)] the focused row's chevron moves \(Int(shift)) pt")
+            }
+
+            if state == "direction-focused" {
+                // The toggle's On/Off lines up with the chevrons above it.
+                let toggle = app.element("readerDefaults.firstPageAlone")
+                if toggle.exists, let row = trailingInk(pixels, frame: toggle.frame, scale: scale) {
+                    let offset = abs(row.last.upperBound / scale - (chevronEnds.last ?? 0))
+                    XCTAssertLessThanOrEqual(offset, 8, "The toggle's value ends \(Int(offset)) pt away from the chevrons")
+                }
+            }
+        }
+        // Same chevron position on every row without focus.
+        if let low = chevronEnds.min(), let high = chevronEnds.max() {
+            XCTAssertLessThanOrEqual(high - low, 8, "Chevrons move between rows: \(chevronEnds.map { Int($0) })")
+        }
     }
 
     func testBrowseTabs() {
@@ -127,6 +211,29 @@ final class DesignLayoutUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "reader-menu-chapters")
         }
+    }
+
+    func testReaderScrubber() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-readerDemo"]
+        app.launch()
+        XCTAssertTrue(app.element("reader.paged").waitForExistence(timeout: 15))
+        remote.press(.down)
+        XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
+        // Pages sits beside Bookmark This Page at the top of the menu.
+        focus(app.element("reader.menu.bookmark"), .up)
+        select(app.element("reader.menu.browsePages"), .right)
+        XCTAssertTrue(app.element("reader.scrubber").waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.8)
+        // The strip scrolls to the screen edges, so only sizes and overlaps
+        // are checked here; the label row sits inside the safe area.
+        audit(app, "reader-scrubber", checkSafeArea: false)
+        let label = app.element("reader.scrubber.label").frame
+        let screen = app.windows.firstMatch.frame
+        let scale = screen.width / 1920
+        XCTAssertGreaterThanOrEqual(label.minX, (safeSide - 1) * scale, "Scrubber label is outside the safe area")
+        XCTAssertLessThanOrEqual(app.element("reader.scrubber.progress").frame.maxX,
+                                 screen.width - (safeSide - 1) * scale, "Progress bar is outside the safe area")
     }
 
     // MARK: Checks
@@ -188,8 +295,8 @@ final class DesignLayoutUITests: XCTestCase {
                 let b = inContent[j].frame.insetBy(dx: 2 * scale, dy: 2 * scale)
                 // A button inside a row reports its own frame within the row's.
                 if a.contains(b) || b.contains(a) { continue }
-                // Segments inside a segmented control report frames that
-                // stick out a little past the control's own frame.
+                // Some system controls report child frames that stick out a
+                // little past their own frame.
                 if a.contains(CGPoint(x: b.midX, y: b.midY)) || b.contains(CGPoint(x: a.midX, y: a.midY)) { continue }
                 XCTAssertFalse(a.intersects(b), "[\(name)] \(inContent[i].label) overlaps \(inContent[j].label)",
                                file: file, line: line)
@@ -207,7 +314,17 @@ final class DesignLayoutUITests: XCTestCase {
     private func focusables(_ app: XCUIApplication, in screen: CGRect) -> [(label: String, frame: CGRect)] {
         guard let root = snapshot(of: app) else { return [] }
         var result: [(String, CGRect)] = []
-        for element in all(in: root, where: { Self.focusableTypes.contains($0.elementType) }) {
+        // A segmented control is one focus target; its segments report
+        // frames that overlap each other and the control, so measure only
+        // the control.
+        var elements: [XCUIElementSnapshot] = []
+        var stack = [root]
+        while let next = stack.popLast() {
+            if Self.focusableTypes.contains(next.elementType) { elements.append(next) }
+            if next.elementType == .segmentedControl { continue }
+            stack.append(contentsOf: next.children.reversed())
+        }
+        for element in elements {
             let f = element.frame
             // Only fully visible elements; ones scrolled past the edge are fine.
             guard !f.isEmpty, screen.contains(f) else { continue }
@@ -238,6 +355,55 @@ final class DesignLayoutUITests: XCTestCase {
         return "\"\(id)\""
     }
 
+    // MARK: Pixels
+
+    /// The two rightmost runs of ink (pixels that differ from the row's
+    /// platter) along the middle of a row, in screenshot pixels: in a value
+    /// row, the chevron and the last letter of the value.
+    private func trailingInk(_ pixels: Pixels, frame: CGRect, scale: CGFloat) -> (last: ClosedRange<CGFloat>, previous: ClosedRange<CGFloat>)? {
+        guard !frame.isEmpty else { return nil }
+        let midY = Int(frame.midY * scale)
+        let band = (midY - Int(10 * scale))...(midY + Int(10 * scale))
+        let left = Int((frame.minX + frame.width * 0.45) * scale)
+        // A focused row grows past its reported frame.
+        let right = min(pixels.width - 1, Int((frame.maxX + 60) * scale))
+        guard left < right, band.lowerBound >= 0, band.upperBound < pixels.height else { return nil }
+        // The platter is the most common shade along the row's middle. Past
+        // the platter's end the background differs from it; that run touches
+        // the scan's end and is dropped below.
+        var shades: [Int: Int] = [:]
+        for x in left...Int(frame.maxX * scale) { shades[Int(pixels.luminance(x, midY) * 50), default: 0] += 1 }
+        guard let platter = shades.max(by: { $0.value < $1.value })?.key else { return nil }
+        let reference = CGFloat(platter) / 50 + 0.01
+        func ink(_ x: Int) -> Bool {
+            band.contains { abs(pixels.luminance(x, $0) - reference) > 0.2 }
+        }
+
+        var runs: [ClosedRange<CGFloat>] = []
+        var x = right
+        let joinGap = Int(3 * scale)
+        while x >= left, runs.count < 3 {
+            guard ink(x) else { x -= 1; continue }
+            let end = x
+            var start = x
+            var blank = 0
+            while x >= left, blank <= joinGap {
+                if ink(x) {
+                    start = x
+                    blank = 0
+                } else {
+                    blank += 1
+                }
+                x -= 1
+            }
+            // A run touching the scan's end is the background past the platter.
+            if end >= right - 1 { continue }
+            runs.append(CGFloat(start)...CGFloat(end))
+        }
+        guard runs.count >= 2 else { return nil }
+        return (runs[0], runs[1])
+    }
+
     // MARK: Helpers
 
     private func back(_ app: XCUIApplication, to id: String) {
@@ -257,5 +423,35 @@ final class DesignLayoutUITests: XCTestCase {
         let url = URL(fileURLWithPath: dir, isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         try? shot.pngRepresentation.write(to: url.appendingPathComponent("\(name).png"))
+    }
+}
+
+/// RGBA pixels of a screenshot, for measuring what's drawn.
+private struct Pixels {
+    let width: Int
+    let height: Int
+    private let data: [UInt8]
+
+    init?(_ image: UIImage) {
+        guard let cg = image.cgImage else { return nil }
+        width = cg.width
+        height = cg.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height,
+                                          bitsPerComponent: 8, bytesPerRow: cg.width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+            return true
+        }
+        guard drawn else { return nil }
+        data = bytes
+    }
+
+    /// 0 (black) to 1 (white). `y` counts from the top.
+    func luminance(_ x: Int, _ y: Int) -> CGFloat {
+        let i = (min(max(y, 0), height - 1) * width + min(max(x, 0), width - 1)) * 4
+        return (0.2126 * CGFloat(data[i]) + 0.7152 * CGFloat(data[i + 1]) + 0.0722 * CGFloat(data[i + 2])) / 255
     }
 }

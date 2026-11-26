@@ -3,10 +3,17 @@ name: CI
 # Pull requests run on pull_request only. Pushing to claude/** branches used
 # to start a second, identical run for every PR push, which doubled the load
 # on the few free macOS runners. main still runs on every merge.
+#
+# PRs run the UI smoke classes (tools/ui_smoke_tests.txt) plus the UI test
+# files they change. Merges to main, the nightly run and manual runs
+# (workflow_dispatch, any branch) run the full UI suite; a red one opens an
+# issue. See docs/CI.md.
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 8 * * *"   # 3 AM US Eastern
   workflow_dispatch:
 
 # One run per PR (or branch). A new push cancels the PR's stale run.
@@ -19,12 +26,19 @@ jobs:
   # Seconds on Linux: catches screen titles or headers that would stay pinned
   # over scrolling rows (see tools/check_pinned_headers.py).
   ui-lint:
-    name: UI lint (pinned headers)
+    name: UI lint (pinned headers, design tokens)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check_pinned_headers.py
+      # Literal radii, fixed font sizes, off-table text styles, Section("…")
+      # headers and "Retry" labels (see tools/check_design_tokens.py).
+      - run: python3 tools/check_design_tokens.py
+      # Every per-series reader setting has a global default.
+      - run: python3 tools/check_setting_scopes.py
+      # Secure fields keep the system dots (see tools/check_secure_fields.py).
+      - run: python3 tools/check_secure_fields.py
 
   core-tests:
     name: MangaCore unit tests
@@ -41,41 +55,71 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    # The UI suite alone took 29 minutes at 72 tests; build and simulator
-    # boot add about 5. Leave room as tests are added.
+    # The UI suite took 43 minutes at 91 tests. Tests run one at a time on
+    # purpose: parallel simulator clones made each test 2-5x slower on these
+    # 3-core runners and the job timed out (PR #42). See docs/CI.md.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A PR checks out GitHub's merge commit; its first parent is the
+          # base, so HEAD^1..HEAD is exactly the PR's change.
+          fetch-depth: 2
+      - name: Choose UI tests
+        id: tests
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            only=$(python3 tools/select_ui_tests.py HEAD^1)
+            echo "only=$only" >> "$GITHUB_OUTPUT"
+          else
+            echo "Full UI suite (${{ github.event_name }})"
+          fi
       - name: Select Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
         run: xcodegen generate
-      - name: Pick a tvOS simulator
-        id: sim
-        run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c '
-          import json,sys
-          d=json.load(sys.stdin)["devices"]
-          c=[(r,x) for r,v in d.items() if "tvOS" in r for x in v]
-          c.sort(key=lambda t:(t[0], "4K" in t[1]["name"]))
-          print(c[-1][1]["udid"])')
-          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-          xcrun simctl list devices available | grep -i "apple tv" || true
       - name: Build and test
         run: |
           mkdir -p build
-          # Stream test results so a timed-out run still shows how far it got.
+          DD="$RUNNER_TEMP/DerivedData"
+          # Listing simulators the first time starts CoreSimulator, which
+          # takes 2-3 minutes on these runners. Do it while the app compiles.
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/sims.json" &
+          sims_pid=$!
+          # Stream results so a timed-out run still shows how far it got.
           set +e
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project MangaReader.xcodeproj \
             -scheme MangaReader \
-            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -destination 'generic/platform=tvOS Simulator' \
+            -derivedDataPath "$DD" \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/build.log \
+            | grep --line-buffered -E "error:|\*\* (BUILD|TEST)"
+          status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then tail -80 build/build.log; exit $status; fi
+          wait $sims_pid
+          set -e
+          UDID=$(python3 -c '
+          import json,sys
+          d=json.load(open(sys.argv[1]))["devices"]
+          c=[(r,x) for r,v in d.items() if "tvOS" in r for x in v]
+          c.sort(key=lambda t:(t[0], "4K" in t[1]["name"]))
+          print(c[-1][1]["udid"])' "$RUNNER_TEMP/sims.json")
+          echo "Simulator: $UDID"
+          set +e
+          xcodebuild test-without-building \
+            -project MangaReader.xcodeproj \
+            -scheme MangaReader \
+            -destination "id=$UDID" \
+            -derivedDataPath "$DD" \
+            ${{ steps.tests.outputs.only }} \
             -resultBundlePath build/Results.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/xcodebuild.log \
-            | grep --line-buffered -E "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)"
+            | grep --line-buffered -iE "error:|Test Case .*(passed|failed)|\*\* (BUILD|TEST)"
           status=${PIPESTATUS[0]}
           set -e
           if [ $status -ne 0 ]; then tail -80 build/xcodebuild.log; fi
@@ -86,3 +130,40 @@ jobs:
         with:
           name: xcodebuild-results
           path: build/
+
+  # A full run on main (merge, nightly or manual) that fails opens an issue,
+  # or comments on the open one; the next green full run closes it. PRs only
+  # run the smoke UI tests, so this is how a break in the rest gets seen.
+  main-status:
+    name: Report main status
+    needs: [ui-lint, core-tests, app]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') }}
+        with:
+          script: |
+            const title = 'CI is red on main';
+            const failed = process.env.FAILED === 'true';
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', creator: 'github-actions[bot]', per_page: 50,
+            });
+            const issue = open.find(i => i.title === title);
+            const sha = context.sha.slice(0, 7);
+            if (failed) {
+              const body = `Full CI run failed on main at ${sha} (${context.eventName}): ${url}\n\nPRs run only the smoke UI tests, so check whether a recent merge broke a test outside \`tools/ui_smoke_tests.txt\`.`;
+              if (issue) {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body });
+              } else {
+                await github.rest.issues.create({ ...context.repo, title, body });
+              }
+            } else if (issue) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: `Green again at ${sha}: ${url}` });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: 'closed' });
+            }
