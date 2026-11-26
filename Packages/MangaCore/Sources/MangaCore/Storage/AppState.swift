@@ -137,6 +137,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// `SeriesRef.storageKey`, so Continue Reading on the Top Shelf can draw
     /// them without the server. Optional so older saved state decodes.
     public var recentSeries: [String: SeriesSummary]?
+    /// True once this profile finished the first-run welcome (see
+    /// `Welcome`). Nil in older state and until then.
+    public var welcomeCompleted: Bool? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
@@ -165,7 +168,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse,
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse, welcomeCompleted,
              contentFilter, requiresPINToOpen
     }
 
@@ -186,6 +189,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         recentSeries = try? c.decodeIfPresent([String: SeriesSummary].self, forKey: .recentSeries)
         // A browse shape this build can't read falls back to defaults.
         browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
+        welcomeCompleted = try? c.decodeIfPresent(Bool.self, forKey: .welcomeCompleted)
         contentFilter = try c.decodeIfPresent(ContentFilter.self, forKey: .contentFilter)
         requiresPINToOpen = try c.decodeIfPresent(Bool.self, forKey: .requiresPINToOpen)
     }
@@ -203,6 +207,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
         try c.encodeIfPresent(recentSeries, forKey: .recentSeries)
         try c.encodeIfPresent(browse, forKey: .browse)
+        try c.encodeIfPresent(welcomeCompleted, forKey: .welcomeCompleted)
         try c.encodeIfPresent(contentFilter, forKey: .contentFilter)
         try c.encodeIfPresent(requiresPINToOpen, forKey: .requiresPINToOpen)
     }

@@ -148,6 +148,7 @@ struct SalvagedProfileData: Decodable {
         let recent = c.lossyDictionary(SeriesSummary.self, "recentSeries")
         d.recentSeries = recent.isEmpty ? nil : recent
         d.browse = c.lossy(BrowsePreferences.self, "browse")
+        d.welcomeCompleted = c.lossy(Bool.self, "welcomeCompleted")
         // Keep the filter and PIN rule, so a damaged save never unlocks
         // a profile or shows what it hid.
         d.contentFilter = c.lossy(ContentFilter.self, "contentFilter")

@@ -22,7 +22,7 @@
           "series" : {
             "chapterCount" : 9,
             "countUnit" : "volume",
-            "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
             "feedDate" : 785000400,
             "format" : "epub",
             "libraryID" : "k1",
@@ -47,7 +47,7 @@
             "series" : {
               "chapterCount" : 9,
               "countUnit" : "volume",
-              "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+              "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
               "feedDate" : 785000400,
               "format" : "epub",
               "libraryID" : "k1",
@@ -136,7 +136,7 @@
         {
           "addedAt" : 785000000,
           "series" : {
-            "coverURL" : "http:\/\/kavita.local:5000\/api\/image\/series-cover?seriesId=12",
+            "coverURL" : "http://kavita.local:5000/api/image/series-cover?seriesId=12",
             "libraryID" : "1",
             "ref" : {
               "seriesID" : "12",
@@ -167,7 +167,7 @@
           "series" : {
             "chapterCount" : 9,
             "countUnit" : "volume",
-            "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
             "feedDate" : 785000400,
             "format" : "epub",
             "libraryID" : "k1",
@@ -209,7 +209,7 @@
           "series" : {
             "chapterCount" : 9,
             "countUnit" : "volume",
-            "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
             "feedDate" : 785000400,
             "format" : "epub",
             "libraryID" : "k1",
@@ -253,7 +253,7 @@
         "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55" : {
           "chapterCount" : 9,
           "countUnit" : "volume",
-          "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+          "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
           "feedDate" : 785000400,
           "format" : "epub",
           "libraryID" : "k1",
@@ -289,7 +289,8 @@
           "syncProgressToServer" : false
         }
       },
-      "webtoonAutoScrollLevel" : 7
+      "webtoonAutoScrollLevel" : 7,
+      "welcomeCompleted" : true
     },
     "0E5B8C3A-2222-4A7B-9C3D-000000000002" : {
       "contentFilter" : {
@@ -323,9 +324,7 @@
         "webtoonWidth" : 0.6,
         "zoomScale" : 2
       },
-      "favorites" : [
-
-      ],
+      "favorites" : [],
       "progress" : {
         "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|7" : {
           "chapterID" : "70",
@@ -338,9 +337,7 @@
               "page" : 4
             }
           ],
-          "readChapterIDs" : [
-
-          ],
+          "readChapterIDs" : [],
           "series" : {
             "categoryIDs" : [
               "0",
@@ -361,24 +358,18 @@
           "chapterID" : "",
           "ignoresServerProgress" : true,
           "page" : 0,
-          "readChapterIDs" : [
-
-          ],
+          "readChapterIDs" : [],
           "updatedAt" : 785000300
         }
       },
-      "readerOverrides" : {
-
-      },
+      "readerOverrides" : {},
       "requiresPINToOpen" : true,
       "serverSettings" : {
         "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A" : {
           "syncProgressToServer" : true
         },
         "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B" : {
-          "selectedCategoryIDs" : [
-
-          ],
+          "selectedCategoryIDs" : [],
           "syncProgressToServer" : false
         },
         "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C" : {
@@ -411,27 +402,27 @@
   "servers" : [
     {
       "alternateURLs" : [
-        "https:\/\/kavita.example.test"
+        "https://manga.example.com/kavita"
       ],
-      "baseURL" : "http:\/\/kavita.local:5000",
+      "baseURL" : "http://kavita.local:5000",
       "id" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
       "kind" : "kavita",
       "name" : "Kavita"
     },
     {
-      "baseURL" : "http:\/\/suwayomi.local:4567",
+      "baseURL" : "http://suwayomi.local:4567",
       "id" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
       "kind" : "suwayomi",
       "name" : "Suwayomi"
     },
     {
-      "baseURL" : "http:\/\/komga.local:25600",
+      "baseURL" : "http://komga.local:25600",
       "id" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
       "kind" : "komga",
       "name" : "Komga"
     },
     {
-      "baseURL" : "http:\/\/opds.local\/opds",
+      "baseURL" : "http://opds.local/opds",
       "id" : "5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
       "kind" : "opds",
       "name" : "Catalog"

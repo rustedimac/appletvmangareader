@@ -28,6 +28,11 @@ final class AppModel {
     /// True while the "Who's reading?" picker is showing. Set at launch when
     /// there's more than one profile, and by "Switch Profile" in Settings.
     var isPickingProfile = false
+    /// True while the first-run welcome has a screen pushed (the server
+    /// editor or the backup page), so it stays up until the person comes
+    /// back from that screen even if a saved server or a restore means
+    /// Home has something now.
+    var isBusyInWelcome = false
     /// Builds server clients, limited to a set of library/category ids (nil
     /// for all). UI tests swap in `SampleLibraryServer` (see
     /// `AppModel+Demo.swift`).
@@ -98,7 +103,11 @@ final class AppModel {
             if ProcessInfo.processInfo.arguments.contains("-mockKomga") { model.installMockKomga() }
             if ProcessInfo.processInfo.arguments.contains("-mockOPDS") { model.installMockOPDS() }
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
-            if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
+            if ProcessInfo.processInfo.arguments.contains("-freeLibrary") {
+                model.installFreeLibraryDemo()
+            } else if ProcessInfo.processInfo.arguments.contains("-welcome") {
+                model.useFreeLibraryDemoTransport()
+            }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             model.applyUITestingHomeLayout()
             return model
