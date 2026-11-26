@@ -72,7 +72,7 @@ struct BrowseSettingsView: View {
                     }
                 }
                 .focusSection()
-                Text("For library grids and Favorites. Small fits more series on screen.")
+                Text("For Home, Library, Favorites and Search. Small fits more series on screen.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
@@ -94,6 +94,19 @@ struct BrowseSettingsView: View {
                 }
                 .focusSection()
                 Text(PosterCaption.footnote)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                let showsPercent = model.browsePreferences.showsProgressPercent
+                Button {
+                    model.updateBrowse { $0.showsProgressPercent.toggle() }
+                } label: {
+                    Label("Show Percentage Read", systemImage: showsPercent ? "checkmark.circle.fill" : "circle")
+                }
+                .accessibilityIdentifier("browse.showsPercent")
+                .accessibilityValue(showsPercent ? "on" : "off")
+                .padding(.top, 30)
+                Text("Puts \"40%\" next to every poster progress bar.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 

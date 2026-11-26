@@ -95,6 +95,27 @@ final class AppModel {
     /// Drops cached server clients, e.g. after sync changed servers or logins.
     func resetClients() {
         clientCache.removeAll()
+        credentialRevision += 1
+    }
+
+    /// Bumped whenever logins change. They live in the keychain, outside
+    /// `state`, so screens can't observe them any other way.
+    private(set) var credentialRevision = 0
+
+    /// Changes whenever what the browse screens load from servers could:
+    /// the active profile, a server added, removed or edited, the
+    /// libraries/categories it imports, its progress sync setting, or a
+    /// login. Home, Library, Search, Favorites and Bookmarks reload on it
+    /// (`.task(id: model.contentKey)`), so changes in Settings show up
+    /// right away instead of after a relaunch.
+    var contentKey: String {
+        ([activeProfile.id.uuidString, String(credentialRevision)] + servers.map(contentKey(for:)))
+            .joined(separator: ",")
+    }
+
+    /// `contentKey` for one server's screens (Library).
+    func contentKey(for server: ServerConfig) -> String {
+        "\(server.id)|\(server.hashValue)|\(scopeKey(for: server))|\(syncsProgress(to: server.id))|\(credentialRevision)"
     }
 
     var activeProfile: Profile { state.activeProfile ?? Profile(name: "Me") }
@@ -102,7 +123,7 @@ final class AppModel {
 
     func switchProfile(_ id: UUID) {
         update { $0.setActiveProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     @discardableResult
@@ -122,7 +143,7 @@ final class AppModel {
         guard state.profiles.count > 1 else { return }
         for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
         update { $0.removeProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Servers
@@ -173,7 +194,7 @@ final class AppModel {
         if let credential, secrets is SharedFallbackSecretStore {
             secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
         }
-        clientCache.removeAll()
+        resetClients()
     }
 
     /// Checks a server and login without saving them.
@@ -246,7 +267,7 @@ final class AppModel {
         } else {
             update { $0.removeServer(server.id) }
         }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Favorites
@@ -288,9 +309,17 @@ final class AppModel {
     /// there. A change the server doesn't confirm stays queued on the
     /// series and is retried by `seriesDetail` / `syncPendingProgress`.
     func recordProgress(chapter: Chapter, series: SeriesSummary, page: Int, completed: Bool) async {
+        await startRecordingProgress(chapter: chapter, series: series, page: page, completed: completed).value
+    }
+
+    /// Like `recordProgress`, but returns at once with the save running.
+    /// The save is registered before this returns, so a later
+    /// `refreshSeriesProgress` waits for it (the reader closing calls both
+    /// back to back).
+    @discardableResult
+    func startRecordingProgress(chapter: Chapter, series: SeriesSummary, page: Int, completed: Bool) -> Task<Void, Never> {
         let profile = activeProfile.id
         let ref = chapter.seriesRef
-        unreadCountOverrides[ref] = nil
         let now = Date()
         let syncs = syncsProgress(to: ref.serverID)
         update {
@@ -301,15 +330,23 @@ final class AppModel {
                                 for: ref, profile: profile)
             }
         }
-        guard syncs, let client = client(for: ref) else { return }
-        do {
-            try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: completed)
-            update { $0.clearPending(ref, chapterIDs: [chapter.id], through: now, profile: profile) }
-            pushSucceeded()
-        } catch {
-            // Stays queued; retried with backoff.
-            schedulePendingRetry()
+        let previous = progressSaves[ref]
+        let client = syncs ? client(for: ref) : nil
+        let task = Task { [weak self] in
+            // Saves for one series go out in order.
+            await previous?.value
+            guard let client else { return }
+            do {
+                try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: completed)
+                self?.update { $0.clearPending(ref, chapterIDs: [chapter.id], through: now, profile: profile) }
+                self?.pushSucceeded()
+            } catch {
+                // Stays queued; retried with backoff.
+                self?.schedulePendingRetry()
+            }
         }
+        progressSaves[ref] = task
+        return task
     }
 
     // MARK: Retrying queued pushes
@@ -359,14 +396,38 @@ final class AppModel {
         await syncPendingProgress()
     }
 
-    /// Poster badge counts changed by "Mark as Unread" since the feeds
-    /// loaded, so posters update without reloading every row.
-    private(set) var unreadCountOverrides: [SeriesRef: Int] = [:]
+
+    /// The last progress save started for each series (each waits for the
+    /// one before it).
+    @ObservationIgnored private var progressSaves: [SeriesRef: Task<Void, Never>] = [:]
+
+    /// Waits until every progress save started so far for `ref` is done.
+    func waitForProgressSaves(_ ref: SeriesRef) async {
+        await progressSaves[ref]?.value
+    }
+
+    /// After reading: waits for the saves, then reloads the series so every
+    /// poster of it (Home, Library, Favorites, Search) shows the new badge,
+    /// bar and percentage.
+    func refreshSeriesProgress(_ ref: SeriesRef) {
+        Task { await refreshProgressOverride(ref) }
+    }
+
+    /// Read progress changed since the feeds loaded (reading, "Mark as
+    /// Unread"), so posters update without reloading every row.
+    /// Keyed by profile too, since each profile has its own progress.
+    private var progressOverrides: [ProfileSeriesKey: SeriesProgressOverride] = [:]
+
+    struct ProfileSeriesKey: Hashable {
+        let profile: UUID
+        let series: SeriesRef
+    }
     /// Chapter counts for poster captions (see `SeriesCountStore`).
     let seriesCounts = SeriesCountStore()
 
-    func unreadCount(for series: SeriesSummary) -> Int? {
-        unreadCountOverrides[series.ref] ?? series.unreadCount
+    /// `series` with any progress changed since it loaded.
+    func withCurrentProgress(_ series: SeriesSummary) -> SeriesSummary {
+        progressOverrides[ProfileSeriesKey(profile: activeProfile.id, series: series.ref)]?.applied(to: series) ?? series
     }
 
     /// Marks chapters of one series unread for this profile, and on the
@@ -417,11 +478,24 @@ final class AppModel {
     }
 
     private func refreshUnreadCount(_ ref: SeriesRef) async {
-        guard let detail = try? await seriesDetail(ref) else { return }
-        // A profile that doesn't sync can't trust the server's count.
-        unreadCountOverrides[ref] = syncsProgress(to: ref.serverID)
-            ? detail.posterUnreadCount
-            : detail.chapters.filter { !$0.isRead }.count
+        await refreshProgressOverride(ref)
+    }
+
+    /// Reloads `ref` (with this profile's progress resolved) once its
+    /// pending saves are done and records it for posters.
+    func refreshProgressOverride(_ ref: SeriesRef) async {
+        let profile = activeProfile.id
+        await waitForProgressSaves(ref)
+        guard let detail = try? await seriesDetail(ref), profile == activeProfile.id else { return }
+        noteProgress(of: detail, for: ref)
+    }
+
+    /// Records fresh progress from a series detail resolved for the active
+    /// profile, for its posters.
+    func noteProgress(of detail: SeriesDetail, for ref: SeriesRef) {
+        let key = ProfileSeriesKey(profile: activeProfile.id, series: ref)
+        let override = SeriesProgressOverride(detail: detail)
+        if progressOverrides[key] != override { progressOverrides[key] = override }
     }
 
     /// Series detail with progress resolved for this profile: local

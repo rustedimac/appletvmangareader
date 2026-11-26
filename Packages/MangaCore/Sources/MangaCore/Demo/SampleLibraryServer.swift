@@ -218,6 +218,9 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {
+        // Saves take as long as reads, like a real server, so a reload
+        // started while a save is in flight sees the old progress.
+        try await wait()
         store.lock.withLock {
             store.progress[chapter.id] = (page, completed)
             store.lastReadSeries.removeAll { $0 == chapter.seriesRef.seriesID }

@@ -111,6 +111,15 @@ struct LibraryOptionsView: View {
             }
 
             Section {
+                Toggle("Show Percentage Read", isOn: Binding(
+                    get: { model.browsePreferences.showsProgressPercent },
+                    set: { on in model.updateBrowse { $0.showsProgressPercent = on } }))
+                    .accessibilityIdentifier("libraryOptions.showsPercent")
+            } footer: {
+                Text("Puts \"40%\" next to every poster progress bar. Applies everywhere posters appear.")
+            }
+
+            Section {
                 Button("Reset to Defaults") {
                     model.setLibraryOptions(LibraryOptions(), server, category)
                 }
