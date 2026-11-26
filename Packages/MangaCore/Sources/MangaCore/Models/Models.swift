@@ -63,14 +63,7 @@ public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
         case id, kind, name, baseURL, alternateURLs
     }
 
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(UUID.self, forKey: .id)
-        kind = try c.decode(ServerKind.self, forKey: .kind)
-        name = try c.decode(String.self, forKey: .name)
-        baseURL = try c.decode(URL.self, forKey: .baseURL)
-        alternateURLs = (try? c.decodeIfPresent([URL].self, forKey: .alternateURLs)) ?? []
-    }
+    // Decoding is in "Saved data" below (tolerant of missing fields).
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -395,6 +388,10 @@ extension ServerConfig {
         kind = try c.decode(ServerKind.self, forKey: .kind)
         baseURL = try c.decode(URL.self, forKey: .baseURL)
         name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
+        // Older builds and backups have no alternate addresses. Not
+        // `tolerantArray`: JSONDecoder reads a URL from a string only when
+        // asked for `URL` directly, not through `Lossy<URL>`.
+        alternateURLs = c.tolerant(.alternateURLs, default: [])
     }
 }
 

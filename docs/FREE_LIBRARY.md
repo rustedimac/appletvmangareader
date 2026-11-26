@@ -38,6 +38,36 @@ content and the sample library for screenshots.
   `AppState.freeLibraryRemoved`, so it stays gone; "Add the Free Library"
   brings it back. It isn't in the Add Server picker (`ServerKind.userAddable`).
 
+## First-run welcome
+
+`WelcomeView` (App/Sources/Welcome) replaces the tabs while the active
+profile has nothing to read. The rules are in `Welcome.shouldShow`
+(MangaCore/FreeLibrary/Welcome.swift):
+
+- Never when any server of the user's own exists (shared Apple TV servers
+  count), so nobody with a server is stopped by it.
+- Always when there are no servers at all, for example after removing the
+  Free Library with no other server. That is how it comes back.
+- With only the Free Library: until the profile presses "Start Reading"
+  (`ProfileData.welcomeCompleted`). Profiles from before the welcome that
+  already picked collections or have favorites, progress or bookmarks skip it.
+
+It lists the catalog's collections with their `summary` (optional field in
+`catalog.json`) and ticks `Welcome.suggestedCollections` (Classic Comics and
+Webcomics) unless the profile already picked some. "Start Reading" adds the
+Free Library back if needed and saves the ticks as the profile's collection
+choice (all ticked saves "all", so new collections show up later). "Add a
+… Server" opens the server editor and "Restore from a Backup" the Wi-Fi
+backup page; the welcome stays until the person comes back from either, then
+Home takes over if a server or backup arrived. The choice is per profile
+(so per Apple TV user) and syncs: the ticks as the Free Library's library
+choice, the "done" flag as its own `welcome` record.
+
+The art is drawn in code. Never put catalog covers or any other book's art
+on it.
+
+UI tests only see the welcome with `-welcome` (`WelcomeUITests`).
+
 ## Rules for catalog entries
 
 1. **Internet Archive: US public domain only.** Published in the US in 1930
@@ -63,7 +93,7 @@ content and the sample library for screenshots.
    `version` on every edit and keep `problems` empty (`swift test` checks the
    bundled catalog).
 
-## Current catalog (version 1, 2026-11-25)
+## Current catalog (version 2, 2026-11-25)
 
 Checked live through the IIIF manifests on 2026-11-25: every item loaded and
 none has an access restriction.
