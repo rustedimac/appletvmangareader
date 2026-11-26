@@ -87,7 +87,7 @@ final class ReaderTutorialUITests: XCTestCase {
 
     func testFirstOpenOfferNotNowKeepsReading() {
         launchDemoWithOffer()
-        select(app.alerts.buttons["Not Now"].firstMatch)
+        select(app.alerts.buttons["Not Now"].firstMatch, .right)
         wait(app.alerts.firstMatch, "exists == false")
         XCTAssertFalse(step.exists)
         let indicator = app.staticTexts["reader.pageIndicator"]
