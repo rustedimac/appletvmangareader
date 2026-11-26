@@ -419,6 +419,10 @@ Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
   through `ProgressSync.reconcile` (latest `lastReadAt` wins per chapter)
   and pushes the local winners. `AppModel.syncPendingProgress` runs it for
   every series with a queue before Home loads.
+- A failed push also schedules `AppModel.schedulePendingRetry`, which runs
+  `syncPendingProgress` again after `RetryBackoff` (5 s doubling to every
+  5 min, with jitter) until the queue is empty. Coming back to the
+  foreground retries at once (`retryPendingProgressNow`).
 - `SeriesDetail.continueChapter` follows Kavita's continue point: the most
   recently read unfinished chapter, else the first unread after the last
   read one.
