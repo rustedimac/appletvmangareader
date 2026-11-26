@@ -9,7 +9,7 @@ app saves, the rules for changing it, and the tests that enforce them.
 | Data | Where | Type | Fixture (`Tests/MangaCoreTests/Fixtures/SavedData`) |
 | --- | --- | --- | --- |
 | Profiles, servers, favorites, progress, bookmarks, reader/book/browse settings | UserDefaults `mangareader.appstate.v1` | `AppState` | `appstate-v1-*.json` (older shapes inline in `AppStateUpgradeTests`) |
-| Servers shared by every Apple TV user, with the first login for each | user-independent keychain | `SharedServerDirectory` | `shared-servers-v1.json`, `shared-servers-v1-2026-11-26-addresses.json` |
+| Servers shared by every Apple TV user, with the first login for each | user-independent keychain | `SharedServerDirectory` | `shared-servers-v1.json` |
 | Logins, per profile and server | keychain | `ServerCredential` | `credentials-v1.json` |
 | Place inside a book chapter | UserDefaults `mangareader.bookpositions.v1` | `[String: BookPosition]` | `book-positions-v1.json` |
 | iCloud offline queue | UserDefaults `mangareader.sync.journal.v1` | `SyncJournal` | `sync-journal-v1.json` |
