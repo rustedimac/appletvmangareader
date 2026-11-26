@@ -86,7 +86,7 @@ struct PINPadView: View {
             press(digit)
         } label: {
             Text("\(digit)")
-                .font(.title.monospacedDigit())
+                .font(.title2.monospacedDigit())
                 .frame(width: 140, height: 100)
         }
         .accessibilityIdentifier("pin.key.\(digit)")
