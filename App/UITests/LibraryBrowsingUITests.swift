@@ -341,6 +341,12 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertTrue(transition.waitForExistence(timeout: 5), "never reached the end of chapter 3")
         remote.press(.menu) // close the reader
         XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10))
+        // The chapter list is current on the first return, not the next
+        // one (John, 2026-11-26: it lagged one reader visit behind).
+        let chapter3 = app.buttons["chapter.1-3"]
+        XCTAssertTrue(chapter3.waitForExistence(timeout: 10))
+        wait(chapter3, "value == 'read'", timeout: 10)
+        XCTAssertEqual(app.buttons["chapter.1-4"].value as? String, "unread")
         remote.press(.menu) // back to the grid
         XCTAssertTrue(poster.waitForExistence(timeout: 10))
         wait(titlePercent, "label == '75%'", timeout: 15)
