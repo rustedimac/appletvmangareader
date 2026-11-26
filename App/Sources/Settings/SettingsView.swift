@@ -100,6 +100,7 @@ struct SettingsView: View {
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
+        .resetsNavigationWhenLeft()
     }
 
     /// In-app profiles are the fallback when there are no Apple TV users.

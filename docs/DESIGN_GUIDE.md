@@ -229,6 +229,10 @@ Form { … }
   first item, so titles and the tab bar come back into view. Don't put
   `.scrollClipDisabled()` on a vertical scroll view that sits under a
   navigation title.
+- A tab left for 10 seconds or more goes back to its top screen
+  (`NavigationReset`). A new tab gets `.navigationResetTab("<tag>")` in
+  RootView and `.resetsNavigationWhenLeft(path:)` on its NavigationStack;
+  keep state that should survive (a search query) outside the stack.
 
 ## 9. Checklist for a new or changed screen
 

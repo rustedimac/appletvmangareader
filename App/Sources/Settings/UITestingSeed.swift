@@ -7,6 +7,8 @@ import MangaCore
 /// - `-uiTestingSeed profiles`: two profiles, so the picker shows at launch.
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
 /// - `-uiTestingTab settings`: start on the Settings tab.
+/// - `-uiTestingNavigationResetDelay 2`: tabs return to their top screen
+///   after 2 s out of sight instead of 10 (`NavigationReset`).
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 
@@ -18,6 +20,12 @@ enum UITestingSeed {
     static var isUITesting: Bool { arguments.contains("-uiTesting") }
 
     static var initialTab: String? { isUITesting ? value(after: "-uiTestingTab") : nil }
+
+    static var navigationResetDelay: Duration? {
+        guard isUITesting, let raw = value(after: "-uiTestingNavigationResetDelay"),
+              let seconds = Double(raw) else { return nil }
+        return .seconds(seconds)
+    }
 
     static func state() -> AppState? {
         guard isUITesting, let seed = value(after: "-uiTestingSeed") else { return nil }
