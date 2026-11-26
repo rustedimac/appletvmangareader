@@ -341,3 +341,66 @@ public struct Paged<Item: Sendable>: Sendable {
         self.hasMore = hasMore
     }
 }
+
+// MARK: Saved data
+
+// These are saved on the Apple TV (AppState, the shared server directory,
+// the keychain), so a missing field or an unknown value falls back instead
+// of losing the server, login, profile or series (see TolerantDecoding).
+
+extension ServerConfig {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        kind = try c.decode(ServerKind.self, forKey: .kind)
+        baseURL = try c.decode(URL.self, forKey: .baseURL)
+        name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
+    }
+}
+
+extension ServerCredential {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        apiKey = c.tolerant(.apiKey)
+        username = c.tolerant(.username)
+        password = c.tolerant(.password)
+        // Unknown: the client finds out again on the next sign-in.
+        suwayomiLogin = c.tolerant(.suwayomiLogin)
+    }
+}
+
+extension Profile {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = c.tolerant(.name, default: "Profile")
+        symbol = c.tolerant(.symbol, default: "person.fill")
+        colorIndex = c.tolerant(.colorIndex, default: 0)
+    }
+}
+
+extension ProfileServerSettings {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        syncProgressToServer = c.tolerant(.syncProgressToServer, default: true)
+        selectedCategoryIDs = c.tolerant(.selectedCategoryIDs)
+    }
+}
+
+extension SeriesSummary {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ref = try c.decode(SeriesRef.self, forKey: .ref)
+        title = c.tolerant(.title, default: "")
+        coverURL = c.tolerant(.coverURL)
+        unreadCount = c.tolerant(.unreadCount)
+        libraryID = c.tolerant(.libraryID)
+        format = c.tolerant(.format)
+        categoryIDs = c.tolerant(.categoryIDs)
+        pageCount = c.tolerant(.pageCount)
+        pagesRead = c.tolerant(.pagesRead)
+        chapterCount = c.tolerant(.chapterCount)
+        countUnit = c.tolerant(.countUnit)
+        feedDate = c.tolerant(.feedDate)
+    }
+}

@@ -5,9 +5,10 @@ import XCTest
 /// `.sortedKeys`, dates as seconds since 2001). An app update must load
 /// every one of these without losing a profile, favorite or page.
 ///
-/// When a PR changes the shape of anything `AppState` stores, add the JSON
-/// the build before it writes (copy the latest fixture and edit it) and
-/// assert the new field's default in `testEveryFixtureKeepsEverything`.
+/// These are the early, small shapes. Newer snapshots are files in
+/// `Fixtures/SavedData`, checked field by field by `SavedDataUpgradeTests`:
+/// when a PR changes the shape of anything `AppState` stores, add a new file
+/// there (see that test and docs/UPGRADE_SAFETY.md).
 /// Titles are fictional and hosts are generic.
 enum AppStateFixtures {
     static let meID = "0E5B8C3A-1111-4A7B-9C3D-000000000001"

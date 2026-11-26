@@ -1,0 +1,12 @@
+{
+  "0E5B8C3A-1111-4A7B-9C3D-000000000001|5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12|104" : {
+    "fraction" : 0.5,
+    "section" : 0,
+    "updatedAt" : 785001100
+  },
+  "0E5B8C3A-1111-4A7B-9C3D-000000000001|5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55|v3" : {
+    "fraction" : 0.375,
+    "section" : 4,
+    "updatedAt" : 785001000
+  }
+}
