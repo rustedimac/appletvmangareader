@@ -94,9 +94,10 @@ to the default. Added to DESIGN_GUIDE §7 "Setting scopes".
 | G2 | Crop borders, page fit, click-to-zoom (#17) | Per series | Rows added to Default Reader Settings in #17 | OK (checked against #17's head), guarded |
 | G3 | Split wide pages, brightness, contrast, color, sharpen, upscaling (#35) | Per series | Rows added in #35 | OK (checked against #35's head), guarded |
 | G4 | Shift page pairing | Per series | None | Exempt: it fixes one book's pairing; a global shift would mis-pair every other book. |
-| G5 | Library sort (`LibraryOptions.sort`) | Per library (Sort & View) | None: falls back to the built-in Title A–Z | Open: add "Default sort" to Customize Home, plus Reset to Default on Sort & View. |
-| G6 | Grid order (`LibraryOptions.gridOrder`) | Per library | None: built-in "Match Reading Direction" | Open: same as G5. |
-| G7 | Library reading style (`LibraryOptions.readingStyle`) | Per library | Default Reader Settings direction | OK; Sort & View needs Reset to Default (G5). |
+| G5 | Library sort (`LibraryOptions.sort`) | Per library (Sort & View) | Library Defaults | Fixed 2026-11-26: Library Defaults screen, "Default (…)" rows and Reset to Defaults on Sort & View. |
+| G6 | Grid order (`LibraryOptions.gridOrder`) | Per library | Library Defaults | Fixed 2026-11-26 (same as G5). |
+| G6b | Library filters (`LibraryOptions.filter`) | Per library | Library Defaults (status, read progress) | OK. Genres are exempt: each library has its own genre list. |
+| G7 | Library reading style (`LibraryOptions.readingStyle`) | Per library | Default Reader Settings direction | OK; Reset to Defaults on Sort & View clears it. |
 | G8 | Auto-scroll speed, book text settings, poster size, poster caption (#41) | Profile only | They are the global value | OK (no per-series override exists). |
 | G9 | Wording | Default Reader Settings and the reader menu name the same settings differently (W1). | | Open (W1) |
 

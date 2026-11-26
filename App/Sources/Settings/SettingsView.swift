@@ -48,6 +48,13 @@ struct SettingsView: View {
                         Label("Customize Home", systemImage: "rectangle.grid.1x2")
                     }
                     .accessibilityIdentifier("settings.customizeHome")
+
+                    NavigationLink {
+                        LibraryDefaultsView()
+                    } label: {
+                        Label("Library Defaults", systemImage: "square.grid.3x3")
+                    }
+                    .accessibilityIdentifier("settings.libraryDefaults")
                 }
 
                 Section {

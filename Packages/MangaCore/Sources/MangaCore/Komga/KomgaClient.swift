@@ -70,13 +70,45 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
     }
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
-        let search = KomgaSearch(condition: .is(field: "libraryId", value: category.id))
+        try await series(in: category, page: page, pageSize: pageSize, sort: .default, filter: .empty)
+    }
+
+    /// Komga filters series on the server (`seriesStatus`, `readStatus`
+    /// and `genre` search conditions). It keeps title order.
+    public var libraryFilterSupport: LibraryFilterSupport { .all }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                       filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
+        let search = KomgaSearch(condition: Self.condition(library: category.id, filter: filter.limited(to: libraryFilterSupport)))
         let result: KomgaPage<KomgaSeriesDTO> = try await http.post(
             "api/v1/series/list",
             query: ["page": String(max(0, page - 1)), "size": String(pageSize), "sort": "metadata.titleSort,asc"],
             body: search)
         let hasMore = result.last.map { !$0 } ?? (result.content.count >= pageSize)
         return Paged(items: result.content.map(summary), hasMore: hasMore)
+    }
+
+    /// The library condition, and with each filter part an `anyOf` of its
+    /// choices, all combined with `allOf`.
+    static func condition(library: String, filter: LibraryFilter) -> KomgaCondition? {
+        var parts: [KomgaCondition?] = [.is(field: "libraryId", value: library)]
+        parts.append(.any(filter.statuses.map(\.komgaValue).sorted().map { .is(field: "seriesStatus", value: $0) }))
+        let read: [String]
+        switch filter.readProgress {
+        case .any: read = []
+        case .unread: read = ["UNREAD"]
+        case .inProgress: read = ["IN_PROGRESS"]
+        case .unfinished: read = ["UNREAD", "IN_PROGRESS"]
+        case .read: read = ["READ"]
+        }
+        parts.append(.any(read.map { .is(field: "readStatus", value: $0) }))
+        parts.append(.any(filter.genres.sorted().map { .is(field: "genre", value: $0) }))
+        return .all(parts)
+    }
+
+    public func filterGenres(in category: MangaCategory) async throws -> [String] {
+        let genres: [String] = try await http.get("api/v1/genres", query: ["library_id": category.id])
+        return LibraryFilter.genreList(genres)
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {

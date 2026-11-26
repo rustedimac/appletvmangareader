@@ -68,6 +68,21 @@ struct BrowseSettingsView: View {
                 Text(PosterCaption.footnote)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+
+                Text("Libraries")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 30)
+                NavigationLink {
+                    LibraryDefaultsView()
+                } label: {
+                    Label("Library Defaults: \(model.libraryDefaults.sort.title), \(model.libraryDefaults.filter.summary)",
+                          systemImage: "square.grid.3x3")
+                }
+                .accessibilityIdentifier("browse.libraryDefaults")
+                Text("The sort, filters and grid order for libraries that don't set their own in Sort & View.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
             .padding(.vertical, 40)
             .frame(maxWidth: .infinity, alignment: .leading)

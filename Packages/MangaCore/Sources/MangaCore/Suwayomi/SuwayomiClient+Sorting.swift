@@ -10,8 +10,17 @@ extension SuwayomiClient {
     /// any of these, the grid falls back to the basic fields.
     static let gridFields = SuwayomiMangaDTO.fields
         + " inLibraryAt chapters { totalCount } latestFetchedChapter { fetchedAt } lastReadChapter { lastReadAt }"
+        + " status genre"
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: sort, filter: .empty)
+    }
+
+    /// The whole category is in memory, so every filter runs here.
+    public var libraryFilterSupport: LibraryFilterSupport { .all }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                       filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
         guard let id = Int(category.id) else { throw MangaError.notFound }
         let all: [SuwayomiGridManga]
         if page > 1, let cached = await gridCache.get(categoryID: id) {
@@ -22,7 +31,7 @@ extension SuwayomiClient {
         }
         var dates: [SeriesRef: Date] = [:]
         var summaries: [SeriesSummary] = []
-        for m in all where m.manga.inLibrary != false {
+        for m in all where m.manga.inLibrary != false && m.matches(filter) {
             let s = summary(m)
             summaries.append(s)
             if let date = m.date(for: sort) { dates[s.ref] = date }
@@ -32,6 +41,20 @@ extension SuwayomiClient {
         guard start < sorted.count else { return Paged(items: [], hasMore: false) }
         let end = min(sorted.count, start + pageSize)
         return Paged(items: Array(sorted[start..<end]), hasMore: end < sorted.count)
+    }
+
+    /// Genres of the category's manga. Uses the grid's cached answer when
+    /// it's fresh.
+    public func filterGenres(in category: MangaCategory) async throws -> [String] {
+        guard let id = Int(category.id) else { throw MangaError.notFound }
+        let all: [SuwayomiGridManga]
+        if let cached = await gridCache.get(categoryID: id) {
+            all = cached
+        } else {
+            all = try await fetchGrid(categoryID: id)
+            await gridCache.set(all, categoryID: id)
+        }
+        return LibraryFilter.genreList(all.filter { $0.manga.inLibrary != false }.flatMap { $0.genre ?? [] })
     }
 
     func fetchGrid(categoryID id: Int) async throws -> [SuwayomiGridManga] {
@@ -67,8 +90,11 @@ struct SuwayomiGridManga: Decodable, @unchecked Sendable {
     var chapters: ChapterCount?
     var latestFetchedChapter: Fetched?
     var lastReadChapter: Read?
+    /// `MangaStatus`, e.g. "ONGOING".
+    var status: String?
+    var genre: [String]?
 
-    private enum CodingKeys: String, CodingKey { case inLibraryAt, chapters, latestFetchedChapter, lastReadChapter }
+    private enum CodingKeys: String, CodingKey { case inLibraryAt, chapters, latestFetchedChapter, lastReadChapter, status, genre }
 
     init(from decoder: Decoder) throws {
         manga = try SuwayomiMangaDTO(from: decoder)
@@ -77,6 +103,14 @@ struct SuwayomiGridManga: Decodable, @unchecked Sendable {
         chapters = try? c.decodeIfPresent(ChapterCount.self, forKey: .chapters)
         latestFetchedChapter = try? c.decodeIfPresent(Fetched.self, forKey: .latestFetchedChapter)
         lastReadChapter = try? c.decodeIfPresent(Read.self, forKey: .lastReadChapter)
+        status = try? c.decodeIfPresent(String.self, forKey: .status)
+        genre = try? c.decodeIfPresent([String].self, forKey: .genre)
+    }
+
+    /// Read progress counts chapters: unread out of the total.
+    func matches(_ filter: LibraryFilter) -> Bool {
+        filter.matches(status: PublicationStatus(suwayomi: status), unread: manga.unreadCount,
+                       total: chapterCount, genres: genre)
     }
 
     var chapterCount: Int? { chapters?.totalCount }
