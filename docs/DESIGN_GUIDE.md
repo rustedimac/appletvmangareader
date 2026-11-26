@@ -124,6 +124,12 @@ that for shelves and library grids: `Grid.posterWidth` 217, height 1.5×,
 `Grid.columnSpacing` 40, `Grid.rowSpacing` 100 (poster bottom to next poster
 top, caption included).
 
+Under each poster: the title (`.caption`, two lines at most), then one line
+picked by the profile's poster caption setting (`PosterCaption`): a count
+("42 chapters", "12 volumes", "3 books"; `.caption2` `.secondary`, one line),
+the page count, a 6 pt progress bar, or nothing. Corner badges and the bar on
+the cover don't change with it. Don't add more lines under a poster than these.
+
 ## 7. Components
 
 Shared views live in `App/Sources/Shared/Design/`. Use them for new screens.
@@ -167,6 +173,24 @@ Form { … }
   instead of on the content.
 - `.settingsPage(_:hero:)` takes any view for the hero (the profile editor
   shows the avatar being edited).
+
+### Pickers and value rows (`SettingsPicker`)
+
+A row that shows a value and opens a list of choices uses `SettingsPicker`,
+not `Picker`. It's laid out like Apple's own Settings rows: title leading,
+value in `.secondary` with the chevron `Space.s` (16 pt) after it, both
+trailing, in the same place whether or not the row has focus. The chevron
+ends where a `Toggle`'s On/Off ends, so the right edge of a form lines up.
+The system `Picker` leaves about 60 pt between its value and chevron, and
+SwiftUI can't change that.
+
+```swift
+SettingsPicker("Mode", selection: $settings.mode, options: ReadingMode.allCases) { $0.title }
+```
+
+The choices open on their own `SettingsPage` with a checkmark on the current
+one and focus starting there; picking one goes back. A custom row that opens
+another page with a value uses `SettingsValueRow` for the same spacing.
 
 ### Buttons
 
@@ -223,6 +247,10 @@ Form { … }
   series, the current profile in the picker, the first row in a form).
 - Group regions with `.focusSection()` so moving down from a wide row of
   buttons lands somewhere predictable.
+- A lone centered control under or above a row (Customize Home under the last
+  Home shelf, Try Again in an error message) uses `.centeredFocusRow()`, which
+  makes the full width a focus section. Otherwise focus only reaches it from
+  the items directly above it.
 - Never move focus without the user doing something, except restoring it when
   a screen appears.
 - Scrolling containers must scroll back to the top when focus moves to their
@@ -249,6 +277,9 @@ a server and checks the rules a test can measure: focusable elements are at
 least 60 pt tall (system rows report a few points less than they draw),
 everything focusable stays inside the safe area (with room for focus growth),
 form rows aren't wider than the form column, and sibling rows don't overlap.
+`testSettingsValueSitsNextToChevron` measures value rows from the screenshot:
+8–30 pt between the value and the chevron, chevrons in the same place on every
+row with and without focus, and a toggle's On/Off ending in line with them.
 
 Set `DESIGN_AUDIT_DIR` (as `TEST_RUNNER_DESIGN_AUDIT_DIR` for `xcodebuild`) to
 also save a screenshot of every screen it visits to that folder. Those

@@ -31,6 +31,13 @@ public protocol MangaServer: Sendable {
 
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail
 
+    /// How many chapters (or volumes or books) a series has, for poster
+    /// captions when the listing left it out (`SeriesSummary.chapterCount`
+    /// nil). The app asks lazily, for posters on screen, and caches it.
+    /// The default loads series detail; clients with a lighter request
+    /// override it.
+    func chapterCount(seriesID: String) async throws -> SeriesCount
+
     /// Page URLs (and sizes, when the server knows them) for a chapter.
     func pages(for chapter: Chapter) async throws -> [PageDescriptor]
 
@@ -59,6 +66,11 @@ public extension MangaServer {
             try await saveProgress(chapter: chapter, libraryID: libraryID,
                                    page: max(0, chapter.pageCount - 1), completed: true)
         }
+    }
+
+    func chapterCount(seriesID: String) async throws -> SeriesCount {
+        let detail = try await seriesDetail(seriesID)
+        return SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format)
     }
 
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
