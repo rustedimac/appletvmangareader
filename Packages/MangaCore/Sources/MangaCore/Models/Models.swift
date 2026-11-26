@@ -402,5 +402,6 @@ extension SeriesSummary {
         chapterCount = c.tolerant(.chapterCount)
         countUnit = c.tolerant(.countUnit)
         feedDate = c.tolerant(.feedDate)
+        unreadChapters = c.tolerant(.unreadChapters)
     }
 }
