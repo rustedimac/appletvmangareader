@@ -336,6 +336,39 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertFalse(titlePercent.exists, "setting off hides the number, keeps the bar")
     }
 
+    /// Every poster in a row is the same height, so progress bars and
+    /// their percentages line up across the row whatever the title's
+    /// length (John, 2026-11-26).
+    func testProgressBarsLineUpAcrossARow() {
+        launch(["-demoProgress"])
+        openKavitaLibrary()
+        pickOption("libraryOptions.density.large")
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titlePercent.waitForExistence(timeout: 10))
+        let firstCover = app.buttons["poster.1"].frame
+        func row(_ query: XCUIElementQuery, _ prefix: String) -> [XCUIElement] {
+            query.matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
+                .filter { $0.frame.width > 0 && $0.frame.minY > firstCover.maxY
+                          && $0.frame.minY < firstCover.maxY + firstCover.height / 2 }
+        }
+        // Leave out the focused poster: its caption drops on purpose.
+        let focusedX = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true"))
+            .firstMatch.frame.midX
+        func resting(_ items: [XCUIElement]) -> [XCUIElement] {
+            items.filter { abs($0.frame.midX - focusedX) > firstCover.width / 2 }
+        }
+        let titles = resting(row(app.staticTexts, "poster.title."))
+        let bars = resting(row(app.descendants(matching: .any), "poster.titleProgress."))
+        let percents = resting(row(app.staticTexts, "poster.titlePercent."))
+        XCTAssertGreaterThanOrEqual(bars.count, 3, "not enough posters in the first row")
+        let heights = titles.map(\.frame.height)
+        XCTAssertLessThan((heights.max() ?? 0) - (heights.min() ?? 0), 1, "titles take different heights: \(heights)")
+        for (name, items) in [("bars", bars), ("percentages", percents)] {
+            let tops = items.map(\.frame.minY)
+            XCTAssertLessThan((tops.max() ?? 0) - (tops.min() ?? 0), 1, "\(name) don't line up: \(tops)")
+        }
+    }
+
     func testPercentageFitsOnSmallPosters() {
         launch()
         openKavitaLibrary()
@@ -375,6 +408,10 @@ final class LibraryBrowsingUITests: XCTestCase {
         remote.press(.select)
         let resume = app.buttons["series.continue"]
         XCTAssertTrue(resume.waitForExistence(timeout: 10))
+        // The series page says how far along it is (John, 2026-11-26).
+        let percentRead = app.staticTexts["series.percentRead"]
+        XCTAssertTrue(percentRead.waitForExistence(timeout: 10))
+        XCTAssertEqual(percentRead.label, "50% read")
         moveFocus(to: resume)
         remote.press(.select)
         XCTAssertTrue(app.descendants(matching: .any)["reader.paged"].waitForExistence(timeout: 15))
@@ -393,6 +430,7 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertTrue(chapter3.waitForExistence(timeout: 10))
         wait(chapter3, "value == 'read'", timeout: 10)
         XCTAssertEqual(app.buttons["chapter.1-4"].value as? String, "unread")
+        wait(percentRead, "label == '75% read'")
         remote.press(.menu) // back to the grid
         XCTAssertTrue(poster.waitForExistence(timeout: 10))
         wait(titlePercent, "label == '75%'", timeout: 15)

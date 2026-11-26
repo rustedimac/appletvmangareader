@@ -116,7 +116,7 @@ struct LibraryOptionsView: View {
                     set: { on in model.updateBrowse { $0.showsProgressPercent = on } }))
                     .accessibilityIdentifier("libraryOptions.showsPercent")
             } footer: {
-                Text("Puts \"40%\" next to every poster progress bar. Applies everywhere posters appear.")
+                Text("Puts \"40%\" next to every poster progress bar, and \"40% read\" on series pages. Applies everywhere posters appear.")
             }
 
             Section {
