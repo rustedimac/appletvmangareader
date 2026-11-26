@@ -124,6 +124,21 @@ that for shelves and library grids: `Grid.posterWidth` 217, height 1.5×,
 `Grid.columnSpacing` 40, `Grid.rowSpacing` 100 (poster bottom to next poster
 top, caption included).
 
+Posters (`SeriesPoster`):
+
+- The card button style scales a focused cover by about 1.1, so the cover
+  grows over the space under it. The title block moves down by
+  `PosterMetrics.focusedTitleDrop` while the poster has focus and comes back
+  when focus leaves. Don't put fixed-height text right under a card without
+  that drop.
+- Titles get two lines (`.lineLimit(2)` plus
+  `.fixedSize(horizontal: false, vertical: true)`, so a row never squeezes them
+  to one truncated line).
+- Badges on covers sit on a near-opaque dark plate with white bold text (the
+  unread count adds a light rim so it shows on dark covers too). Never put
+  badge text on a translucent tint: it disappears on light covers.
+  `PosterLayoutUITests` checks the title rules.
+
 ## 7. Components
 
 Shared views live in `App/Sources/Shared/Design/`. Use them for new screens.
