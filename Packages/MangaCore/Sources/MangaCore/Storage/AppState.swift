@@ -415,15 +415,15 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public func readerSettings(for ref: SeriesRef, profile: UUID) -> ReaderSettings {
         let data = profileData[profile.uuidString]
-        return data?.readerOverrides[ref.storageKey] ?? data?.defaultReaderSettings ?? .default
+        return (data?.readerOverrides[ref.storageKey] ?? data?.defaultReaderSettings ?? .default).normalizedPairing
     }
 
     public mutating func setReaderSettings(_ settings: ReaderSettings, for ref: SeriesRef, profile: UUID) {
-        mutateData(profile) { $0.readerOverrides[ref.storageKey] = settings }
+        mutateData(profile) { $0.readerOverrides[ref.storageKey] = settings.normalizedPairing }
     }
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
-        mutateData(profile) { $0.defaultReaderSettings = settings }
+        mutateData(profile) { $0.defaultReaderSettings = settings.normalizedPairing }
     }
 
     // MARK: Book settings

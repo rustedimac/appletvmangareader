@@ -65,8 +65,8 @@ Use a Kavita manga with a two-page color spread (many chapters end on one).
 - [ ] Pairs read right page first, then left.
 - [ ] A spread split across two files lines up with no gap or line at the spine.
 - [ ] A wide (landscape) page shows alone.
-- [ ] If pairs come out wrong, Play/Pause → "Pages paired wrong? Shift by one"
-      fixes them and stays on the same page.
+- [ ] If pairs come out wrong, Play/Pause → First Page Alone (flip it) fixes
+      them for that series and stays on the same page.
 - [ ] Past the last page, a card names the next chapter; one more press opens it.
 - [ ] Turning pages is instant once the reader has preloaded. **(device)**
 - [ ] Text is sharp on a 4K TV, not soft or blocky. **(device)**

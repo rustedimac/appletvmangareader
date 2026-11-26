@@ -414,7 +414,7 @@ final class AppModel {
 
     /// The active profile's reader settings for series without an override.
     var defaultReaderSettings: ReaderSettings {
-        state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default
+        (state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default).normalizedPairing
     }
 
     func setDefaultReaderSettings(_ settings: ReaderSettings) {

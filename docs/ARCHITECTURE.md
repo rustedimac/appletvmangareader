@@ -113,8 +113,12 @@ OPDS (verified against Komga 1.30.2 and Stump)
 ## Double-page spreads
 
 `SpreadLayout` pairs pages. Wide images are always alone; pairing restarts
-after one. The first page is alone by default (cover). `shiftPairing` flips the
-parity of the first run when a chapter's pairs come out wrong. Unknown sizes
+after one. The first page is alone by default (cover). First Page Alone is
+the only pairing control: flipping it per series is how a book whose pairs come
+out wrong is fixed. The old "Shift by one" (`shiftPairing`) did exactly the
+same thing, so it was folded in: `PagePairing.swift` reads and writes it as
+`firstPageAlone != shiftPairing` with the shift cleared, and the field stays
+only so older saves and iCloud peers decode. Unknown sizes
 count as tall; the reader re-lays out when sizes arrive and keeps the current
 page on screen. See `SpreadLayoutTests` for the exact rules.
 
@@ -305,7 +309,7 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
   comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
-  in two-page layout first page alone and "Shift by one"; vertical: column
+  in two-page layout First Page Alone; vertical: column
   width and auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.

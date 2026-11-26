@@ -6,7 +6,6 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case layout
     case direction
     case firstPageAlone
-    case shiftPairing
     case background
     case webtoonWidth
     case autoScroll
@@ -19,7 +18,6 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .layout: return "Page Layout"
         case .direction: return "Direction"
         case .firstPageAlone: return "First Page Alone"
-        case .shiftPairing: return "Page Pairing"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
         case .autoScroll: return "Auto-Scroll"
@@ -38,7 +36,7 @@ public enum ReaderMenuOptions {
         switch settings.mode {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
-            if settings.layout == .double { items += [.firstPageAlone, .shiftPairing] }
+            if settings.layout == .double { items.append(.firstPageAlone) }
             items.append(.background)
             return items
         case .webtoon:

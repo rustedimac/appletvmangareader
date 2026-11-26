@@ -95,7 +95,10 @@ final class AppStateUpgradeTests: XCTestCase {
             XCTAssertEqual(override.mode, .webtoon, name)
             XCTAssertEqual(override.direction, .leftToRight, name)
             XCTAssertEqual(override.webtoonWidth, 0.8, name)
-            XCTAssertTrue(override.shiftPairing, name)
+            // Saved as First Page Alone off + Shift by one: read back as one
+            // First Page Alone value with the same layout.
+            XCTAssertTrue(override.firstPageAlone, name)
+            XCTAssertFalse(override.shiftPairing, name)
         }
     }
 
