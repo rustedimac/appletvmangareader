@@ -1,5 +1,9 @@
 # Testing on a real Apple TV
 
+> The full test pass, with IDs and pass/fail rules, is
+> [TESTING_GUIDE.md](TESTING_GUIDE.md); its **D** rows are the ones that need
+> this device. This page keeps the install steps and a quick walk-through.
+
 A checklist for trying a build on the Apple TV at home. Browsing, both
 readers, the menu, profiles and progress sync were checked in the tvOS
 simulator against the real Kavita and Suwayomi servers. Items marked
