@@ -82,11 +82,12 @@ struct ControlsLegend: View {
     let id: String
 
     var body: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: Space.l, verticalSpacing: Space.s) {
+        VStack(alignment: .leading, spacing: Space.s) {
             ForEach(entries) { entry in
-                GridRow {
+                HStack(alignment: .firstTextBaseline, spacing: Space.l) {
                     Text(entry.input)
                         .font(.callout.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(width: Self.inputColumn, alignment: .leading)
                     Text(entry.action)
                         .font(.callout)

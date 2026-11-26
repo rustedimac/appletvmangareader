@@ -85,7 +85,7 @@ struct BookReaderMenu: View {
     private var settingsPane: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.s) {
-                if let picker {
+                if let picker = openSpec {
                     PanelChoiceList(title: picker.title, choices: picker.choices, selected: picker.selected,
                                     identifierPrefix: "book.menu.\(picker.key)", focusPrefix: picker.key,
                                     focus: $focus) { key in
@@ -153,10 +153,10 @@ struct BookReaderMenu: View {
         let pick: (String) -> Void
     }
 
-    private var picker: ChoiceSpec? { openPicker.map(picker(for:)) }
+    private var openSpec: ChoiceSpec? { openPicker.map { spec(for: $0) } }
 
     private func pickerRow(_ key: String) -> some View {
-        let p = picker(for: key)
+        let p = spec(for: key)
         return PanelValueRow(title: p.title, value: p.choices.first { $0.id == p.selected }?.title ?? "") {
             openPicker = key
             DispatchQueue.main.async { focus = "\(key).\(p.selected)" }
@@ -171,29 +171,29 @@ struct BookReaderMenu: View {
         DispatchQueue.main.async { focus = key }
     }
 
-    private func picker(for key: String) -> ChoiceSpec {
+    private func spec(for key: String) -> ChoiceSpec {
         switch key {
         case "font":
-            return picker(key, "Font", BookFont.allCases.map { ($0, $0.rawValue, $0.title) }, selected: settings.font) {
+            return makeSpec(key, "Font", BookFont.allCases.map { ($0, $0.rawValue, $0.title) }, selected: settings.font) {
                 var s = settings; s.font = $0; set(s)
             }
         case "spacing":
-            return picker(key, "Line Spacing", BookLineSpacing.allCases.map { ($0, $0.rawValue, $0.title) },
+            return makeSpec(key, "Line Spacing", BookLineSpacing.allCases.map { ($0, $0.rawValue, $0.title) },
                           selected: settings.lineSpacing) {
                 var s = settings; s.lineSpacing = $0; set(s)
             }
         case "theme":
-            return picker(key, "Theme", BookTheme.allCases.map { ($0, $0.rawValue, $0.title) }, selected: settings.theme) {
+            return makeSpec(key, "Theme", BookTheme.allCases.map { ($0, $0.rawValue, $0.title) }, selected: settings.theme) {
                 var s = settings; s.theme = $0; set(s)
             }
         default:
-            return picker(key, "Columns", [(1, "1", "One"), (2, "2", "Two")], selected: settings.clampedColumns) {
+            return makeSpec(key, "Columns", [(1, "1", "One"), (2, "2", "Two")], selected: settings.clampedColumns) {
                 var s = settings; s.columns = $0; set(s)
             }
         }
     }
 
-    private func picker<T: Equatable>(_ key: String, _ title: String, _ options: [(T, String, String)], selected: T,
+    private func makeSpec<T: Equatable>(_ key: String, _ title: String, _ options: [(T, String, String)], selected: T,
                                       pick: @escaping (T) -> Void) -> ChoiceSpec {
         ChoiceSpec(key: key, title: title,
                choices: options.map { PanelChoice(id: $0.1, title: $0.2) },
