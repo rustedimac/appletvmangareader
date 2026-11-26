@@ -213,9 +213,10 @@ final class DesignLayoutUITests: XCTestCase {
         audit(app, "reader-menu-choices")
         remote.press(.menu)
         XCTAssertTrue(app.element("reader.menu.mode").waitForExistence(timeout: 5))
+        // The full-width first row sits under the middle tab, so Up from it
+        // lands on Chapters.
         let chapters = app.element("reader.menu.tab.chapters")
-        focus(app.element("reader.menu.tab.settings"), .up)
-        if focus(chapters, .right) {
+        if focus(chapters, .up) {
             remote.press(.select)
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "reader-menu-chapters")

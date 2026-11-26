@@ -262,7 +262,7 @@ final class ReaderMenuUITests: XCTestCase {
         moveFocus(to: "tab.settings")
         moveFocus(to: "tab.bookmarks")
         XCTAssertTrue(menuItem("tab.settings").isSelected)
-        XCTAssertTrue(menuItem("mode.paged").exists, "moving focus switched the pane")
+        XCTAssertTrue(menuItem("mode").exists, "moving focus switched the pane")
         // With focus on a tab it still fits on one line (focus grows it).
         assertSectionTabLayout(app, track: "reader.menu.tabs", tabs: ids.map { "reader.menu.\($0)" },
                                titles: ["Settings", "Chapters", "Bookmarks"])
@@ -270,6 +270,6 @@ final class ReaderMenuUITests: XCTestCase {
         remote.press(.select)
         wait(menuItem("tab.bookmarks"), "isSelected == true")
         XCTAssertFalse(menuItem("tab.settings").isSelected)
-        XCTAssertFalse(menuItem("mode.paged").exists)
+        XCTAssertFalse(menuItem("mode").exists)
     }
 }
