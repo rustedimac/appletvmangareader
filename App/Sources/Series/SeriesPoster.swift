@@ -122,7 +122,9 @@ struct SeriesPoster: View {
     /// The series with any count changed by "Mark as Unread" since the row
     /// loaded. Its page progress is stale then, so badges use the count.
     private var badgeSeries: SeriesSummary {
-        let counted = series.withCount(model.seriesCounts.count(for: series.ref))
+        var counted = series.withCount(model.seriesCounts.count(for: series.ref))
+        // A guest's posters don't show the owner's reading.
+        if model.isGuest { counted = GuestSession.withoutServerProgress(counted) }
         guard let override = model.unreadCountOverrides[series.ref] else { return counted }
         var s = counted
         s.unreadCount = override

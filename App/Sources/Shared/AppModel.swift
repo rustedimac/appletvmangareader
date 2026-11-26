@@ -39,6 +39,14 @@ final class AppModel {
     /// Called after every saved change (Top Shelf refresh, shared servers).
     @ObservationIgnored var stateObservers: [(_ old: AppState, _ new: AppState) -> Void] = []
 
+    /// Set while a guest is reading (see `AppModel+Guest.swift`). `state`
+    /// is then the guest's in-memory state and `ownerState` holds the
+    /// saved one, untouched, until the session ends.
+    private(set) var guestSession: GuestSession?
+    @ObservationIgnored var ownerState: AppState?
+    /// A guest's book positions, in memory only.
+    @ObservationIgnored var guestBookPositions = BookPositionStore(backing: InMemoryKeyValueStore())
+
     init(stateStore: StateStore, secrets: SecretStore, transport: HTTPTransport = URLSessionTransport(),
          identity: DeviceUserIdentity = SingleUserDevice(), sharedServers: SharedServerStore? = nil) {
         self.stateStore = stateStore
@@ -87,6 +95,9 @@ final class AppModel {
     func update(_ change: (inout AppState) -> Void) {
         let old = state
         change(&state)
+        // A guest's state lives in memory only: never saved, synced to
+        // iCloud, shared with other Apple TV users or put on the Top Shelf.
+        guard guestSession == nil else { return }
         stateStore.save(state)
         for observer in stateObservers { observer(old, state) }
         onStateChange?()
@@ -97,6 +108,16 @@ final class AppModel {
         clientCache.removeAll()
         credentialRevision += 1
     }
+
+    /// Starts or ends a guest session. Only `AppModel+Guest.swift` calls it.
+    func setGuestSession(_ session: GuestSession?) {
+        guestSession = session
+        unreadCountOverrides = [:]
+    }
+
+    /// Whose logins the servers are read with: the active profile's, or
+    /// for a guest the profile that started the session.
+    var loginProfileID: UUID { guestSession?.hostProfileID ?? activeProfile.id }
 
     /// Bumped whenever logins change. They live in the keychain, outside
     /// `state`, so screens can't observe them any other way.
@@ -154,7 +175,7 @@ final class AppModel {
         let scope = selectedCategories(for: server)
         let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.baseURL.absoluteString)|\(Self.scopeKey(scope))"
         if let cached = clientCache[key] { return cached }
-        let credential = secrets.credential(profile: activeProfile.id, server: server.id)
+        let credential = secrets.credential(profile: loginProfileID, server: server.id)
         let client = makeClient(server, credential, scope, transport)
         clientCache[key] = client
         return client
@@ -175,7 +196,7 @@ final class AppModel {
     }
 
     func credential(for server: ServerConfig) -> ServerCredential? {
-        secrets.credential(profile: activeProfile.id, server: server.id)
+        secrets.credential(profile: loginProfileID, server: server.id)
     }
 
     /// Saves a server and the active profile's login for it. Throws when
@@ -286,6 +307,8 @@ final class AppModel {
     func syncsProgress(to serverID: UUID) -> Bool {
         // The Free Library has no server progress; it's always kept here.
         if serverID == FreeLibrary.serverID { return false }
+        // A guest never writes to a server.
+        if guestSession != nil { return false }
         return state.serverSettings(profile: activeProfile.id, server: serverID).syncProgressToServer
     }
 
@@ -454,7 +477,9 @@ final class AppModel {
         let detail = try await client.seriesDetail(ref.seriesID)
         let profile = activeProfile.id
         guard syncsProgress(to: ref.serverID) else {
-            return state.applyingLocalProgress(to: detail, profile: profile)
+            // What the server says is the owner's reading, not the guest's.
+            let base = guestSession == nil ? detail : GuestSession.withoutServerProgress(detail)
+            return state.applyingLocalProgress(to: base, profile: profile)
         }
         let pending = state.pending(ref, profile: profile)
         guard !pending.isEmpty else { return detail }
