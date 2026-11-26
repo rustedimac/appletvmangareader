@@ -28,7 +28,7 @@ extension AppModel {
         let base = URL(string: "https://demo.invalid")!
         for (kind, name) in [(ServerKind.kavita, "Demo Kavita"), (.suwayomi, "Demo Suwayomi")]
         where !servers.contains(where: { $0.name == name }) {
-            saveServer(ServerConfig(kind: kind, name: name, baseURL: base), credential: nil)
+            try? saveServer(ServerConfig(kind: kind, name: name, baseURL: base), credential: nil)
         }
         // `-demoFinished 1` marks Demo Kavita's series 1 fully read.
         let args = ProcessInfo.processInfo.arguments

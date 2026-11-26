@@ -24,7 +24,30 @@ final class PosterLayoutUITests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true")).firstMatch
     }
 
-    private func title(_ id: String) -> XCUIElement { app.staticTexts["poster.title.\(id)"] }
+    /// Every element with `identifier`. Home shows the same series id in
+    /// several rows (and once per demo server in merged rows), so ids alone
+    /// don't pick one poster; callers pick by position.
+    private func all(_ query: XCUIElementQuery, _ identifier: String) -> [XCUIElement] {
+        query.matching(identifier: identifier).allElementsBoundByIndex
+    }
+
+    /// The title of series `id` that sits right under `cover`.
+    private func title(_ id: String, under cover: CGRect) -> XCUIElement? {
+        all(app.staticTexts, "poster.title.\(id)")
+            .filter { $0.frame.minY >= cover.midY }
+            .min(by: { distance($0.frame, cover) < distance($1.frame, cover) })
+    }
+
+    /// The poster of series `id` closest to `frame`.
+    private func poster(_ id: String, near frame: CGRect) -> XCUIElement? {
+        all(app.buttons, "poster.\(id)")
+            .min(by: { abs($0.frame.midX - frame.midX) + abs($0.frame.midY - frame.midY)
+                     < abs($1.frame.midX - frame.midX) + abs($1.frame.midY - frame.midY) })
+    }
+
+    private func distance(_ title: CGRect, _ cover: CGRect) -> CGFloat {
+        abs(title.minX - cover.minX) + abs(title.minY - cover.maxY)
+    }
 
     private func posterID(_ poster: XCUIElement) -> String {
         String(poster.identifier.dropFirst("poster.".count))
@@ -54,23 +77,26 @@ final class PosterLayoutUITests: XCTestCase {
     /// and comes back when focus leaves.
     func testFocusedPosterMovesItsTitleClearOfTheCover() {
         launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         let id = focusFirstPoster()
-        let poster = app.buttons["poster.\(id)"], label = title(id)
-        XCTAssertTrue(label.waitForExistence(timeout: 5))
+        let focusedCover = focusedPoster.frame
+        guard let label = title(id, under: focusedCover) else { return XCTFail("no title under poster \(id)") }
         let focusedTitleTop = label.frame.minY
-        XCTAssertLessThanOrEqual(poster.frame.maxY, focusedTitleTop + 1,
-                                 "focused cover \(poster.frame) covers its title \(label.frame)")
+        XCTAssertLessThanOrEqual(focusedCover.maxY, focusedTitleTop + 1,
+                                 "focused cover \(focusedCover) covers its title \(label.frame)")
 
         // Move focus to the neighbour; this title drops back under its cover.
         remote.press(.right)
         Thread.sleep(forTimeInterval: 0.8)
-        XCTAssertNotEqual(posterID(focusedPoster), id, "focus didn't move along the shelf")
-        let restingTitleTop = label.frame.minY
-        let drop = expectedDrop(width: poster.frame.width)
+        XCTAssertNotEqual(focusedPoster.frame, focusedCover, "focus didn't move along the shelf")
+        guard let resting = poster(id, near: focusedCover) else { return XCTFail("poster \(id) went away") }
+        let restingCover = resting.frame
+        guard let restingLabel = title(id, under: restingCover) else { return XCTFail("no title under poster \(id)") }
+        let restingTitleTop = restingLabel.frame.minY
+        let drop = expectedDrop(width: restingCover.width)
         XCTAssertGreaterThanOrEqual(focusedTitleTop - restingTitleTop, drop - 2,
                                     "title only moved \(focusedTitleTop - restingTitleTop) pt on focus, expected \(drop)")
-        XCTAssertGreaterThan(label.frame.minY, poster.frame.maxY, "resting title sits under its cover")
+        XCTAssertGreaterThan(restingTitleTop, restingCover.maxY, "resting title sits under its cover")
     }
 
     /// Titles are allowed two lines. Demo titles like "Lantern Chronicles 3"
@@ -78,7 +104,7 @@ final class PosterLayoutUITests: XCTestCase {
     /// be cut to one truncated line.
     func testLongTitlesWrapToTwoLines() {
         launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         let titles = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.title.'"))
         XCTAssertTrue(titles.firstMatch.waitForExistence(timeout: 10))
         let onScreen = titles.allElementsBoundByIndex.filter { $0.frame.width > 0 && $0.frame.minX >= 0 }
@@ -87,11 +113,16 @@ final class PosterLayoutUITests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(longest.label.count, 20, "demo data has no long title on Home: \(longest.label)")
         let id = String(longest.identifier.dropFirst("poster.title.".count))
-        let poster = app.buttons["poster.\(id)"]
+        let titleFrame = longest.frame
+        guard let cover = all(app.buttons, "poster.\(id)")
+            .filter({ $0.frame.maxY <= titleFrame.minY + 1 })
+            .min(by: { abs($0.frame.minX - titleFrame.minX) + abs($0.frame.maxY - titleFrame.minY)
+                     < abs($1.frame.minX - titleFrame.minX) + abs($1.frame.maxY - titleFrame.minY) })?.frame
+        else { return XCTFail("no poster above \"\(longest.label)\"") }
         // One line of .caption is 32 pt; two are about 64.
-        XCTAssertGreaterThan(longest.frame.height, 50,
-                             "\"\(longest.label)\" got one line (\(longest.frame.height) pt) under a \(poster.frame.width) pt poster")
-        XCTAssertLessThanOrEqual(longest.frame.width, poster.frame.width + 1, "title wider than its poster")
+        XCTAssertGreaterThan(titleFrame.height, 50,
+                             "\"\(longest.label)\" got one line (\(titleFrame.height) pt) under a \(cover.width) pt poster")
+        XCTAssertLessThanOrEqual(titleFrame.width, cover.width + 1, "title wider than its poster")
     }
 
     /// In a library grid the dropped title of a focused poster still ends
@@ -107,8 +138,7 @@ final class PosterLayoutUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.8)
         XCTAssertTrue(first.hasFocus, "poster 1 never took focus. Focus: \(focusedDescription())")
 
-        let label = title("1")
-        XCTAssertTrue(label.exists)
+        guard let label = title("1", under: first.frame) else { return XCTFail("no title under poster 1") }
         let below = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.'")).allElementsBoundByIndex
             .filter { $0.identifier != "poster.1" && abs($0.frame.midX - first.frame.midX) < first.frame.width / 2
                       && $0.frame.minY > first.frame.midY }

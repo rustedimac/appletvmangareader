@@ -35,13 +35,13 @@ final class FreeLibraryUITests: XCTestCase {
 
     func testHomeShowsFreeLibraryWithoutSetup() {
         launch()
-        XCTAssertTrue(app.staticTexts["shelf.Free Library.newlyAdded"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.newlyAdded"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts["No servers yet"].exists)
     }
 
     func testOpenSeriesShowsCreditAndOpensReader() {
         launch()
-        XCTAssertTrue(app.staticTexts["shelf.Free Library.newlyAdded"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.newlyAdded"].waitForExistence(timeout: 15))
         XCTAssertTrue(press(.down, until: focusedPoster, max: 6), "no poster took focus")
         remote.press(.select)
         XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10))
