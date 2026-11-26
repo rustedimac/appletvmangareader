@@ -24,6 +24,20 @@ public protocol MangaServer: Sendable {
     /// their own order (the default implementation).
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary>
 
+    /// Which library filters this server can apply. Sort & View offers
+    /// only these. Default: none.
+    var libraryFilterSupport: LibraryFilterSupport { get }
+
+    /// Series in a category in `sort` order, narrowed by `filter`. Parts
+    /// of `filter` outside `libraryFilterSupport` are ignored. The default
+    /// ignores the filter, which is right for servers that support none.
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                filter: LibraryFilter) async throws -> Paged<SeriesSummary>
+
+    /// The genres used in a category, for the genre filter. Empty when the
+    /// server doesn't support it.
+    func filterGenres(in category: MangaCategory) async throws -> [String]
+
     /// A home-screen row.
     func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary]
 
@@ -76,6 +90,15 @@ public extension MangaServer {
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
         try await series(in: category, page: page, pageSize: pageSize)
     }
+
+    var libraryFilterSupport: LibraryFilterSupport { [] }
+
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: sort)
+    }
+
+    func filterGenres(in category: MangaCategory) async throws -> [String] { [] }
 
     func imageRequest(_ url: URL) -> URLRequest {
         var request = URLRequest(url: url)
