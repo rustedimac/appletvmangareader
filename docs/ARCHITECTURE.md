@@ -397,8 +397,26 @@ hold the accessors.
   Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
   check when finished. Unread chapters in series detail show their page count.
 - **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
-  Customize Home, or the button at the bottom of Home). Server feeds get one
-  row per server ("Recently Updated · Server" with several servers).
+  Customize Home, or the button at the bottom of Home). Server feeds
+  (Continue Reading, Recently Updated, Newly Added) are merged into one row
+  each across servers by default (`HomeLayout.serverRows == .merged`):
+  `HomeMerge` interleaves each server's list without reordering it, newest
+  `SeriesSummary.feedDate` first (last read / added / new chapter, set by
+  the Kavita, Suwayomi, Komga and Free Library feeds), else by rank on its
+  server. "Row per Server" brings back "Recently Updated · Server" rows.
+  `HomeLoader.each` streams each server's section as it arrives, so Home
+  shows fast servers without waiting for the slowest. Rows come from
+  `model.client(for:)`, so library selection and content filters apply.
+  Posters in rows that mix servers name their server
+  (`HomeLayout.serverLabel`: on the caption's line, a tag on the cover, or
+  off; the poster's VoiceOver label always says it). UI-test flags:
+  `-homePerServer`, `-posterServerLabel onCover|off`. Shelf ids: merged
+  `shelf.<feed>`, per server `shelf.<server>.<feed>`.
+- **Series location.** Series detail shows "server · library" under the meta
+  line (`SeriesPlacement`): Kavita's `libraryName`, Komga's library, every
+  Suwayomi category (Default when none) plus its source, the Free Library
+  collection; otherwise (OPDS, demo) the summary's library/category ids
+  looked up in `categories()` (`MangaServer.placement(for:detail:)`).
   Long-press a Continue Reading poster to remove it; it comes back once the
   profile reads it again (`dismissedContinueReading` vs local progress).
 - **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series
