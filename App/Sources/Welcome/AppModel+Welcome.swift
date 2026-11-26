@@ -7,6 +7,8 @@ extension AppModel {
     /// `-welcome`, so the rest of the suite starts on the tabs as before.
     var showsWelcome: Bool {
         if UITestingSeed.isUITesting && !UITestingSeed.arguments.contains("-welcome") { return false }
+        // A guest reads what the owner set up; picking libraries is theirs.
+        if guestSession != nil { return false }
         return Welcome.shouldShow(state, profile: activeProfile.id)
     }
 
