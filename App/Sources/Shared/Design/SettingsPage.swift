@@ -166,4 +166,14 @@ extension View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
     }
+
+    /// A segmented picker row in a settings form. Like
+    /// `settingsTextFieldRow()`, it removes the row platter: otherwise tvOS
+    /// draws the row's rounded platter behind the picker's own track, a third
+    /// layer whose corners don't match the track or the selected segment.
+    /// The track then spans the row, lined up with the text fields below.
+    func settingsSegmentedRow() -> some View {
+        listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+    }
 }

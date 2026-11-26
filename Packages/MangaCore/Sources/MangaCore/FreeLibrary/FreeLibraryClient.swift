@@ -68,7 +68,7 @@ public final class FreeLibraryClient: MangaServer {
 
     public func series(in category: MangaCategory, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
         let all = visibleSeries(await catalog()).filter { $0.collection == category.id }
-            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            .naturallySorted(by: \.title)
         let start = max(0, (page - 1) * pageSize)
         guard start < all.count else { return Paged(items: [], hasMore: false) }
         let end = min(all.count, start + pageSize)

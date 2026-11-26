@@ -30,6 +30,7 @@ struct ServerEditorView: View {
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("serverEditor.kind")
+                    .settingsSegmentedRow()
                 }
             }
 
