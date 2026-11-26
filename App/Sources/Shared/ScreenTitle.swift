@@ -22,8 +22,7 @@ struct ScreenTitle: View {
         Section {
         } header: {
             Text(text)
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.primary)
+                .themedHeading(.title2, fallback: .title2.weight(.semibold))
                 .textCase(nil)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)

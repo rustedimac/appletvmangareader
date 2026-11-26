@@ -37,6 +37,7 @@ struct HomeView: View {
             }
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
+            .themedScreen()
         }
         .resetsNavigationWhenLeft(path: $path)
         // Runs on every appear too, so coming back from another tab (after

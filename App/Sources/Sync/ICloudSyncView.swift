@@ -45,6 +45,7 @@ struct ICloudSyncView: View {
             Section {
                 NavigationLink {
                     WiFiBackupView()
+                        .themedScreen()
                 } label: {
                     Label("Back Up and Restore over Wi‑Fi", systemImage: "arrow.up.arrow.down.circle")
                 }
