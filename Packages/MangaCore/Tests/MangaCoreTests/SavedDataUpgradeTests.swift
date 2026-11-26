@@ -25,7 +25,11 @@ import XCTest
 enum SavedFormats {
     /// `AppState` snapshots in files, oldest first. The older, smaller
     /// shapes are inline in `AppStateFixtures`.
-    static let appStateFixtures = ["appstate-v1-2026-11-26"]
+    static let appStateFixtures = [
+        "appstate-v1-2026-11-26",
+        // Adds `showsProgressPercent` to browse (#55).
+        "appstate-v1-2026-11-26-percent",
+    ]
     static var newestAppState: String { appStateFixtures.last! }
 
     /// Fields every build has always written. Losing one of these loses
@@ -152,6 +156,7 @@ final class SavedDataUpgradeTests: XCTestCase {
         XCTAssertEqual(browse.home.order.first, .favorites)
         XCTAssertEqual(browse.gridDensity, .large)
         XCTAssertEqual(browse.posterCaption, .progress)
+        XCTAssertFalse(browse.showsProgressPercent)
         let library = browse.options(for: LibraryKey(serverID: kavita, categoryID: "1"))
         XCTAssertEqual(library.sort, .recentlyUpdated)
         XCTAssertEqual(library.filter?.genres, ["Comedy"])

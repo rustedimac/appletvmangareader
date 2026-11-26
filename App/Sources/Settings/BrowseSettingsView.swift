@@ -97,6 +97,19 @@ struct BrowseSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
+                let showsPercent = model.browsePreferences.showsProgressPercent
+                Button {
+                    model.updateBrowse { $0.showsProgressPercent.toggle() }
+                } label: {
+                    Label("Show Percentage Read", systemImage: showsPercent ? "checkmark.circle.fill" : "circle")
+                }
+                .accessibilityIdentifier("browse.showsPercent")
+                .accessibilityValue(showsPercent ? "on" : "off")
+                .padding(.top, 30)
+                Text("Puts \"40%\" next to every poster progress bar.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
                 Text("Libraries")
                     .font(.headline)
                     .foregroundStyle(.secondary)

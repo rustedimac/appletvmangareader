@@ -83,6 +83,16 @@ public struct PosterBadges: Equatable, Sendable {
         return parts.joined(separator: ", ")
     }
 
+    /// "40%" next to a progress bar. Never "0%" once something is read or
+    /// "100%" before the end, so the number agrees with the bar and badge.
+    public static func percentText(_ fraction: Double) -> String {
+        let f = min(1, max(0, fraction))
+        var percent = Int((f * 100).rounded())
+        if f > 0, percent == 0 { percent = 1 }
+        if f < 1, percent == 100 { percent = 99 }
+        return "\(percent)%"
+    }
+
     static func partial(_ fraction: Double) -> Double? {
         fraction > 0 && fraction < 1 ? fraction : nil
     }
