@@ -470,3 +470,31 @@ named steps replace "Speed 3 of 10" in the options, the badge and the HUD:
 - Saved per profile as before; a saved numeric level maps to the nearest
   step, so nobody's setting resets. Default stays at today's speed (Slow)
   if Medium proves too fast in testing.
+
+### Game controller, final (John, 2026-11-26)
+
+Works on full gamepads and on small controllers with no sticks or triggers
+(8BitDo Micro-style reading remotes). The d-pad is navigation only.
+
+| Button | Paged | Vertical | Options open |
+| --- | --- | --- | --- |
+| D-pad left/right | Turn page (pan first when zoomed) | Nothing | Focus |
+| D-pad up/down | Pan when zoomed, else nothing | Scroll (hold speeds up); while auto-scrolling, one speed step | Focus |
+| A (press) | Retry a failed page; when zoomed, zoom out | Retry a failed page | Pick |
+| A (hold) | Zoom in | Nothing (webtoon zoom later) | — |
+| B | Back (one layer) | Back | Back one layer |
+| ☰ Menu | Reader options | Reader options | Close |
+| Y | Bookmark | Bookmark | — |
+| X | Start/stop page-turn timer | Start/stop auto-scroll | — |
+| L1 / R1 | Previous / next chapter | Previous / next chapter | — |
+| L2 / R2 | Unused for now | Unused | — |
+| Sticks (if present) | Pan when zoomed | Analog scroll | Focus |
+| View / Share | Show/hide HUD | Show/hide HUD | — |
+
+Siri Remote matches: hold Select zooms in, a click zooms out, Back also
+zooms out. A press arrives as Select, so remote and controller share code.
+
+To verify when building: whether tvOS also delivers ☰ as a Back press on some
+controllers (if so, use View for options there); L1/R1 jump straight to the
+chapter's first page with a "Chapter 12" notice, not mirrored for
+right-to-left.
