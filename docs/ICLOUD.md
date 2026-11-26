@@ -15,7 +15,7 @@ people can move their data with **Back Up and Restore over Wi‑Fi**.
 | Favorites | Which profile is active on this device |
 | Reading progress: position and every read/unread chapter | |
 | Default reader settings and per-series reader settings | |
-| Home rows, poster size, poster caption, per-library sort, reading direction and grid order; Continue Reading removals; Caught Up | |
+| Home rows (order, hidden, merged or per-server rows, where posters name their server), poster size, poster caption, per-library sort, reading direction and grid order; Continue Reading removals; Caught Up | |
 
 Logins stay on each device on purpose: the Keychain is the only safe place
 for them, and iCloud Keychain sync would need its own opt-in. On a new
