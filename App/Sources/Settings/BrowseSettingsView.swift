@@ -72,7 +72,7 @@ struct BrowseSettingsView: View {
                     }
                 }
                 .focusSection()
-                Text("For library grids and Favorites. Small fits more series on screen.")
+                Text("For Home, Library, Favorites and Search. Small fits more series on screen.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 

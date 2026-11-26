@@ -23,7 +23,7 @@ private struct PosterWidthKey: EnvironmentKey {
 
 extension EnvironmentValues {
     /// Poster width for `SeriesPoster`. Grids set it from the profile's
-    /// poster size (`GridDensity`); shelves use the default.
+    /// poster size (`GridDensity`), and so do shelves.
     var posterWidth: CGFloat {
         get { self[PosterWidthKey.self] }
         set { self[PosterWidthKey.self] = newValue }
@@ -280,6 +280,7 @@ private struct TitleProgressBar: View {
 
 /// A titled horizontal row of posters (Home rows, search results).
 struct SeriesShelf: View {
+    @Environment(AppModel.self) private var model
     let title: String
     let series: [SeriesSummary]
     var identifier: String? = nil
@@ -288,24 +289,34 @@ struct SeriesShelf: View {
     var onRemove: ((SeriesSummary) -> Void)? = nil
 
     var body: some View {
+        // Shelves follow the profile's poster size too, and change as soon
+        // as it's picked (Customize Home or a library's Sort & View).
+        let density = model.gridDensity
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("shelf.\(identifier ?? title)")
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: PosterMetrics.spacing) {
+                LazyHStack(alignment: .top, spacing: CGFloat(density.spacing)) {
                     ForEach(series) { item in
                         SeriesPoster(series: item, showsServer: showsServer,
                                      onRemoveFromContinueReading: onRemove == nil ? nil : { onRemove?(item) })
                     }
                 }
+                // Lazy stacks can keep cells at their old size; rebuild.
+                .id(density)
+                .environment(\.posterWidth, CGFloat(density.posterWidth))
                 .padding(.vertical, 30)
             }
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
         }
         .focusSection()
+        // Lets UI tests find a poster within one shelf: the same series id
+        // can be on two servers' shelves.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("shelfRow.\(identifier ?? title)")
     }
 }
 
@@ -333,6 +344,8 @@ struct SeriesGrid: View {
                     .onAppear { onShow(index) }
             }
         }
+        // Lazy grids can keep cells at their old size; rebuild on a new one.
+        .id(density)
         .environment(\.posterWidth, width)
         .environment(\.layoutDirection, rightToLeft ? .rightToLeft : .leftToRight)
         .padding(.vertical, 30)

@@ -447,8 +447,8 @@ hold the accessors.
 - **Sort & View** (`Library/LibraryOptionsView`, one per library or
   category, keyed by `LibraryKey`): `LibrarySort` (title A–Z/Z–A, recently
   added, updated, read), the library's `LibraryReadingStyle`, `GridOrder`,
-  and the profile-wide `GridDensity` (poster size for library grids and
-  Favorites; shelves keep 230 pt).
+  and the profile-wide `GridDensity` (poster size for library grids,
+  Favorites and the Home and Search shelves; Medium is 230 pt).
 - **Sorting.** `MangaServer.series(in:page:pageSize:sort:)` (the default
   implementation ignores `sort`). Kavita sends FilterV2 `sortOptions`
   (SortName 1, CreatedDate 2, LastChapterAdded 4, ReadProgress 7). Suwayomi
