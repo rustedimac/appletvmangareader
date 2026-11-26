@@ -218,6 +218,11 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   the choices are known (HIG: minimize text entry on tvOS).
 - Show the right keyboard (`.keyboardType(.URL)`), and turn off
   autocorrection for names, addresses and keys.
+- Passwords and keys use a plain SwiftUI `SecureField`, with no font or
+  scale modifier. Its dots already match Apple's own Settings app (measured
+  at 4K: 33–34 px dots, about 0.6× the cap height of field text). `.font(.body)`
+  shrinks them and a UIKit `isSecureTextEntry` wrapper greys them out.
+  `tools/check_secure_fields.py` (CI) enforces this.
 
 ### Rows
 
@@ -302,6 +307,10 @@ Single/Double, a sort order) is a choice.
   wrap a tab's content in a scroll view that offsets itself (custom
   `.offset` scrolling or a `ScrollViewReader` that pins content), since
   it can't reset those.
+- A tab left for 10 seconds or more goes back to its top screen
+  (`NavigationReset`). A new tab gets `.navigationResetTab("<tag>")` in
+  RootView and `.resetsNavigationWhenLeft(path:)` on its NavigationStack;
+  keep state that should survive (a search query) outside the stack.
 
 ## 9. Checklist for a new or changed screen
 

@@ -20,6 +20,7 @@ struct SearchView: View {
             .searchable(text: $query, prompt: "Series title")
             .seriesNavigation()
         }
+        .resetsNavigationWhenLeft()
         .task(id: query) {
             // Wait for typing to pause before hitting every server.
             try? await Task.sleep(for: .milliseconds(450))

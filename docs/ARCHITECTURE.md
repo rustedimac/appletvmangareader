@@ -315,6 +315,43 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Picture controls, split pages and the page scrubber
+
+- **Picture controls** (`PictureSettings`, inside `ReaderSettings.picture`):
+  brightness, contrast, color (normal, grayscale, night/invert), sharpen
+  and upscaling. They sit in the Settings pane of the reader menu under
+  "Picture" (rows from `ReaderMenuOptions.pictureItems(for:)`) and in
+  Settings → Default Reader Settings. Brightness, contrast and color are
+  SwiftUI view effects (`pictureAdjustments(_:)`), applied to the paged
+  spread and to the webtoon strip, so they're instant in both readers.
+  Sharpen (`CISharpenLuminance`) and Sharp (Lanczos) upscaling
+  (`CILanczosScaleTransform`, for scans smaller than the screen) re-render
+  page images in `Reader/Picture/PictureProcessor` (Core Image on Metal, off
+  the main thread, cached), so they're paged-reader only.
+- **Split wide pages** (`ReaderSettings.splitWidePages`, single-page paged
+  layout): `SpreadLayout.singles(splitting:direction:)` turns a wide page
+  into `.half(page, .right)` then `.half(page, .left)` for right-to-left
+  (the other way for left-to-right). Both halves are the same page for
+  progress and bookmarks; the indicator says "4 / 6 · Right half". The
+  image decodes at twice the screen width and is clipped to the half. A
+  re-layout keeps the half on screen (`spreadIndex(keeping:page:)`), and
+  the chapter only completes on the last page's second half.
+- **Page scrubber** (`Reader/Scrubber/PageScrubberView`, rules in
+  `PageScrubber`): Pages in the menu header opens a thumbnail strip along
+  the bottom with a progress bar, in either reader. Thumbnails run in
+  screen order, so right-to-left series put page 1 on the right; left and
+  right move a page, up/down jump 10 pages back/forward, click opens the
+  page (`ReaderSession.jump(toPage:)`), Menu closes. It's shown through the
+  menu's presentation flag (`ReaderSession.overlay == .scrubber`), so the
+  reader is disabled and takes focus back the same way as for the menu.
+- All of it is in `ReaderSettings`, so it saves per series and as the
+  profile default, and syncs through the existing `readerDefaults` and
+  `readerOverride` SyncMapper domains. `ReaderSettings` and
+  `PictureSettings` decode missing or unknown fields to defaults, so
+  settings from older or newer builds always load.
+- UI tests: `ReaderPictureScrubberUITests` (`-readerSplitWide YES` turns on
+  splitting in the demo reader).
+
 ## Sorting names
 
 `NaturalSort` (MangaCore/Sorting) is the one place names are ordered:
@@ -393,8 +430,26 @@ hold the accessors.
   Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
   check when finished. Unread chapters in series detail show their page count.
 - **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
-  Customize Home, or the button at the bottom of Home). Server feeds get one
-  row per server ("Recently Updated · Server" with several servers).
+  Customize Home, or the button at the bottom of Home). Server feeds
+  (Continue Reading, Recently Updated, Newly Added) are merged into one row
+  each across servers by default (`HomeLayout.serverRows == .merged`):
+  `HomeMerge` interleaves each server's list without reordering it, newest
+  `SeriesSummary.feedDate` first (last read / added / new chapter, set by
+  the Kavita, Suwayomi, Komga and Free Library feeds), else by rank on its
+  server. "Row per Server" brings back "Recently Updated · Server" rows.
+  `HomeLoader.each` streams each server's section as it arrives, so Home
+  shows fast servers without waiting for the slowest. Rows come from
+  `model.client(for:)`, so library selection and content filters apply.
+  Posters in rows that mix servers name their server
+  (`HomeLayout.serverLabel`: on the caption's line, a tag on the cover, or
+  off; the poster's VoiceOver label always says it). UI-test flags:
+  `-homePerServer`, `-posterServerLabel onCover|off`. Shelf ids: merged
+  `shelf.<feed>`, per server `shelf.<server>.<feed>`.
+- **Series location.** Series detail shows "server · library" under the meta
+  line (`SeriesPlacement`): Kavita's `libraryName`, Komga's library, every
+  Suwayomi category (Default when none) plus its source, the Free Library
+  collection; otherwise (OPDS, demo) the summary's library/category ids
+  looked up in `categories()` (`MangaServer.placement(for:detail:)`).
   Long-press a Continue Reading poster to remove it; it comes back once the
   profile reads it again (`dismissedContinueReading` vs local progress).
 - **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series
