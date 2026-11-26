@@ -95,7 +95,13 @@ public struct ContentFilter: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         hiddenGenres = Set(c.tolerantArray(.hiddenGenres) as [String])
         hiddenTags = Set(c.tolerantArray(.hiddenTags) as [String])
-        maxAgeRating = c.tolerant(.maxAgeRating)
+        // An age limit this build can't read (from a newer build, say)
+        // becomes the strictest one, never "no limit".
+        if c.contains(.maxAgeRating), (try? c.decodeNil(forKey: .maxAgeRating)) != true {
+            maxAgeRating = c.tolerant(.maxAgeRating) ?? AgeRating.allCases.min()
+        } else {
+            maxAgeRating = nil
+        }
         hideUnrated = c.tolerant(.hideUnrated, default: false)
     }
 

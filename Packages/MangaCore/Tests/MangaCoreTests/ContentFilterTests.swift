@@ -404,4 +404,14 @@ final class SuwayomiContentFilterTests: XCTestCase {
         XCTAssertTrue(none.isEmpty)
         XCTAssertEqual(mock.requests.count, before)
     }
+
+    func testUnreadableAgeLimitBecomesTheStrictest() throws {
+        let json = #"{"hiddenGenres":["Horror"],"hiddenTags":[],"maxAgeRating":99,"hideUnrated":false}"#
+        let f = try JSONDecoder().decode(ContentFilter.self, from: Data(json.utf8))
+        XCTAssertEqual(f.maxAgeRating, AgeRating.allCases.min())
+        XCTAssertEqual(f.hiddenGenres, ["Horror"])
+        let none = try JSONDecoder().decode(ContentFilter.self, from: Data(#"{"hiddenGenres":["Gore"]}"#.utf8))
+        XCTAssertNil(none.maxAgeRating)
+        XCTAssertEqual(none.hiddenGenres, ["Gore"])
+    }
 }
