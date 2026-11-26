@@ -196,6 +196,8 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public var showsProgressPercent: Bool
     /// Keyed by `LibraryKey.storageKey`.
     public var libraries: [String: LibraryOptions]
+    /// Sort, grid order and filter for libraries without their own.
+    public var libraryDefaults: LibraryDefaults
     /// Series removed from Continue Reading, keyed by `SeriesRef.storageKey`,
     /// with when. A series comes back once it's read again after that.
     public var dismissedContinueReading: [String: Date]
@@ -208,8 +210,9 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
 
     public init(home: HomeLayout = .default, gridDensity: GridDensity = .default,
                 posterCaption: PosterCaption = .default, showsProgressPercent: Bool = true, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
-                caughtUp: [CaughtUpEntry] = []) {
+                caughtUp: [CaughtUpEntry] = [], libraryDefaults: LibraryDefaults = .default) {
         self.home = home
+        self.libraryDefaults = libraryDefaults
         self.gridDensity = gridDensity
         self.posterCaption = posterCaption
         self.showsProgressPercent = showsProgressPercent
@@ -218,7 +221,7 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         self.caughtUp = caughtUp
     }
 
-    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, showsProgressPercent, libraries, dismissedContinueReading, caughtUp }
+    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, showsProgressPercent, libraries, dismissedContinueReading, caughtUp, libraryDefaults }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -229,6 +232,7 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         libraries = (try? c.decodeIfPresent([String: LibraryOptions].self, forKey: .libraries)) ?? [:]
         dismissedContinueReading = (try? c.decodeIfPresent([String: Date].self, forKey: .dismissedContinueReading)) ?? [:]
         caughtUp = (try? c.decodeIfPresent([CaughtUpEntry].self, forKey: .caughtUp)) ?? []
+        libraryDefaults = (try? c.decodeIfPresent(LibraryDefaults.self, forKey: .libraryDefaults)) ?? .default
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -240,10 +244,17 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         if !libraries.isEmpty { try c.encode(libraries, forKey: .libraries) }
         if !dismissedContinueReading.isEmpty { try c.encode(dismissedContinueReading, forKey: .dismissedContinueReading) }
         if !caughtUp.isEmpty { try c.encode(caughtUp, forKey: .caughtUp) }
+        if !libraryDefaults.isDefault { try c.encode(libraryDefaults, forKey: .libraryDefaults) }
     }
 
     public func options(for key: LibraryKey) -> LibraryOptions {
         libraries[key.storageKey] ?? LibraryOptions()
+    }
+
+    /// The library's own options with unset sort, grid order and filter
+    /// taken from `libraryDefaults`.
+    public func resolvedOptions(for key: LibraryKey) -> LibraryOptions {
+        options(for: key).resolved(with: libraryDefaults)
     }
 
     public mutating func setOptions(_ options: LibraryOptions, for key: LibraryKey) {

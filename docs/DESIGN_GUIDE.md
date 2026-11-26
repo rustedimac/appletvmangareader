@@ -33,6 +33,12 @@ at 2×).
 | `Layout.safeSide` | 80 | HIG: 80 pt from the sides |
 | Tab bar | 68 tall, top edge 46 from the screen top | HIG (fixed by the system) |
 
+Tab bar items are titles only (`.tabItem { Text("Home") }`), as in Apple's own
+tvOS apps. A symbol beside each title makes the six tabs wider than the bar,
+which then scrolls sideways and cuts off Settings.
+`TabBarVisibilityUITests.testAllTabsFitInTheBar` checks that every tab fits;
+adding a seventh tab needs that test to pass too.
+
 SwiftUI already applies these insets. **Don't add your own 80 pt padding on top
 of the safe area** (that doubles it to 160). Only use `Layout.safeSide` for
 views that call `.ignoresSafeArea()`, such as the reader and the reader menu
@@ -216,6 +222,28 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   enough to fit without truncation at `Size.buttonMaxWidth`.
 - Icons in buttons use `Label(_, systemImage:)`, never a manual HStack.
 
+### No Save buttons
+
+Settings apply the moment they change, like Apple's Settings app: a toggle,
+tick box, picker or text field stores its value as soon as it's set, and
+Menu simply goes back.
+
+- The one exception is the server form (`ServerEditorView`): its Save (or
+  "Add Server") tests the address and login and stores the credential, so
+  it has to be an explicit step.
+- Inside the server form, things that belong to an already saved server
+  and don't depend on a changed address or login (the libraries/categories
+  checklist) still apply live; Save covers the connection.
+- Creating something new is an action, not a save: "Add Profile",
+  "Add Server". Name it after what it does.
+- When a value can't be stored as it stands (no category ticked, an empty
+  profile name), keep the last valid value and say so in the footer. Don't
+  add a Save button to gate it.
+- No "Apply", "Done" or "Save Changes" buttons either.
+- `tools/check_save_buttons.py` (CI) fails on a "Save"/"Apply"/"Done"/
+  "Save Changes" label or a `.save` accessibility id anywhere but the
+  server form.
+
 ### Text fields
 
 - Inside a settings `Form`, add `.settingsTextFieldRow()` to every field. It
@@ -229,11 +257,16 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   the choices are known (HIG: minimize text entry on tvOS).
 - Show the right keyboard (`.keyboardType(.URL)`), and turn off
   autocorrection for names, addresses and keys.
-- Passwords and keys use a plain SwiftUI `SecureField`, with no font or
-  scale modifier. Its dots already match Apple's own Settings app (measured
-  at 4K: 33–34 px dots, about 0.6× the cap height of field text). `.font(.body)`
-  shrinks them and a UIKit `isSecureTextEntry` wrapper greys them out.
-  `tools/check_secure_fields.py` (CI) enforces this.
+- Field text uses Apple's text-field size, set once by
+  `.settingsTextFieldRow()` (`SettingsFieldFont.text`, headline size at
+  regular weight, 38 pt). Measured against tvOS Settings at 4K: placeholder,
+  typed text (54 px "h") and password dots (32–34 px) match in every state.
+  `.body` made them about 0.76× Apple's size; no font made typed text 1.7×
+  its placeholder.
+- Passwords and keys use a plain SwiftUI `SecureField` with no font or scale
+  modifier of its own, and never a UIKit `isSecureTextEntry` wrapper (greys
+  the dots). `tools/check_secure_fields.py` (CI) enforces both and that every
+  field gets `.settingsTextFieldRow()` or an explicit `SettingsFieldFont`.
 
 ### Rows
 
@@ -262,7 +295,8 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 
 - Every setting a series (or a library) can override also has a global
   default for the profile, on the matching settings screen: reader settings
-  in Default Reader Settings, library sort and grid order in Customize Home.
+  in Default Reader Settings, library sort, grid order and filters in Library
+  Defaults (linked from Settings, Customize Home and every Sort & View).
 - The narrower value only overrides; while it's unset, changing the global
   default changes that series too.
 - Wherever a narrower value is set, offer "Reset to Default" next to it, and
@@ -312,6 +346,7 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - [ ] Only system text styles; nothing below `.caption2`.
 - [ ] Corners: system shapes, or `Radius` tokens, or `Capsule()`.
 - [ ] First focus is the obvious action; Menu goes back.
+- [ ] Changes apply as they're made; no Save button (server form excepted).
 - [ ] Scrolling to the first item shows the title again.
 - [ ] Looks right with the largest Dynamic Type size and with Bold Text on.
 

@@ -191,6 +191,52 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertFalse(app.buttons["library.jump.A"].exists, "no A–Z bar unless sorted by title")
     }
 
+    /// Status and read-progress filters narrow the grid, the Sort & View
+    /// button shows how many are on, an empty result offers Show
+    /// Everything, and Library Defaults applies to libraries without their
+    /// own filters. Demo statuses: every fifth series is on hiatus (unless
+    /// a multiple of 7), see `SampleLibraryServer.status(for:)`.
+    func testStatusFilterAndLibraryDefaults() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryFilter.status.hiatus")
+        let options = app.buttons["library.options"]
+        wait(options, "value == '1 filter'")
+        XCTAssertTrue(app.buttons["poster.5"].waitForExistence(timeout: 10), "on hiatus")
+        XCTAssertFalse(app.buttons["poster.1"].exists, "completed series are filtered out")
+        XCTAssertFalse(app.buttons["poster.2"].exists, "ongoing series are filtered out")
+
+        // Hiatus series 5 is unread, so "Finished" leaves nothing.
+        pickOption("libraryFilter.read.read")
+        wait(options, "value == '2 filters'")
+        let clear = app.buttons["library.clearFilters"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 10))
+        moveFocus(to: clear)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["poster.1"].waitForExistence(timeout: 10), "Show Everything clears this library's filters")
+        wait(options, "value == ''")
+
+        // Back to the default, then set the default to Ongoing in Library Defaults.
+        pickOption("libraryOptions.filter.default")
+        moveFocus(to: options)
+        remote.press(.select)
+        let defaultsLink = app.buttons["libraryOptions.defaults"]
+        XCTAssertTrue(defaultsLink.waitForExistence(timeout: 10))
+        moveFocus(to: defaultsLink)
+        remote.press(.select)
+        let ongoing = app.buttons["libraryFilter.status.ongoing"]
+        XCTAssertTrue(ongoing.waitForExistence(timeout: 10))
+        moveFocus(to: ongoing)
+        remote.press(.select)
+        wait(ongoing, "value == 'selected'")
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["libraryOptions.filter.default"].waitForExistence(timeout: 10))
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["poster.2"].waitForExistence(timeout: 10), "the default filter shows ongoing series")
+        XCTAssertFalse(app.buttons["poster.1"].exists)
+        wait(options, "value == '1 filter'")
+    }
+
     func testRightToLeftGridAndSmallerPosters() {
         launch()
         openKavitaLibrary()

@@ -37,6 +37,8 @@ jobs:
       - run: python3 tools/check_design_tokens.py
       # Every per-series reader setting has a global default.
       - run: python3 tools/check_setting_scopes.py
+      # Settings apply as they change; only the server form has Save.
+      - run: python3 tools/check_save_buttons.py
       # Secure fields keep the system dots (see tools/check_secure_fields.py).
       - run: python3 tools/check_secure_fields.py
 
