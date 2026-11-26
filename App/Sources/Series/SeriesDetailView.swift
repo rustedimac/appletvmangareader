@@ -72,7 +72,7 @@ struct SeriesDetailView: View {
         HStack(alignment: .top, spacing: 60) {
             PosterImage(url: summary.coverURL, server: model.client(for: series.ref), title: summary.title)
                 .frame(width: 360, height: 540)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.poster))
                 .shadow(radius: 20)
 
             VStack(alignment: .leading, spacing: 20) {

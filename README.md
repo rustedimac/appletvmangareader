@@ -1,11 +1,13 @@
 # Apple TV Manga Reader
 
-A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com) and
-[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) servers. Add as many
-servers as you like, read in a two-page spread reader or a seamless vertical
-(webtoon) scroll, keep favorites (sortable by title, date favorited, latest
-chapter, last read, unread count or server), bookmark pages, and give each
-person their own profile.
+A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com),
+[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) and
+[Komga](https://komga.org) servers and OPDS catalogs, plus a built-in Free
+Library of public-domain comics. Add as many servers as you like, read in a
+two-page spread reader or a seamless vertical (webtoon) scroll, open PDFs and
+EPUBs, keep favorites (sortable by title, date favorited, latest chapter, last
+read, unread count or server), bookmark pages, and give each person their own
+profile (each Apple TV user gets one automatically).
 
 ## Building
 
@@ -34,7 +36,9 @@ xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
   -destination 'platform=tvOS Simulator,name=Apple TV' CODE_SIGNING_ALLOWED=NO
 ```
 
-CI runs both on every push and pull request (`.github/workflows/ci.yml`).
+CI runs both on every pull request and on every merge to `main`, plus the
+UI lint checks in `tools/` (`.github/workflows/ci.yml`, see
+[docs/CI.md](docs/CI.md)).
 
 ## Free Library
 
@@ -54,12 +58,14 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
 
 ## Connecting servers
 
-- **Kavita**: the server address and your Kavita username and password.
-  Each profile signs in as its own Kavita user, and reading progress,
-  read state and Continue Reading sync with that user. The app keeps an
-  auth key named "Apple TV Manga Reader" (revocable under Kavita's Manage
-  Auth Keys), never the password. Pasting an OPDS URL
-  (`http://kavita.local:5000/api/opds/<api-key>`) works too.
+- **Kavita**: the address you open Kavita at, e.g. `http://kavita.local:5000`,
+  and your Kavita username and password. Each profile signs in as its own
+  Kavita user, and reading progress, read state and Continue Reading sync
+  with that user. The app keeps an auth key named "Apple TV Manga Reader"
+  (revocable under Kavita's Manage Auth Keys), never the password. Or sign in
+  with an API key: the whole OPDS URL from User Settings → 3rd Party Clients
+  (`http://kavita.local:5000/api/opds/<api-key>`) works as the address or in
+  the API key field, and is split when you test or save.
 - **Suwayomi**: the server address, e.g. `http://suwayomi.local:4567`, plus a
   username and password if the server asks for one (basic auth or UI login).
   Suwayomi keeps one progress per server, so one profile syncs there and the

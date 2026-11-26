@@ -157,7 +157,22 @@ extension View {
     /// A text field row in a settings form. The row's own platter is
     /// removed so the field's capsule is the only outline, filling the row
     /// with its text lined up with the section header.
+    ///
+    /// The font is set explicitly: without it tvOS draws a field's text at
+    /// its own small default once the keyboard closes, so filled-in fields
+    /// looked smaller than empty ones.
     func settingsTextFieldRow() -> some View {
+        font(.body)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+    }
+
+    /// A segmented picker row in a settings form. Like
+    /// `settingsTextFieldRow()`, it removes the row platter: otherwise tvOS
+    /// draws the row's rounded platter behind the picker's own track, a third
+    /// layer whose corners don't match the track or the selected segment.
+    /// The track then spans the row, lined up with the text fields below.
+    func settingsSegmentedRow() -> some View {
         listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
     }
