@@ -14,6 +14,26 @@ worth supporting, with a rough effort and value for each.
 | **Komga** | Native REST client (`KomgaClient`, Komga 1.19+) | Synced per Komga user | API key or email + password. Libraries, series, books, page sizes, new/updated rows, Continue Reading from books in progress. |
 | **OPDS 1.2 / 2.0** | Generic client (`OPDSClient`) | Kept on the Apple TV | Covers every server below that has an OPDS feed. Page streaming via OPDS-PSE or OPDS 2 DiViNa manifests; otherwise CBZ files are downloaded and unpacked locally. |
 
+### Reading lists, collections and smart filters
+
+`MangaServer.collectionSupport` says which of these a server can list; the
+Library bar shows a button for each (`ServerCollectionsView`). Read-only:
+the app never creates, edits or reorders them.
+
+| Server | Reading lists | Collections | Smart filters |
+| --- | --- | --- | --- |
+| Kavita | `POST api/ReadingList/lists`, items from `GET api/ReadingList/items` | `GET api/Collection`, series from `GET api/Series/series-by-collection` | `GET api/filter` (series filters only), `POST api/filter/decode`, then `POST api/Series/all-v2` |
+| Others | none yet | none yet (Komga has collections, a possible follow-up) | none |
+
+Kavita applies the user's library access and age rating. The profile's
+library pick is applied on top: a scoped collection, or a smart filter whose
+statements are combined with Or, loads in one request and is narrowed in the
+app; an And filter gets a library statement added. A reading list opens each
+chapter in its own series; reading on past the chapter follows the series,
+not the list (follow-up). Wrapper servers must forward
+`collectionSupport`, `collections(_:)`, `series(in:page:pageSize:)` (the
+`ServerCollection` one) and `readingListEntries(_:)`.
+
 ### What the OPDS type covers
 
 Enter the catalog URL, or just the host: the client tries

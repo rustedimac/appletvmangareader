@@ -38,6 +38,21 @@ public protocol MangaServer: Sendable {
     /// server doesn't support it.
     func filterGenres(in category: MangaCategory) async throws -> [String]
 
+    /// Which reading lists, collections and smart filters this server can
+    /// list (`ServerCollections.swift`). Default: none. Wrapper servers must
+    /// forward this and the three calls below.
+    var collectionSupport: ServerCollectionSupport { get }
+
+    /// The server's lists of one kind, in the server's order. Empty when
+    /// the kind isn't supported.
+    func collections(_ kind: ServerCollectionKind) async throws -> [ServerCollection]
+
+    /// Series in a collection or smart filter, `page` starting at 1.
+    func series(in collection: ServerCollection, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary>
+
+    /// A reading list's chapters in list order.
+    func readingListEntries(_ list: ServerCollection) async throws -> [ReadingListEntry]
+
     /// A home-screen row.
     func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary]
 
@@ -99,6 +114,16 @@ public extension MangaServer {
     }
 
     func filterGenres(in category: MangaCategory) async throws -> [String] { [] }
+
+    var collectionSupport: ServerCollectionSupport { [] }
+
+    func collections(_ kind: ServerCollectionKind) async throws -> [ServerCollection] { [] }
+
+    func series(in collection: ServerCollection, page: Int, pageSize: Int) async throws -> Paged<SeriesSummary> {
+        Paged(items: [], hasMore: false)
+    }
+
+    func readingListEntries(_ list: ServerCollection) async throws -> [ReadingListEntry] { [] }
 
     func imageRequest(_ url: URL) -> URLRequest {
         // Images follow the address API requests settled on (see
