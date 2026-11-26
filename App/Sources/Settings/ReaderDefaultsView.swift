@@ -16,25 +16,23 @@ struct ReaderDefaultsView: View {
     var body: some View {
         Form {
             Section(settingsHeader: "Reading") {
-                Picker("Mode", selection: settings.mode) {
-                    ForEach(ReadingMode.allCases) { Text($0.title).tag($0) }
-                }
-                .accessibilityIdentifier("readerDefaults.mode")
-                Picker("Direction", selection: settings.direction) {
-                    ForEach(ReadingDirection.allCases) { Text($0.title).tag($0) }
-                }
-                .accessibilityIdentifier("readerDefaults.direction")
-                Picker("Background", selection: settings.background) {
-                    ForEach(ReaderBackground.allCases) { Text($0.title).tag($0) }
-                }
+                SettingsPicker("Mode", selection: settings.mode, options: ReadingMode.allCases,
+                               systemImage: "book") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.mode")
+                SettingsPicker("Direction", selection: settings.direction, options: ReadingDirection.allCases,
+                               systemImage: "arrow.left.arrow.right") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.direction")
+                SettingsPicker("Background", selection: settings.background, options: ReaderBackground.allCases,
+                               systemImage: "circle.lefthalf.filled") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.background")
             }
 
             Section {
-                Picker("Pages", selection: settings.layout) {
-                    ForEach(PageLayout.allCases) { Text($0.title).tag($0) }
-                }
-                .accessibilityIdentifier("readerDefaults.layout")
+                SettingsPicker("Pages", selection: settings.layout, options: PageLayout.allCases,
+                               systemImage: "book.pages") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.layout")
                 Toggle("Show first page alone", isOn: settings.firstPageAlone)
+                    .accessibilityIdentifier("readerDefaults.firstPageAlone")
                 Toggle("Split wide pages", isOn: settings.splitWidePages)
                     .accessibilityIdentifier("readerDefaults.splitWidePages")
             } header: {
@@ -71,16 +69,14 @@ struct ReaderDefaultsView: View {
             }
 
             Section(settingsHeader: "Vertical Scroll") {
-                Picker("Column width", selection: settings.webtoonWidth) {
-                    ForEach(Self.options(Self.widths, current: model.defaultReaderSettings.webtoonWidth), id: \.self) {
-                        Text(Self.percent($0)).tag($0)
-                    }
-                }
-                Picker("Scroll per click", selection: settings.webtoonScrollStep) {
-                    ForEach(Self.options(Self.steps, current: model.defaultReaderSettings.webtoonScrollStep), id: \.self) {
-                        Text("\(Self.percent($0)) of the screen").tag($0)
-                    }
-                }
+                SettingsPicker("Column width", selection: settings.webtoonWidth,
+                               options: Self.options(Self.widths, current: model.defaultReaderSettings.webtoonWidth),
+                               systemImage: "arrow.left.and.right") { Self.percent($0) }
+                    .accessibilityIdentifier("readerDefaults.webtoonWidth")
+                SettingsPicker("Scroll per click", selection: settings.webtoonScrollStep,
+                               options: Self.options(Self.steps, current: model.defaultReaderSettings.webtoonScrollStep),
+                               systemImage: "arrow.down.to.line") { "\(Self.percent($0)) of the screen" }
+                    .accessibilityIdentifier("readerDefaults.webtoonScrollStep")
             }
 
             Section {

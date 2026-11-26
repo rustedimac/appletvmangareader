@@ -5,10 +5,18 @@ import FoundationNetworking
 
 /// Client for Suwayomi-Server's GraphQL API (`/api/graphql`). Only library
 /// content is used: browsing sources and downloading are out of scope.
+///
+/// Auth (see docs/PROGRESS_SYNC.md): none, HTTP basic auth, or, for servers
+/// in `UI_LOGIN` mode, the `login` mutation and Bearer tokens. Tokens are
+/// refreshed, or the client logs in again, when the server answers 401.
 public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     public let config: ServerConfig
     let transport: HTTPTransport
+    let username: String?
+    let password: String?
+    let loginMode: SuwayomiLoginMode
     let authHeader: String?
+    private let tokens = SuwayomiTokens()
     /// Category ids to show ("0" is Default); nil shows the whole library.
     public let categoryScope: Set<String>?
     /// The last library grid category, shared by its pages.
@@ -17,36 +25,126 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     /// Suwayomi's built-in category for manga not put in any other.
     static let defaultCategoryID = "0"
 
-    public init(config: ServerConfig, username: String?, password: String?, categoryScope: Set<String>? = nil,
-                transport: HTTPTransport) {
+    public init(config: ServerConfig, username: String?, password: String?,
+                loginMode: SuwayomiLoginMode? = nil, categoryScope: Set<String>? = nil, transport: HTTPTransport) {
         self.config = config
         self.transport = transport
         self.categoryScope = categoryScope
-        if let username, !username.isEmpty {
-            let raw = "\(username):\(password ?? "")"
+        let user = username?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.username = user?.isEmpty == false ? user : nil
+        self.password = password
+        self.loginMode = loginMode ?? .basic
+        if let user = self.username, self.loginMode == .basic {
+            let raw = "\(user):\(password ?? "")"
             authHeader = "Basic " + Data(raw.utf8).base64EncodedString()
         } else {
             authHeader = nil
         }
     }
 
+    /// Headers for the current login: basic auth, or the Bearer token.
+    var authHeaders: [String: String] {
+        if let authHeader { return ["Authorization": authHeader] }
+        if let token = tokens.accessToken { return ["Authorization": "Bearer \(token)"] }
+        return [:]
+    }
+
     var http: HTTPClient {
-        HTTPClient(baseURL: config.baseURL, transport: transport,
-                   defaultHeaders: authHeader.map { ["Authorization": $0] } ?? [:])
+        HTTPClient(baseURL: config.baseURL, transport: transport, defaultHeaders: authHeaders)
     }
 
     // MARK: GraphQL plumbing
 
     func graphQL<T: Decodable>(_ query: String, variables: [String: JSONValue] = [:], as type: T.Type = T.self) async throws -> T {
+        guard loginMode == .token, username != nil else {
+            return try await rawGraphQL(query, variables: variables, client: http)
+        }
+        if tokens.accessToken == nil { try await signIn() }
+        do {
+            return try await rawGraphQL(query, variables: variables, client: http)
+        } catch let error as MangaError where error.isAuthFailure {
+            try await renewToken()
+            return try await rawGraphQL(query, variables: variables, client: http)
+        }
+    }
+
+    func rawGraphQL<T: Decodable>(_ query: String, variables: [String: JSONValue], client: HTTPClient) async throws -> T {
         let body = GraphQLRequest(query: query, variables: variables)
-        let request = try http.request("POST", "api/graphql", body: HTTPClient.encoder.encode(body))
-        let data = try await http.send(request)
+        let request = try client.request("POST", "api/graphql", body: HTTPClient.encoder.encode(body))
+        let data = try await client.send(request)
         let response = try HTTPClient.decode(GraphQLResponse<T>.self, from: data)
         if let errors = response.errors, !errors.isEmpty {
-            throw MangaError.graphQL(errors.map(\.message))
+            let messages = errors.map(\.message)
+            if messages.contains(where: { $0.localizedCaseInsensitiveContains("unauthorized") }) {
+                throw MangaError.unauthorized
+            }
+            throw MangaError.graphQL(messages)
         }
         guard let value = response.data else { throw MangaError.decoding("GraphQL response had no data") }
         return value
+    }
+
+    // MARK: Login (UI_LOGIN)
+
+    struct LoginResponse: Decodable {
+        struct Payload: Decodable { var accessToken: String; var refreshToken: String }
+        var login: Payload
+    }
+
+    /// Logs in with the `login` mutation and keeps the tokens.
+    func signIn() async throws {
+        guard let username else { throw MangaError.missingCredential }
+        let anonymous = HTTPClient(baseURL: config.baseURL, transport: transport)
+        let r: LoginResponse = try await rawGraphQL(
+            "mutation($u: String!, $p: String!) { login(input: {username: $u, password: $p}) { accessToken refreshToken } }",
+            variables: ["u": .string(username), "p": .string(password ?? "")], client: anonymous)
+        tokens.set(access: r.login.accessToken, refresh: r.login.refreshToken)
+    }
+
+    /// New access token from the refresh token, or a fresh login.
+    func renewToken() async throws {
+        struct Response: Decodable {
+            struct Payload: Decodable { var accessToken: String }
+            var refreshToken: Payload
+        }
+        if let refresh = tokens.refreshToken {
+            let anonymous = HTTPClient(baseURL: config.baseURL, transport: transport)
+            if let r: Response = try? await rawGraphQL(
+                "mutation($t: String!) { refreshToken(input: {refreshToken: $t}) { accessToken } }",
+                variables: ["t": .string(refresh)], client: anonymous) {
+                tokens.set(access: r.refreshToken.accessToken, refresh: refresh)
+                return
+            }
+        }
+        tokens.clear()
+        try await signIn()
+    }
+
+    /// Works out how a server takes this username and password: the
+    /// `login` mutation when it answers it, else basic auth.
+    public static func detectLoginMode(config: ServerConfig, username: String, password: String,
+                                       transport: HTTPTransport) async -> SuwayomiLoginMode {
+        let probe = SuwayomiClient(config: config, username: username, password: password,
+                                   loginMode: .token, transport: transport)
+        do {
+            try await probe.signIn()
+            return .token
+        } catch {
+            return .basic
+        }
+    }
+
+    /// The signed-in user on servers with user accounts (Suwayomi preview
+    /// builds), or nil when the server has a single shared progress. Only
+    /// a `login` sign-in maps to a user; every other mode is user 1.
+    public func currentUser() async -> String? {
+        guard loginMode == .token, username != nil else { return nil }
+        struct Response: Decodable {
+            struct User: Decodable { var username: String? }
+            var user: User?
+        }
+        guard let r: Response = try? await graphQL("query { user { username } }") else { return nil }
+        return r.user?.username
     }
 
     // MARK: MangaServer
@@ -124,12 +222,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             case .all: filter = ""
             case .filter(let f): filter = ", filter: \(f)"
             }
-            struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+            struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
             let r: Response = try await graphQL(
-                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(Self.listFields) } } }",
                 variables: ["first": .int(limit)]
             )
-            return Array(r.mangas.nodes.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(r.mangas.nodes.map { summary($0) }.scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
             return try await chapterFeed(orderBy: "FETCHED_AT", limit: limit, requireRead: false)
         case .continueReading:
@@ -143,7 +241,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         struct Response: Decodable {
             struct ChapterNode: Decodable {
                 var lastReadAt: FlexibleNumber?
-                var manga: SuwayomiMangaDTO
+                var manga: SuwayomiGridManga
             }
             var chapters: Nodes<ChapterNode>
         }
@@ -158,7 +256,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             filter += ", mangaId: {in: $ids}"
         }
         let r: Response = try await graphQL(
-            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt manga { \(SuwayomiMangaDTO.fields) } } } }",
+            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt manga { \(Self.listFields) } } } }",
             variables: variables
         )
         var seen = Set<Int>()
@@ -167,7 +265,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             if requireRead && (node.lastReadAt?.value ?? 0) <= 0 { continue }
             let series = summary(node.manga)
             guard ProfileServerSettings(selectedCategoryIDs: categoryScope).includes(series),
-                  seen.insert(node.manga.id).inserted else { continue }
+                  seen.insert(node.manga.manga.id).inserted else { continue }
             result.append(series)
             if result.count >= limit { break }
         }
@@ -184,12 +282,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         case .all: filter = title
         case .filter(let f): filter = "{and: [\(title), \(f)]}"
         }
-        struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+        struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
         let r: Response = try await graphQL(
-            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(Self.listFields) } } }",
             variables: ["q": .string(trimmed)]
         )
-        return r.mangas.nodes.map(summary).scoped(to: categoryScope)
+        return r.mangas.nodes.map { summary($0) }.scoped(to: categoryScope)
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
@@ -293,7 +391,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
 
     public func authorize(_ request: URLRequest) -> URLRequest {
         var r = request
-        if let authHeader { r.setValue(authHeader, forHTTPHeaderField: "Authorization") }
+        for (key, value) in authHeaders { r.setValue(value, forHTTPHeaderField: key) }
         return r
     }
 
@@ -315,6 +413,17 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                       categoryIDs: Self.categoryIDs(m.categories))
     }
 
+    /// Home rows and search ask for the chapter count too, for poster
+    /// captions. `chapters { totalCount }` is in every Suwayomi GraphQL
+    /// schema, unlike the grid's sort fields.
+    static let listFields = SuwayomiMangaDTO.fields + " chapters { totalCount }"
+
+    func summary(_ m: SuwayomiGridManga) -> SeriesSummary {
+        var s = summary(m.manga)
+        s.chapterCount = m.chapterCount
+        return s
+    }
+
     /// A manga in no category is in Default.
     static func categoryIDs(_ nodes: Nodes<SuwayomiMangaDTO.CategoryRef>?) -> [String]? {
         guard let nodes else { return nil }
@@ -325,10 +434,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     /// Orders chapters oldest to newest. Suwayomi's `sourceOrder` follows
     /// the source's list; we check the chapter numbers to pick the direction.
     static func chapters(from nodes: [SuwayomiChapterDTO], seriesRef: SeriesRef) -> [Chapter] {
-        var sorted = nodes.sorted { ($0.sourceOrder ?? 0) < ($1.sourceOrder ?? 0) }
-        let numbered = sorted.compactMap { $0.chapterNumber }.filter { $0 >= 0 }
-        if let first = numbered.first, let last = numbered.last, first > last {
-            sorted.reverse()
+        let sorted = ChapterOrdering.readingOrder(nodes) {
+            ChapterOrdering.Item(sourceOrder: $0.sourceOrder, number: $0.chapterNumber, name: $0.name ?? "", id: $0.id)
         }
         return sorted.enumerated().map { index, c in
             let pageCount = max(0, c.pageCount ?? 0)
@@ -341,7 +448,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                 pageCount: pageCount,
                 lastPageRead: max(0, c.lastPageRead ?? 0),
                 isRead: c.isRead ?? false,
-                updatedAt: (c.uploadDate?.value).flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0 > 1e11 ? $0 / 1000 : $0) : nil }
+                updatedAt: (c.uploadDate?.value).flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0 > 1e11 ? $0 / 1000 : $0) : nil },
+                lastReadAt: (c.lastReadAt?.value).flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0 > 1e11 ? $0 / 1000 : $0) : nil }
             )
         }
     }
@@ -359,15 +467,33 @@ struct SuwayomiMangaDTO: Decodable {
 }
 
 struct SuwayomiChapterDTO: Decodable {
-    static let fields = "id name chapterNumber sourceOrder isRead lastPageRead pageCount uploadDate"
+    static let fields = "id name chapterNumber sourceOrder isRead lastPageRead lastReadAt pageCount uploadDate"
     var id: Int
     var name: String?
     var chapterNumber: Double?
     var sourceOrder: Int?
     var isRead: Bool?
     var lastPageRead: Int?
+    var lastReadAt: FlexibleNumber?
     var pageCount: Int?
     var uploadDate: FlexibleNumber?
+}
+
+/// Access and refresh tokens for `UI_LOGIN` servers. Read synchronously by
+/// `authorize(_:)` for image requests, so it's a lock, not an actor.
+final class SuwayomiTokens: @unchecked Sendable {
+    private let lock = NSLock()
+    private var access: String?
+    private var refresh: String?
+
+    var accessToken: String? { lock.withLock { access } }
+    var refreshToken: String? { lock.withLock { refresh } }
+
+    func set(access: String, refresh: String) {
+        lock.withLock { self.access = access; self.refresh = refresh }
+    }
+
+    func clear() { lock.withLock { access = nil; refresh = nil } }
 }
 
 struct Nodes<T: Decodable>: Decodable {

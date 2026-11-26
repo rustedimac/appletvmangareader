@@ -145,7 +145,7 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         XCTAssertEqual(menuItem("picture.brightness.value").label, "0")
         choose("picture.brightness.decrease")
         wait(menuItem("picture.brightness.value"), "label == '−10%'")
-        wait(element("reader.page.0"), "value == 'adjusted'")
+        wait(element("reader.page.0"), "value == 'loaded, adjusted'")
         choose("picture.contrast.increase")
         wait(menuItem("picture.contrast.value"), "label == '110%'")
         choose("picture.color.inverted")
@@ -156,7 +156,7 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         wait(menuItem("picture.brightness.value"), "label == '0'")
         XCTAssertTrue(menuItem("picture.color.normal").isSelected)
         XCTAssertTrue(menuItem("picture.upscaling.standard").isSelected)
-        wait(element("reader.page.0"), "value == 'normal'")
+        wait(element("reader.page.0"), "value == 'loaded'")
     }
 
     func testVerticalReaderOffersColorButNotSharpen() {

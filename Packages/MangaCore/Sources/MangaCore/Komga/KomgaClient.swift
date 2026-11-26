@@ -108,6 +108,12 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
         return result.content.map(summary).scoped(to: categoryScope)
     }
 
+    /// The series alone has `booksCount`; no need for its book list.
+    public func chapterCount(seriesID: String) async throws -> SeriesCount {
+        let dto: KomgaSeriesDTO = try await http.get("api/v1/series/\(Self.pathSegment(seriesID))")
+        return SeriesCount(count: dto.booksCount ?? 0, unit: .book)
+    }
+
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
         let client = http
         async let seriesTask: KomgaSeriesDTO = client.get("api/v1/series/\(Self.pathSegment(seriesID))")
@@ -181,7 +187,8 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
     func summary(_ dto: KomgaSeriesDTO) -> SeriesSummary {
         let title = dto.metadata?.title.flatMap { $0.isEmpty ? nil : $0 } ?? dto.name
         return SeriesSummary(ref: ref(dto.id), title: title, coverURL: coverURL(seriesID: dto.id),
-                             unreadCount: dto.booksUnreadCount, libraryID: dto.libraryId)
+                             unreadCount: dto.booksUnreadCount, libraryID: dto.libraryId,
+                             chapterCount: dto.booksCount, countUnit: .book)
     }
 
     func summary(forBook book: KomgaBookDTO) -> SeriesSummary {

@@ -44,6 +44,8 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
+        // Select on a failed page retries it in place.
+        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
         .onAppear {
             focused = true
@@ -89,7 +91,9 @@ struct PagedReaderView: View {
     /// shown.
     private func preload() {
         guard session.loadState == .loaded, screenPixels != .zero else { return }
-        let indices = session.navigator.pagesToPreload(radius: 2)
+        // Pages on screen are loaded by their own views at full priority.
+        let visible = Set(session.visiblePages)
+        let indices = session.navigator.pagesToPreload(radius: 2).filter { !visible.contains($0) }
         let urls = indices.compactMap { session.page($0)?.url }
         let byURL = Dictionary(indices.compactMap { i in session.page(i).map { ($0.url, i) } },
                                uniquingKeysWith: { a, _ in a })
@@ -204,7 +208,18 @@ private struct PageImageView: View {
 
     @State private var loaded: LoadedImage?
     @State private var processed: CGImage?
-    @State private var failed = false
+
+    private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
+
+    /// Label, value ("loaded", "failed", "loading", with ", adjusted" when
+    /// picture controls change the page) and hint for VoiceOver and UI tests.
+    private var accessibilityText: (label: String, value: String, hint: String) {
+        let name = half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)"
+        let adjusted = session.settings.picture.isDefault ? "" : ", adjusted"
+        if loaded != nil { return (name, "loaded" + adjusted, "") }
+        if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
+        return (name, "loading", "")
+    }
 
     var body: some View {
         ZStack {
@@ -218,25 +233,27 @@ private struct PageImageView: View {
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
-            } else if failed {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                    Text("Page \(index + 1) didn't load").font(.caption)
-                }
-                .foregroundStyle(.secondary)
+            } else if let failure {
+                PageFailureCard(page: index + 1, message: failure)
             } else {
                 ProgressView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)")
+        .accessibilityLabel(accessibilityText.label)
+        .accessibilityValue(accessibilityText.value)
+        .accessibilityHint(accessibilityText.hint)
         .accessibilityIdentifier(half.map { "reader.page.\(index).\($0.rawValue)" } ?? "reader.page.\(index)")
-        .accessibilityValue(session.settings.picture.isDefault ? "normal" : "adjusted")
-        .task(id: session.page(index)?.url) { await load() }
+        .task(id: LoadKey(url: session.page(index)?.url, retry: session.pageRetryTokens[index] ?? 0)) { await load() }
         .task(id: ProcessKey(loaded: loaded != nil, picture: session.settings.picture, pixels: framePixels)) {
             await process()
         }
+    }
+
+    private struct LoadKey: Hashable {
+        var url: URL?
+        var retry: Int
     }
 
     private struct ProcessKey: Hashable {
@@ -268,18 +285,59 @@ private struct PageImageView: View {
         guard let url = session.page(index)?.url else { return }
         if let hit = images.cached(url) {
             loaded = hit
+            session.reportPageLoaded(index)
             session.reportSize(hit.pixelSize, forPage: index)
             return
         }
-        failed = false
+        guard loaded == nil else { return }
         do {
             let page = try await images.load(url)
             loaded = page
+            session.reportPageLoaded(index)
             session.reportSize(page.pixelSize, forPage: index)
         } catch is CancellationError {
         } catch {
-            failed = true
+            guard !Task.isCancelled else { return }
+            session.reportPageFailure(PageLoadFailure.message(for: error), forPage: index)
         }
+    }
+}
+
+/// Shown in place of a page that didn't load after automatic retries. The
+/// reader keeps focus (left/right still turn pages), so the Retry pill is
+/// drawn as the focused control and Select presses it.
+struct PageFailureCard: View {
+    let page: Int
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Page \(page) didn't load")
+                .font(.headline)
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+            Text("Retry")
+                .font(.headline)
+                .foregroundStyle(.black)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 10)
+                .background(.white, in: RoundedRectangle(cornerRadius: Radius.poster))
+            Text("Press Select to retry")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.white)
+        .minimumScaleFactor(0.6)
+        .padding(32)
+        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: Radius.card))
+        .padding(16)
+        .frame(maxWidth: 640)
     }
 }
 
@@ -359,7 +417,7 @@ struct ChapterTransitionCard: View {
         .padding(80)
         .frame(maxWidth: 1240)
         .foregroundStyle(.white)
-        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 32))
+        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: Radius.panel))
         .padding(.horizontal, 120)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.transition")

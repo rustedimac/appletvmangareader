@@ -33,13 +33,16 @@ final class KavitaClientTests: XCTestCase {
         }
     }
 
-    func testCategoriesUseBearerToken() async throws {
+    func testCategoriesSendTheKeyHeaderWithoutLoggingIn() async throws {
         mock.on("GET", "api/Library/libraries", body: #"[{"id":1,"name":"Manga Library","type":0},{"id":3,"name":"Webtoons","type":0}]"#)
         let cats = try await client.categories()
         XCTAssertEqual(cats.map(\.name), ["Manga Library", "Webtoons"])
         XCTAssertEqual(cats.map(\.id), ["1", "3"])
         let req = try XCTUnwrap(mock.lastRequest(containing: "libraries"))
-        XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "Bearer jwt-1")
+        XCTAssertEqual(req.value(forHTTPHeaderField: "x-api-key"), "KEY")
+        XCTAssertNil(req.value(forHTTPHeaderField: "Authorization"))
+        // No login, so the user's refresh token (and browser session) is left alone.
+        XCTAssertNil(mock.lastRequest(containing: "authenticate"))
     }
 
     func testSeriesInLibrarySendsFilter() async throws {
@@ -105,6 +108,40 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertEqual(detail.synopsis, "Guts.")
     }
 
+    func testChapterCountUsesVolumesOnly() async throws {
+        mock.on("GET", "api/Series/volumes", body: """
+        [
+          {"id":20,"minNumber":-100000,"name":"-100000","chapters":[
+            {"id":202,"range":"12","minNumber":12,"sortOrder":12,"pages":20,"volumeId":20},
+            {"id":201,"range":"11","minNumber":11,"sortOrder":11,"pages":20,"volumeId":20}
+          ]},
+          {"id":10,"minNumber":1,"name":"1","chapters":[{"id":100,"range":"-100000","minNumber":-100000,"pages":180,"volumeId":10}]}
+        ]
+        """)
+        let count = try await client.chapterCount(seriesID: "5")
+        XCTAssertEqual(count, SeriesCount(count: 3, unit: .chapter))
+        XCTAssertNil(mock.lastRequest(containing: "api/Series/5"), "no series or metadata request")
+        XCTAssertNil(mock.lastRequest(containing: "metadata"))
+    }
+
+    func testVolumeFilesCountAsVolumes() {
+        let ref = SeriesRef(serverID: config.id, seriesID: "7")
+        let volumes = [
+            KavitaVolumeDTO(id: 1, minNumber: 1, name: "1", chapters: [chapterDTO(10, minNumber: -100000)]),
+            KavitaVolumeDTO(id: 2, minNumber: 2, name: "2", chapters: [chapterDTO(20, minNumber: -100000)]),
+        ]
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref), SeriesCount(count: 2, unit: .volume))
+        let mixed = volumes + [KavitaVolumeDTO(id: 3, minNumber: -100000, name: nil, chapters: [chapterDTO(30, minNumber: 21)])]
+        XCTAssertEqual(KavitaClient.count(mixed, seriesRef: ref), SeriesCount(count: 3, unit: .chapter))
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref, seriesFormat: .epub), SeriesCount(count: 2, unit: .book))
+    }
+
+    private func chapterDTO(_ id: Int, minNumber: Double) -> KavitaChapterDTO {
+        KavitaChapterDTO(id: id, range: nil, minNumber: minNumber, sortOrder: nil, pages: 10, pagesRead: 0,
+                         isSpecial: false, title: nil, titleName: nil, volumeId: nil, created: nil,
+                         lastModifiedUtc: nil, files: nil)
+    }
+
     func testPagesUseFileDimensions() async throws {
         mock.on("GET", "file-dimensions", body: """
         [{"width":800,"height":1200,"pageNumber":0,"fileName":"001.jpg","isWide":false},
@@ -119,6 +156,100 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertNil(pages[2].size)
         XCTAssertEqual(pages[0].url.absoluteString,
                        "http://kavita.local:5000/api/Reader/image?apiKey=KEY&chapterId=77&extractPdf=true&page=0")
+    }
+
+    func testSaveProgressNeedsOnlyTheChapter() async throws {
+        // Continue Reading items and some feeds don't carry the library or
+        // volume; Kavita fills them in from the chapter.
+        mock.on("POST", "api/Reader/progress", body: "")
+        let ref = SeriesRef(serverID: config.id, seriesID: "5")
+        let chapter = Chapter(id: "77", seriesRef: ref, title: "1", number: 1, pageCount: 20)
+        try await client.saveProgress(chapter: chapter, libraryID: nil, page: 6, completed: false)
+        let body = jsonBody(mock.lastRequest(containing: "api/Reader/progress"))
+        XCTAssertEqual(body["chapterId"] as? Int, 77)
+        XCTAssertEqual(body["pageNum"] as? Int, 6)
+        XCTAssertEqual(body["volumeId"] as? Int, 0)
+        XCTAssertEqual(body["libraryId"] as? Int, 0)
+    }
+
+    func testChapterLastReadDate() throws {
+        let ref = SeriesRef(serverID: config.id, seriesID: "5")
+        let json = """
+        [{"id":1,"minNumber":1,"name":"1","chapters":[
+          {"id":10,"range":"1","minNumber":1,"sortOrder":1,"pages":20,"pagesRead":7,"volumeId":1,"lastReadingProgressUtc":"2026-11-20T10:00:00.1234567"},
+          {"id":11,"range":"2","minNumber":2,"sortOrder":2,"pages":20,"pagesRead":0,"volumeId":1,"lastReadingProgressUtc":"0001-01-01T00:00:00"}
+        ]}]
+        """
+        let volumes = try HTTPClient.decode([KavitaVolumeDTO].self, from: Data(json.utf8))
+        let chapters = KavitaClient.chapters(from: volumes, seriesRef: ref)
+        let expected = try XCTUnwrap(DateParsing.parse("2026-11-20T10:00:00.1234567"))
+        XCTAssertEqual(try XCTUnwrap(chapters[0].lastReadAt).timeIntervalSince1970, expected.timeIntervalSince1970, accuracy: 1)
+        XCTAssertNil(chapters[1].lastReadAt, "0001-01-01 means never read")
+    }
+
+    // MARK: Sign-in with username and password
+
+    func testSignInReusesTheAppsKey() async throws {
+        let m = MockTransport()
+        m.on("POST", "api/Account/login", body: """
+        {"username":"John","token":"jwt","refreshToken":"r","apiKey":"OPDS","authKeys":[
+          {"id":1,"key":"OPDS","name":"opds","expiresAtUtc":"2026-12-25T00:00:00Z"},
+          {"id":2,"key":"APPKEY","name":"Apple TV Manga Reader","expiresAtUtc":null}]}
+        """)
+        let credential = try await KavitaClient.signIn(baseURL: config.baseURL, username: " john ", password: "pw", transport: m)
+        XCTAssertEqual(credential, ServerCredential(apiKey: "APPKEY", username: "John"))
+        XCTAssertNil(credential.password, "the password is never kept")
+        let login = jsonBody(m.lastRequest(containing: "api/Account/login"))
+        XCTAssertEqual(login["username"] as? String, "john")
+        XCTAssertEqual(login["password"] as? String, "pw")
+        XCTAssertNil(m.lastRequest(containing: "create-auth-key"))
+    }
+
+    func testSignInCreatesANonExpiringKey() async throws {
+        let m = MockTransport()
+        m.on("POST", "api/Account/login", body: #"{"username":"kid","token":"jwt","apiKey":"OPDS","authKeys":[{"key":"OPDS","name":"opds"}]}"#)
+        m.on("POST", "api/Account/create-auth-key", body: #"{"id":3,"key":"NEWKEY","name":"Apple TV Manga Reader","createdAtUtc":"2026-11-25T00:00:00Z"}"#)
+        let credential = try await KavitaClient.signIn(baseURL: config.baseURL, username: "kid", password: "pw", transport: m)
+        XCTAssertEqual(credential.apiKey, "NEWKEY")
+        let create = try XCTUnwrap(m.lastRequest(containing: "create-auth-key"))
+        XCTAssertEqual(create.value(forHTTPHeaderField: "Authorization"), "Bearer jwt")
+        let body = jsonBody(create)
+        XCTAssertEqual(body["name"] as? String, KavitaClient.authKeyName)
+        XCTAssertEqual(body["keyLength"] as? Int, 32)
+        XCTAssertNil(body["expiresUtc"], "no expiry")
+    }
+
+    func testSignInReplacesAnExpiredAppKey() async throws {
+        let m = MockTransport()
+        m.on("POST", "api/Account/login", body: #"{"username":"kid","token":"jwt","apiKey":"OPDS","authKeys":[{"key":"OLD","name":"Apple TV Manga Reader","expiresAtUtc":"2020-01-01T00:00:00Z"}]}"#)
+        m.on("POST", "api/Account/create-auth-key", body: #"{"key":"FRESH","name":"Apple TV Manga Reader"}"#)
+        let credential = try await KavitaClient.signIn(baseURL: config.baseURL, username: "kid", password: "pw", transport: m)
+        XCTAssertEqual(credential.apiKey, "FRESH")
+    }
+
+    func testSignInFallsBackToTheOPDSKey() async throws {
+        // Read-only users may not create keys; older servers have no auth keys.
+        let m = MockTransport()
+        m.on("POST", "api/Account/login", body: #"{"username":"guest","token":"jwt","apiKey":"OPDS"}"#)
+        m.on("POST", "api/Account/create-auth-key", status: 403, body: "")
+        let credential = try await KavitaClient.signIn(baseURL: config.baseURL, username: "guest", password: "pw", transport: m)
+        XCTAssertEqual(credential, ServerCredential(apiKey: "OPDS", username: "guest"))
+    }
+
+    func testSignInWithWrongPassword() async {
+        let m = MockTransport()
+        m.on("POST", "api/Account/login", status: 401, body: "Your credentials are not correct")
+        do {
+            _ = try await KavitaClient.signIn(baseURL: config.baseURL, username: "john", password: "bad", transport: m)
+            XCTFail("expected error")
+        } catch {
+            XCTAssertEqual(error as? MangaError, .unauthorized)
+        }
+    }
+
+    func testUsernameOfAPastedKey() async throws {
+        let name = try await client.username()
+        XCTAssertEqual(name, "john")
     }
 
     func testSaveProgressBody() async throws {
@@ -137,14 +268,42 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertEqual(body["pageNum"] as? Int, 20)
     }
 
-    func testReloginAfterExpiredToken() async throws {
-        // First libraries call returns 401, the retry succeeds.
+    func testOlderServerFallsBackToJWT() async throws {
+        // The key header is turned down once; the client switches to a JWT.
         let flaky = FlakyTransport(inner: mock)
         mock.on("GET", "api/Library/libraries", body: #"[{"id":1,"name":"L"}]"#)
         let c = KavitaClient(config: config, apiKey: "KEY", transport: flaky)
         let cats = try await c.categories()
         XCTAssertEqual(cats.count, 1)
-        XCTAssertEqual(flaky.authCalls, 2)
+        XCTAssertEqual(flaky.authCalls, 1)
+        XCTAssertEqual(mock.lastRequest(containing: "libraries")?.value(forHTTPHeaderField: "Authorization"), "Bearer jwt-1")
+        // Later calls keep using the JWT, without logging in again.
+        _ = try await c.categories()
+        XCTAssertEqual(flaky.authCalls, 1)
+    }
+
+    func testReloginAfterExpiredJWT() async throws {
+        let script = ScriptedKavitaTransport(inner: mock)
+        mock.on("GET", "api/Library/libraries", body: #"[{"id":1,"name":"L"}]"#)
+        let c = KavitaClient(config: config, apiKey: "KEY", transport: script)
+        _ = try await c.categories()           // header refused → JWT 1
+        script.expireNextBearer = true
+        _ = try await c.categories()           // JWT expired → login again
+        XCTAssertEqual(script.authCalls, 2)
+    }
+
+    func testWrongKeyFailsWithoutLooping() async {
+        let refusing = MockTransport()
+        refusing.on("POST", "api/Plugin/authenticate", status: 401, body: "")
+        refusing.on("GET", "api/Library/libraries", status: 401, body: "")
+        let c = KavitaClient(config: config, apiKey: "WRONG", transport: refusing)
+        do {
+            _ = try await c.categories()
+            XCTFail("expected error")
+        } catch {
+            XCTAssertEqual(error as? MangaError, .unauthorized)
+        }
+        XCTAssertEqual(refusing.requests.count, 2)
     }
 
     func testBasePathPrefixIsKept() throws {
@@ -185,6 +344,34 @@ final class FlakyTransport: HTTPTransport, @unchecked Sendable {
         if shouldFail { failed = true }
         lock.unlock()
         if shouldFail {
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
+        }
+        return try await inner.send(request)
+    }
+}
+
+/// Refuses the `x-api-key` header like Kavita before auth keys, and can
+/// expire the next Bearer token.
+final class ScriptedKavitaTransport: HTTPTransport, @unchecked Sendable {
+    let inner: MockTransport
+    private let lock = NSLock()
+    private(set) var authCalls = 0
+    var expireNextBearer = false
+
+    init(inner: MockTransport) { self.inner = inner }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let url = request.url!.absoluteString
+        let refuse: Bool = lock.withLock {
+            if url.contains("authenticate") { authCalls += 1; return false }
+            if request.value(forHTTPHeaderField: "x-api-key") != nil { return true }
+            if expireNextBearer, request.value(forHTTPHeaderField: "Authorization") != nil {
+                expireNextBearer = false
+                return true
+            }
+            return false
+        }
+        if refuse {
             return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
         }
         return try await inner.send(request)
