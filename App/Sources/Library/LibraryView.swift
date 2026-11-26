@@ -23,6 +23,7 @@ struct LibraryView: View {
             .seriesNavigation()
             .themedScreen()
         }
+        .resetsNavigationWhenLeft()
     }
 }
 

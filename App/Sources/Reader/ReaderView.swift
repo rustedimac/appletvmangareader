@@ -101,11 +101,18 @@ private struct ReaderContent: View {
             ReaderLoadStateView(session: session)
             ReaderBookmarkOverlay(session: session)
             if session.isMenuPresented {
-                ReaderMenu(session: session)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                switch session.overlay {
+                case .menu:
+                    ReaderMenu(session: session)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                case .scrubber:
+                    PageScrubberView(session: session)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)
+        .animation(.easeInOut(duration: 0.2), value: session.overlay)
         .animation(.easeInOut(duration: 0.2), value: session.notice)
     }
 }

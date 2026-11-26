@@ -37,6 +37,7 @@ struct BookmarksView: View {
             .seriesNavigation()
             .themedScreen()
         }
+        .resetsNavigationWhenLeft(path: $path)
         .task { await model.syncAllBookmarks() }
         .fullScreenCover(item: $reader) { ReaderHost(route: $0) }
     }

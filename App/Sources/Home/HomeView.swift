@@ -37,6 +37,7 @@ struct HomeView: View {
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
             .themedScreen()
         }
+        .resetsNavigationWhenLeft(path: $path)
         .task(id: reloadKey) { await reload() }
         .onAppear {
             // Coming back from another tab (say, after reading from Library).

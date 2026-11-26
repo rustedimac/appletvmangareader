@@ -104,6 +104,7 @@ struct SettingsView: View {
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
+        .resetsNavigationWhenLeft()
     }
 
     /// Settings > Theme for the active profile (see `AppTheme`).

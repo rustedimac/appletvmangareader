@@ -21,6 +21,7 @@ struct SearchView: View {
             .seriesNavigation()
             .themedScreen()
         }
+        .resetsNavigationWhenLeft()
         .task(id: query) {
             // Wait for typing to pause before hitting every server.
             try? await Task.sleep(for: .milliseconds(450))

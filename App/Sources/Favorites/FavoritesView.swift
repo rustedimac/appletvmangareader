@@ -28,6 +28,7 @@ struct FavoritesView: View {
             .task { await model.refreshStaleFavorites() }
             .themedScreen()
         }
+        .resetsNavigationWhenLeft()
     }
 }
 
