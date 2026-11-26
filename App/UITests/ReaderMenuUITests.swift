@@ -262,4 +262,31 @@ final class ReaderMenuUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(title.frame.minY, 0, "title didn't scroll back into view")
         XCTAssertTrue(title.frame.maxY <= tab.frame.minY + 1)
     }
+
+    /// Settings / Chapters / Bookmarks are tabs, drawn like the top tab bar:
+    /// text only, one line ("Bookmarks" used to wrap), the open one marked
+    /// with the selected trait. Passing over a tab doesn't open it; a click does.
+    func testSectionTabsLookLikeTheTopBar() {
+        launch()
+        openMenu()
+        let ids = ["tab.settings", "tab.chapters", "tab.bookmarks"]
+        assertSectionTabLayout(app, track: "reader.menu.tabs", tabs: ids.map { "reader.menu.\($0)" },
+                               titles: ["Settings", "Chapters", "Bookmarks"])
+        XCTAssertTrue(menuItem("tab.settings").isSelected)
+        XCTAssertFalse(menuItem("tab.chapters").isSelected)
+
+        // Focus over the tabs (Settings → Bookmarks passes Chapters): still on Settings.
+        moveFocus(to: "tab.settings")
+        moveFocus(to: "tab.bookmarks")
+        XCTAssertTrue(menuItem("tab.settings").isSelected)
+        XCTAssertTrue(menuItem("mode.paged").exists, "moving focus switched the pane")
+        // With focus on a tab it still fits on one line (focus grows it).
+        assertSectionTabLayout(app, track: "reader.menu.tabs", tabs: ids.map { "reader.menu.\($0)" },
+                               titles: ["Settings", "Chapters", "Bookmarks"])
+
+        remote.press(.select)
+        wait(menuItem("tab.bookmarks"), "isSelected == true")
+        XCTAssertFalse(menuItem("tab.settings").isSelected)
+        XCTAssertFalse(menuItem("mode.paged").exists)
+    }
 }

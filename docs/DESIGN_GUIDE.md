@@ -241,6 +241,26 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - Ignores the safe area for its background only; its content is inset
   `Layout.safeTop` from the top and `Layout.safeSide` from the trailing edge.
 - Option chips use `Capsule()` and `Space.m` between chips.
+- Its section switcher is a `SectionTabBar`, not option chips (see Section tabs).
+
+### Section tabs (`SectionTabBar`)
+
+Tabs and choices must never look alike. A control that switches what the
+screen shows (the reader menu's Settings / Chapters / Bookmarks, the book
+reader's Settings / Contents) is a tab; a control that sets a value (On/Off,
+Single/Double, a sort order) is a choice.
+
+- Tabs use `SectionTabBar`, drawn like the top tab bar: a `Capsule()` track
+  with text-only tabs inside, the open tab as a filled pill, the focused tab
+  as the white focus pill. No checkmarks, rings or icons in a tab.
+- Labels are one line and never wrap or truncate (the bar sizes to its
+  labels); keep them to one short word.
+- Clicking a tab opens it. Focus moving across the tabs doesn't, so the pane
+  below doesn't rebuild and take focus while you pass over a tab.
+- Choices keep their own look: `OptionButton` chips (ring that fills with a
+  check) in the reader drawers, `SettingsPicker` or a toggle in settings.
+- Identifiers: `<screen>.tab.<name>` for each tab (with the `.isSelected`
+  trait when open) and `<screen>.tabs` for the track.
 
 ### Setting scopes
 
@@ -291,6 +311,7 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - [ ] Spacing uses `Space` tokens; focusable neighbours ≥ 40 pt apart.
 - [ ] Only system text styles; nothing below `.caption2`.
 - [ ] Corners: system shapes, or `Radius` tokens, or `Capsule()`.
+- [ ] Tabs that switch sections use `SectionTabBar`; only real choices look like radio options.
 - [ ] First focus is the obvious action; Menu goes back.
 - [ ] Scrolling to the first item shows the title again.
 - [ ] Looks right with the largest Dynamic Type size and with Bold Text on.
