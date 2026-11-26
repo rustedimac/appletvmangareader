@@ -83,7 +83,7 @@ final class ReaderTutorialUITests: XCTestCase {
 
     func testFirstOpenOfferNotNowKeepsReading() {
         launchDemoWithOffer()
-        select(app.alerts.buttons["Not Now"])
+        select(app.alerts.buttons["Not Now"].firstMatch)
         wait(app.alerts.firstMatch, "exists == false")
         XCTAssertFalse(step.exists)
         let indicator = app.staticTexts["reader.pageIndicator"]
@@ -94,7 +94,7 @@ final class ReaderTutorialUITests: XCTestCase {
 
     func testFirstOpenOfferShowMeRunsTheTutorialThenReturns() {
         launchDemoWithOffer()
-        select(app.alerts.buttons["Show Me"])
+        select(app.alerts.buttons["Show Me"].firstMatch)
         XCTAssertTrue(step.waitForExistence(timeout: 15))
         wait(step, "value == 'turnPage'")
         remote.press(.menu)
