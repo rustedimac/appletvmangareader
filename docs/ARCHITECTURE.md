@@ -593,6 +593,36 @@ changes.
 - UI tests: `-appleTVUserMode` (with `-uiTestingSharedServers` and
   `-uiTestingRememberProfile <name>`), in `AppleTVUserUITests`.
 
+## Guest
+
+A visitor can read without a profile: Settings → Guest → Read as Guest,
+or the Guest tile on "Who's reading?". Nothing they do touches the
+owner's data.
+
+- `GuestSession` (MangaCore/Guest) builds the guest's `AppState`: the
+  owner's servers and one profile, `GuestSession.profile` (a fixed id). It
+  starts from the host profile's library/category choices and reader
+  defaults, with no favorites, progress, bookmarks, recent series, Home
+  layout or per-series settings, and `syncProgressToServer` off everywhere.
+- `AppModel.startGuestSession` keeps the saved state in `ownerState` and
+  swaps in the guest's. While `guestSession` is set, `update` changes
+  `state` only: nothing is saved, synced to iCloud (`CloudSyncController`
+  and `applySync` stand down), written to the shared server directory or
+  published to the Top Shelf. Book positions go to an in-memory store.
+- Servers are read with the host profile's login (`loginProfileID`; with
+  Apple TV users that falls back to the shared login). `syncsProgress` is
+  false for every server, so progress, read marks and bookmarks stay
+  local, and Home uses local Continue Reading. Series detail drops the
+  server's read state first (`GuestSession.withoutServerProgress`), since
+  that's the owner's reading, and posters hide its unread badges.
+  Library read-state filters still use the server's state.
+- Settings hides servers, logins, iCloud and backups, and profile
+  switching; reader, Home and library settings work but last only for
+  the session. "End Guest Session" restores the saved state (with in-app
+  profiles, back to "Who's reading?"). Quitting the app or opening a Top
+  Shelf link ends it too.
+- UI tests: `GuestUITests`.
+
 ## Bookmarks
 
 A `Bookmark` is one page of one chapter, stored per profile in

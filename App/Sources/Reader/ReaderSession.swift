@@ -463,13 +463,21 @@ final class ReaderSession {
         let chapter = self.chapter
         let series = self.series
         let model = self.model
-        Task { await model.recordProgress(chapter: chapter, series: series,
-                                          page: progress.page, completed: progress.completed) }
+        model.startRecordingProgress(chapter: chapter, series: series,
+                                     page: progress.page, completed: progress.completed)
     }
 
-    /// Call when the reader closes.
+    @ObservationIgnored private var refreshedOnClose = false
+
+    /// Call when the reader closes. Posters of the series pick up the new
+    /// progress once the save lands.
     func close() {
         flushProgress()
         loadTask?.cancel()
+        // The view closes it on Menu and again on disappear.
+        if !refreshedOnClose {
+            refreshedOnClose = true
+            model.refreshSeriesProgress(series.ref)
+        }
     }
 }
