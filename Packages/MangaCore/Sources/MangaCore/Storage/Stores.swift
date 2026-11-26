@@ -279,7 +279,14 @@ public final class FileSecretStore: SecretStore, @unchecked Sendable {
             }
             guard let data = try? JSONEncoder().encode(all) else { return }
             try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? data.write(to: url, options: [.atomic, .completeFileProtection])
+            // File protection isn't available everywhere (macOS test hosts,
+            // some simulator file systems refuse it), and a refused write used
+            // to drop the login silently. Fall back to a plain atomic write.
+            do {
+                try data.write(to: url, options: [.atomic, .completeFileProtection])
+            } catch {
+                try? data.write(to: url, options: [.atomic])
+            }
             var target = url
             var values = URLResourceValues()
             values.isExcludedFromBackup = true
