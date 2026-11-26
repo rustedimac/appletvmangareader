@@ -50,8 +50,9 @@ struct SeriesPoster: View {
     var body: some View {
         let style = model.posterCaption
         let badges = PosterBadges(series: badgeSeries, caption: style)
+        let showsPercent = model.browsePreferences.showsProgressPercent
         VStack(alignment: .leading, spacing: 14) {
-            link(badges)
+            link(badges, showsPercent: showsPercent)
                 .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -75,12 +76,18 @@ struct SeriesPoster: View {
                         .accessibilityIdentifier("poster.caption.\(series.ref.seriesID)")
                 }
                 if let read = badges.titleProgress {
-                    TitleProgressBar(fraction: read)
-                        .padding(.top, 6)
-                        .accessibilityElement()
-                        .accessibilityLabel("Reading progress")
-                        .accessibilityValue("\(Int((read * 100).rounded())) percent")
-                        .accessibilityIdentifier("poster.titleProgress.\(series.ref.seriesID)")
+                    HStack(spacing: 12) {
+                        TitleProgressBar(fraction: read)
+                            .accessibilityElement()
+                            .accessibilityLabel("Reading progress")
+                            .accessibilityValue("\(Int((read * 100).rounded())) percent")
+                            .accessibilityIdentifier("poster.titleProgress.\(series.ref.seriesID)")
+                        if showsPercent {
+                            ProgressPercentLabel(fraction: read)
+                                .accessibilityIdentifier("poster.titlePercent.\(series.ref.seriesID)")
+                        }
+                    }
+                    .padding(.top, 6)
                 }
                 if badges.caption == nil, serverLabel == .underTitle, let serverName {
                     Text(serverName)
@@ -119,19 +126,14 @@ struct SeriesPoster: View {
 
     private var serverLabel: PosterServerLabel { model.posterServerLabel }
 
-    /// The series with any count changed by "Mark as Unread" since the row
-    /// loaded. Its page progress is stale then, so badges use the count.
+    /// The series with any progress changed since the row loaded (reading,
+    /// "Mark as Unread"), so the badge, bar and percentage are current.
     private var badgeSeries: SeriesSummary {
-        let counted = series.withCount(model.seriesCounts.count(for: series.ref))
-        guard let override = model.unreadCountOverrides[series.ref] else { return counted }
-        var s = counted
-        s.unreadCount = override
-        s.pagesRead = nil
-        return s
+        model.withCurrentProgress(series.withCount(model.seriesCounts.count(for: series.ref)))
     }
 
     @ViewBuilder
-    private func link(_ badges: PosterBadges) -> some View {
+    private func link(_ badges: PosterBadges, showsPercent: Bool) -> some View {
         let base = NavigationLink(value: series) {
             PosterImage(url: series.coverURL, server: model.client(for: series.ref), title: series.title)
                 .frame(width: width, height: width * 1.5)
@@ -148,6 +150,15 @@ struct SeriesPoster: View {
                 }
                 .overlay(alignment: .bottom) {
                     if let progress = badges.progress { ProgressBadge(fraction: progress) }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    // The bar under the title carries the number when shown.
+                    if showsPercent, badges.titleProgress == nil, let progress = badges.progress {
+                        CoverPercentBadge(fraction: progress)
+                            .padding(10)
+                            .padding(.bottom, 8)
+                            .accessibilityIdentifier("poster.coverPercent.\(series.ref.seriesID)")
+                    }
                 }
         }
         .buttonStyle(.card)
@@ -259,6 +270,39 @@ private struct ProgressBadge: View {
             }
         }
         .frame(height: 8)
+    }
+}
+
+/// "40%" beside the bar under the title. Fixed size so a long title or a
+/// small poster squeezes the bar, never the number.
+private struct ProgressPercentLabel: View {
+    let fraction: Double
+
+    var body: some View {
+        Text(PosterBadges.percentText(fraction))
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize()
+    }
+}
+
+/// "40%" on the cover above the thin bar, on a dark plate so it reads on
+/// any cover art (same plate as `FormatBadge`).
+private struct CoverPercentBadge: View {
+    let fraction: Double
+
+    var body: some View {
+        Text(PosterBadges.percentText(fraction))
+            .font(.caption2.bold())
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: Radius.small))
+            .foregroundStyle(.white)
     }
 }
 

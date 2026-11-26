@@ -114,3 +114,17 @@ signed-in user. Only `UI_LOGIN` maps a login to a user.
   else the first chapter.
 - Profiles that don't sync get their own Continue Reading row on Home, from
   local progress.
+
+## Posters after reading
+
+Home rows, library grids, Favorites and Search keep the summaries they
+loaded, so their badges and bars would stay at the old progress. When the
+reader closes it calls `AppModel.refreshSeriesProgress`, which waits for the
+series' progress saves (`startRecordingProgress` registers each save before
+returning and chains saves per series in order), reloads the series through
+`seriesDetail` (local and queued progress resolved for the profile) and
+stores a `SeriesProgressOverride` per profile and series. `SeriesPoster`
+applies it with `withCurrentProgress`. Opening series detail records one
+too, and "Mark as Unread" uses the same path. Series detail reloads after
+the reader only once those saves land, so the server never answers with the
+old page.

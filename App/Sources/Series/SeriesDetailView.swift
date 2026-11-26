@@ -47,7 +47,14 @@ struct SeriesDetailView: View {
         }
         .defaultFocus($focus, .primary)
         .task { await load() }
-        .fullScreenCover(item: $reader, onDismiss: { Task { await load() } }) { route in
+        .fullScreenCover(item: $reader, onDismiss: {
+            // After the reader's last save lands, or the server answers
+            // with the old page.
+            Task {
+                await model.waitForProgressSaves(series.ref)
+                await load()
+            }
+        }) { route in
             ReaderHost(route: route)
         }
         .alert(markError?.title ?? "", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
