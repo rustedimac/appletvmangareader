@@ -7,6 +7,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case direction
     case firstPageAlone
     case shiftPairing
+    case splitWidePages
     case background
     case webtoonWidth
     case autoScroll
@@ -20,9 +21,31 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .direction: return "Direction"
         case .firstPageAlone: return "First Page Alone"
         case .shiftPairing: return "Page Pairing"
+        case .splitWidePages: return "Split Wide Pages"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
         case .autoScroll: return "Auto-Scroll"
+        }
+    }
+}
+
+/// One row in the reader menu's Picture tab.
+public enum PictureMenuItem: String, CaseIterable, Sendable, Identifiable {
+    case brightness
+    case contrast
+    case color
+    case sharpen
+    case upscaling
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .brightness: return "Brightness"
+        case .contrast: return "Contrast"
+        case .color: return "Color"
+        case .sharpen: return "Sharpen"
+        case .upscaling: return "Upscaling"
         }
     }
 }
@@ -39,10 +62,20 @@ public enum ReaderMenuOptions {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
             if settings.layout == .double { items += [.firstPageAlone, .shiftPairing] }
+            if settings.layout == .single { items.append(.splitWidePages) }
             items.append(.background)
             return items
         case .webtoon:
             return [.mode, .webtoonWidth, .autoScroll, .background]
+        }
+    }
+
+    /// Rows of the Picture tab. Sharpening and upscaling re-render page
+    /// images, which only the paged reader does.
+    public static func pictureItems(for settings: ReaderSettings) -> [PictureMenuItem] {
+        switch settings.mode {
+        case .paged: return PictureMenuItem.allCases
+        case .webtoon: return [.brightness, .contrast, .color]
         }
     }
 
