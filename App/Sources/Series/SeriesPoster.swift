@@ -44,7 +44,8 @@ struct SeriesPoster: View {
     /// Lets a grid move focus to this poster (A–Z jump).
     var focus: FocusState<SeriesRef?>.Binding? = nil
     @State private var markError: String?
-    @State private var isPosterFocused = false
+    /// Whether this poster's button has focus (moves the title down).
+    @FocusState private var isPosterFocused: Bool
 
     var body: some View {
         let badges = PosterBadges(series: badgeSeries)
@@ -55,7 +56,6 @@ struct SeriesPoster: View {
                 } message: {
                     Text(markError ?? "")
                 }
-                .onFocusChange { isPosterFocused = $0 }
             VStack(alignment: .leading, spacing: 2) {
                 Text(series.title)
                     .font(width < PosterMetrics.width ? .caption2 : .caption)
@@ -116,6 +116,7 @@ struct SeriesPoster: View {
                 }
         }
         .buttonStyle(.card)
+        .focused($isPosterFocused)
         .accessibilityLabel(series.title)
         .accessibilityValue(badges.accessibilityValue)
         .accessibilityIdentifier("poster.\(series.ref.seriesID)")
