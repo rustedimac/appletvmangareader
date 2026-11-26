@@ -47,13 +47,13 @@ extension AppModel {
     func installLiveServersFromEnvironment() {
         let env = ProcessInfo.processInfo.environment
         if let opds = env["MR_KAVITA_OPDS"], let parsed = KavitaOPDS.parse(opds) {
-            saveServer(ServerConfig(kind: .kavita, name: "Kavita", baseURL: parsed.baseURL),
+            try? saveServer(ServerConfig(kind: .kavita, name: "Kavita", baseURL: parsed.baseURL),
                        credential: ServerCredential(apiKey: parsed.apiKey))
         }
         if let raw = env["MR_SUWAYOMI_URL"], let url = URL(string: raw) {
             let user = env["MR_SUWAYOMI_USER"]
             let credential = user.map { ServerCredential(username: $0, password: env["MR_SUWAYOMI_PASS"]) }
-            saveServer(ServerConfig(kind: .suwayomi, name: "Suwayomi", baseURL: url), credential: credential)
+            try? saveServer(ServerConfig(kind: .suwayomi, name: "Suwayomi", baseURL: url), credential: credential)
         }
     }
 }

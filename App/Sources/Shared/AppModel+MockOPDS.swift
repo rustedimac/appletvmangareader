@@ -14,7 +14,7 @@ extension AppModel {
         }
         guard !servers.contains(where: { $0.name == "Test OPDS" }) else { return }
         let server = ServerConfig(kind: .opds, name: "Test OPDS", baseURL: URL(string: "http://opds.test")!)
-        saveServer(server, credential: nil)
+        try? saveServer(server, credential: nil)
         setServerSettings(ProfileServerSettings(syncProgressToServer: false), for: server)
     }
 }
