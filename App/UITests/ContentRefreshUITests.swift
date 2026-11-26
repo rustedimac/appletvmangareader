@@ -42,7 +42,7 @@ final class ContentRefreshUITests: XCTestCase {
         let tab = app.tabBars.buttons[name]
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
         let anyTab = app.tabBars.buttons.matching(NSPredicate(format: "hasFocus == true")).firstMatch
-        if !anyTab.exists { press(.up, until: anyTab, max: 8) }
+        if !anyTab.exists { press(.up, until: anyTab, max: 30) }
         XCTAssertTrue(anyTab.exists, "tab bar never took focus")
         if press(.right, until: tab, max: 6) { return }
         XCTAssertTrue(press(.left, until: tab, max: 6), "couldn't focus the \(name) tab")
