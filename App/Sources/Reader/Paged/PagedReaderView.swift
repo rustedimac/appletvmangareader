@@ -481,7 +481,13 @@ private struct PageImageView: View {
             session.reportPageLoaded(index)
             return
         }
-        guard loaded == nil else { return }
+        if let loaded {
+            // Already showing (e.g. Crop Borders was just turned on and the
+            // decode size changed): keep the image and only find margins.
+            // Preloading skips on-screen pages, so this is where they're found.
+            await detectCrop(url, loaded)
+            return
+        }
         do {
             let page = try await images.load(url)
             session.reportSize(page.pixelSize, forPage: index)
