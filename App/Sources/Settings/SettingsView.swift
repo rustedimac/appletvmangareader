@@ -60,7 +60,7 @@ struct SettingsView: View {
                             }
                         } label: {
                             ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
-                                      hasLogin: model.credential(for: server) != nil,
+                                      credential: model.credential(for: server),
                                       pickedCount: model.selectedCategories(for: server)?.count)
                         }
                         .accessibilityIdentifier("settings.server.\(server.name)")
@@ -125,7 +125,7 @@ private struct ServerRow: View {
 
     let server: ServerConfig
     let syncs: Bool
-    let hasLogin: Bool
+    let credential: ServerCredential?
     /// How many libraries/categories are imported, or nil for all.
     let pickedCount: Int?
 
@@ -140,11 +140,18 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if server.kind.requiresLogin && !hasLogin {
-                Text(server.kind == .kavita ? "No API key" : "No login").font(.caption).foregroundStyle(.orange)
-            } else if !syncs && server.kind != .freeLibrary {
-                Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 4) {
+                if server.kind.requiresLogin && credential == nil {
+                    Text(server.kind == .kavita ? "Not signed in" : "No login").font(.caption).foregroundStyle(.orange)
+                } else if let user = credential?.username {
+                    Text(user).font(.caption).foregroundStyle(.secondary)
+                }
+                if !syncs && server.kind != .freeLibrary {
+                    Text("Progress saved locally").font(.caption).foregroundStyle(.secondary)
+                }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings.serverStatus.\(server.name)")
         }
     }
 }

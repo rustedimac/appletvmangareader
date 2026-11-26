@@ -83,6 +83,22 @@ final class PhoneSetupTests: XCTestCase {
         XCTAssertEqual(draft.apiKey, "abc-123")
     }
 
+    func testKavitaUsesAPIKeyOrPassword() {
+        var draft = ServerDraft(kind: .kavita, kavitaMethod: .password)
+        PhoneSetupHTTP.Submission(kind: "kavita", address: "kavita.home", apiKey: "key-1", username: "reader", password: "pw")
+            .apply(to: &draft, kindLocked: false)
+        XCTAssertEqual(draft.kavitaMethod, .apiKey)
+        XCTAssertEqual(draft.apiKey, "key-1")
+        XCTAssertEqual(draft.username, "")
+
+        PhoneSetupHTTP.Submission(kind: "kavita", address: "kavita.home", username: "reader", password: "pw")
+            .apply(to: &draft, kindLocked: false)
+        XCTAssertEqual(draft.kavitaMethod, .password)
+        XCTAssertEqual(draft.username, "reader")
+        XCTAssertEqual(draft.password, "pw")
+        XCTAssertTrue(draft.needsKavitaSignIn)
+    }
+
     func testUnknownTypesAreIgnored() {
         var draft = ServerDraft(kind: .opds)
         PhoneSetupHTTP.Submission(kind: "freeLibrary", address: "x.home").apply(to: &draft, kindLocked: false)

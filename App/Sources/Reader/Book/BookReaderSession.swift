@@ -385,10 +385,10 @@ final class BookReaderSession {
         // The server only knows sections, so only write when that changes.
         guard sectionChanged else { return }
         let chapter = self.chapter
-        let libraryID = series.libraryID
+        let series = self.series
         let model = self.model
         Task {
-            await model.recordProgress(chapter: chapter, libraryID: libraryID,
+            await model.recordProgress(chapter: chapter, series: series,
                                        page: progress.section, completed: progress.completed)
         }
     }

@@ -191,6 +191,51 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertLessThan(first.frame.width, standardWidth * 0.9, "small posters")
     }
 
+    // MARK: Poster caption (one test per mode)
+
+    /// Demo series 1 has 4 chapters of 20 pages, none read.
+    private var caption: XCUIElement { app.staticTexts["poster.caption.1"] }
+    private var titleProgress: XCUIElement { app.descendants(matching: .any)["poster.titleProgress.1"] }
+
+    func testPosterCaptionShowsChaptersByDefault() {
+        launch()
+        openKavitaLibrary()
+        XCTAssertTrue(caption.waitForExistence(timeout: 10))
+        XCTAssertEqual(caption.label, "4 chapters")
+        XCTAssertFalse(titleProgress.exists)
+    }
+
+    func testPosterCaptionPages() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.pages")
+        XCTAssertTrue(caption.waitForExistence(timeout: 10))
+        wait(caption, "label == '80 pages'")
+    }
+
+    func testPosterCaptionProgressBar() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titleProgress.waitForExistence(timeout: 10), "progress bar under the title")
+        XCTAssertEqual(titleProgress.value as? String, "0 percent")
+        XCTAssertFalse(caption.exists, "no count text with the progress bar")
+    }
+
+    func testPosterCaptionOff() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.off")
+        XCTAssertTrue(app.buttons["poster.1"].waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertFalse(caption.exists)
+        XCTAssertFalse(titleProgress.exists)
+        // The setting is the profile's, so Home follows it too.
+        selectTab("Home")
+        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.caption.'")).count, 0)
+    }
+
     func testLibraryReadingDirectionOpensSeriesThatWay() {
         launch()
         openKavitaLibrary()

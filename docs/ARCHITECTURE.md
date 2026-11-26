@@ -8,12 +8,13 @@
 | `MangaCore/Models` | Shared value types: `ServerConfig`, `Profile`, `SeriesSummary`, `SeriesDetail`, `Chapter`, `PageDescriptor`, `HomeFeed`. |
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), the `MangaServer` protocol every backend implements, and `ServerAddressRouter` / `FailoverTransport` for servers with several addresses (see [SERVERS.md](SERVERS.md#several-addresses-per-server)). |
 | `MangaCore/Pairing` | `PhoneSetupHTTP` / `PhoneSetupServer`: the "Set Up from Your Phone" form the Apple TV serves on the local network. |
+| `MangaCore/Kavita` | `KavitaClient` (REST, auth key in `x-api-key`, username/password sign-in via `KavitaClient.signIn`) and `KavitaOPDS` URL parsing. |
+| `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`; no auth, basic auth, or `login` + Bearer tokens). |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
-| `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Komga` | `KomgaClient` (REST `api/v1`/`api/v2`, API key or basic auth). |
 | `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
-| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
+| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain), `ProgressSync` (queued pushes, latest-wins merge). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
@@ -84,7 +85,8 @@ answers, as a safety net.
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 
 Kavita
-- Login: `POST api/Plugin/authenticate?apiKey=…&pluginName=…` → `{ token }`, used as `Authorization: Bearer`.
+- Auth: every call sends the profile's auth key as `x-api-key`. Older servers that refuse it get `POST api/Plugin/authenticate?apiKey=…&pluginName=…` → `{ token }` as `Authorization: Bearer`. Logging in replaces the user's only refresh token, so the app avoids it (see [PROGRESS_SYNC.md](PROGRESS_SYNC.md)).
+- Username/password sign-in: `POST api/Account/login`, then reuse or `create-auth-key` "Apple TV Manga Reader". The password is never stored.
 - Images take `?apiKey=` and need no Bearer header: `api/Reader/image`, `api/Image/series-cover`.
 - `api/Reader/file-dimensions?chapterId=` gives every page's width/height up front, so spreads are known before loading.
 - List endpoints return a `Pagination` response header.
@@ -284,6 +286,28 @@ is disabled so focus can't leave the drawer. Two tabs:
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
 
+## Reading progress sync
+
+Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
+
+- `AppModel.recordProgress` writes local progress (with a secret-free
+  `SeriesSummary` for the local Continue Reading row), queues a
+  `PendingProgress` when the profile syncs, pushes, and clears the queue
+  entry once the server accepts it.
+- `AppModel.seriesDetail` merges the server's chapters with queued changes
+  through `ProgressSync.reconcile` (latest `lastReadAt` wins per chapter)
+  and pushes the local winners. `AppModel.syncPendingProgress` runs it for
+  every series with a queue before Home loads.
+- `SeriesDetail.continueChapter` follows Kavita's continue point: the most
+  recently read unfinished chapter, else the first unread after the last
+  read one.
+- Profiles that don't sync to a server get `HomeSource.localContinueReading`.
+- The server editor signs Kavita in with a username and password
+  (`AppModel.resolveCredential`, faked in UI tests: reader / secret) and
+  turns sync on for Suwayomi logins that map to a server user.
+- Tests: `ProgressSyncTests`, sign-in tests in `KavitaClientTests` and
+  `SuwayomiClientTests`, UI tests in `ProgressSyncUITests`.
+
 ## Library browsing and Home layout
 
 Per-profile browsing preferences live in `ProfileData.browse`
@@ -479,3 +503,34 @@ a vertical scroll view it lets rows slide over whatever sits above it.
 exception ends its line with `// pinned-header-ok: <reason>`), and
 `ReaderMenuUITests.testHeaderScrollsWithOptions` scrolls the menu down and
 back up.
+
+## Top Shelf
+
+`MangaReaderTopShelf` (a `tv-app-extension` target, sources in `TopShelf/`)
+shows two sections for the active profile: Continue Reading (local progress,
+newest first) and Favorites (favorites with new chapters first, labelled
+"· N new"; series already in Continue Reading aren't repeated).
+
+- The app does all the work. `TopShelfPublisher` (App/Sources/TopShelf)
+  watches `AppModel.stateObservers`, rebuilds `TopShelfSnapshot.make(from:)`
+  a few seconds after a change (so after progress saves), writes
+  `snapshot.json` and JPEG covers (800×1200 px) to the App Group
+  `group.com.rustedimac.MangaReader` (`TopShelfStore`), and calls
+  `TVTopShelfContentProvider.topShelfContentDidChange()`.
+- The extension only decodes that file and points at the cover files, so it
+  stays well inside its memory limit and never talks to a server. Cover file
+  names are SHA-256 hashes of the URL without `apiKey`, so no keys reach disk.
+- Titles and covers for Continue Reading come from
+  `ProfileData.recentSeries`, noted when the reader opens a series.
+  Favorites' new-chapter counts are `Favorite.unreadChapters` (see Favorites
+  sorting), refreshed by `refreshStaleFavorites()` when the app becomes
+  active and when the Favorites tab opens.
+- Items link back with `DeepLink` (`mangareader://series?…` for select,
+  `mangareader://read?…&chapter=…&page=…` for Play). `RootView.onOpenURL`
+  switches to the link's profile, closes "Who's reading?", and presents
+  `DeepLinkView` over the tabs.
+- Without the App Group (unsigned CI simulator builds) and in UI tests the
+  publisher is off. Per Apple TV user, the App Group is per user too, so each
+  user's Top Shelf shows their own profile.
+- UI tests: `TopShelfLinkUITests` with
+  `-uiTestingOpenLink series:<server>:<id>` or `read:<server>:<id>:<chapter>`.

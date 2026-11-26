@@ -31,6 +31,13 @@ public protocol MangaServer: Sendable {
 
     func seriesDetail(_ seriesID: String) async throws -> SeriesDetail
 
+    /// How many chapters (or volumes or books) a series has, for poster
+    /// captions when the listing left it out (`SeriesSummary.chapterCount`
+    /// nil). The app asks lazily, for posters on screen, and caches it.
+    /// The default loads series detail; clients with a lighter request
+    /// override it.
+    func chapterCount(seriesID: String) async throws -> SeriesCount
+
     /// Page URLs (and sizes, when the server knows them) for a chapter.
     func pages(for chapter: Chapter) async throws -> [PageDescriptor]
 
@@ -50,6 +57,11 @@ public protocol MangaServer: Sendable {
 }
 
 public extension MangaServer {
+    func chapterCount(seriesID: String) async throws -> SeriesCount {
+        let detail = try await seriesDetail(seriesID)
+        return SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format)
+    }
+
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
         try await series(in: category, page: page, pageSize: pageSize)
     }
@@ -82,7 +94,7 @@ public enum MangaServerFactory {
                                 transport: transport)
         case .suwayomi:
             return SuwayomiClient(config: config, username: credential?.username, password: credential?.password,
-                                  categoryScope: categoryScope, transport: transport)
+                                  loginMode: credential?.suwayomiLogin, categoryScope: categoryScope, transport: transport)
         case .komga:
             return KomgaClient(config: config, apiKey: credential?.apiKey, username: credential?.username,
                                password: credential?.password, categoryScope: categoryScope, transport: transport)

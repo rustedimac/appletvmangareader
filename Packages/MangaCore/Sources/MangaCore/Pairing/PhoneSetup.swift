@@ -69,9 +69,18 @@ public enum PhoneSetupHTTP {
                 .prefix(ServerDraft.maxAlternateAddresses))
             switch draft.kind {
             case .kavita:
+                // An API key (or an OPDS URL in the address) wins; otherwise
+                // the app signs in with the username and password.
                 draft.apiKey = clean(apiKey)
-                draft.username = ""
-                draft.password = ""
+                if draft.apiKey.isEmpty, !clean(username).isEmpty {
+                    draft.kavitaMethod = .password
+                    draft.username = clean(username)
+                    draft.password = password ?? ""
+                } else {
+                    draft.kavitaMethod = .apiKey
+                    draft.username = ""
+                    draft.password = ""
+                }
             case .komga:
                 draft.apiKey = clean(apiKey)
                 draft.username = clean(username)
@@ -179,8 +188,9 @@ public enum PhoneSetupHTTP {
         <p class="small">Used when the first address doesn't answer, e.g. a remote address for when you're away. Tried in order.</p>
         \(others)
         <div data-for="kavita komga"><label for="apiKey">API key</label>
+        <p class="small" data-for="kavita">Or leave it empty and use your Kavita username and password below.</p>
         <input id="apiKey" name="apiKey" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-        <div data-for="komga suwayomi opds"><label for="username" id="userLabel">Username</label>
+        <div data-for="kavita komga suwayomi opds"><label for="username" id="userLabel">Username</label>
         <input id="username" name="username" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="username">
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="current-password"></div>
