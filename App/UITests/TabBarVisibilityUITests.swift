@@ -66,7 +66,7 @@ final class TabBarVisibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-demoServers"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         assertTabBarComesBack(app, tabName: "Home", presses: 4)
     }
 
@@ -77,7 +77,7 @@ final class TabBarVisibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-demoServers", "-demoSignedOut"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Suwayomi.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         let message = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "isn't signed in to Demo Kavita"))
         XCTAssertTrue(message.firstMatch.exists, "no signed-out message on Home")
         // One press down reaches the first row; then two more rows down.
