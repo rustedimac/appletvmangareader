@@ -101,6 +101,11 @@ Use a Suwayomi webtoon (KR category).
       second Menu closes the reader, opened from a real series page.
 - [ ] The bottom of the drawer's Settings tab lists the controls.
 - [ ] The first few opens of each mode show a hint at the top naming these.
+- [ ] The first reader open asks "Learn the Controls?"; Show Me runs the
+      tutorial on the Pepper&Carrot sample and Menu returns to the chapter.
+      Every step can be done with the remote, including the tap. **(device)**
+- [ ] Settings > Remote and Controller > Page / Vertical Reader Tutorial
+      replays it; the sample credit shows on the last step.
 - [ ] With a game controller (an 8BitDo Micro too): ☰ opens the drawer, Y
       bookmarks, X plays, L1/R1 change chapter, the d-pad only navigates.
       **(device)**

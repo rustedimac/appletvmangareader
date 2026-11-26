@@ -29,11 +29,17 @@ struct ReaderView: View {
     var startPage: Int? = nil
     /// Overrides the server client (UI tests and previews).
     var server: MangaServer? = nil
+    /// Runs the controls tutorial in this mode (`ReaderTutorialView`).
+    var tutorial: ReadingMode? = nil
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: ReaderSession?
+    /// The first-open "Learn the controls?" question is showing.
+    @State private var offeringTutorial = false
+    /// The tutorial is open over this reader.
+    @State private var tutorialMode: ReadingMode?
 
     var body: some View {
         if start.format?.isText == true {
@@ -56,9 +62,11 @@ struct ReaderView: View {
         .ignoresSafeArea()
         .background {
             if let session {
-                ReaderRemoteCatcher(onPlayPause: { session.playPausePressed() },
-                                    onPlayPauseHold: { session.playPauseHeld() },
-                                    onTap: { session.toggleHUD() })
+                // While the tutorial or its question is over this reader,
+                // the remote belongs to them.
+                ReaderRemoteCatcher(onPlayPause: { if remoteIsOurs { session.playPausePressed() } },
+                                    onPlayPauseHold: { if remoteIsOurs { session.playPauseHeld() } },
+                                    onTap: { if remoteIsOurs { session.toggleHUD() } })
             }
         }
         .onExitCommand {
@@ -70,8 +78,12 @@ struct ReaderView: View {
             guard session == nil else { return }
             guard let client = server ?? model.client(for: series.ref) else { return }
             let s = ReaderSession(model: model, server: client, series: series, chapters: chapters,
-                                  start: start, startPage: startPage)
+                                  start: start, startPage: startPage, tutorial: tutorial)
             session = s
+            if tutorial == nil, TutorialRecord.shouldOffer {
+                TutorialRecord.markOffered()
+                offeringTutorial = true
+            }
             GameControllerHub.shared.push(owner: s, onButton: { [weak s] button in
                 s?.handleController(button)
             }, onStick: { [weak s] x, y in
@@ -89,7 +101,20 @@ struct ReaderView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { session?.flushProgress() }
         }
+        .alert("Learn the Controls?", isPresented: $offeringTutorial) {
+            Button("Show Me") { tutorialMode = session?.settings.mode ?? .paged }
+                .accessibilityIdentifier("reader.tutorialOffer.start")
+            Button("Not Now", role: .cancel) {}
+                .accessibilityIdentifier("reader.tutorialOffer.skip")
+        } message: {
+            Text("Try each button on a short sample comic, in about a minute. You can replay it any time in Settings > Remote and Controller.")
+        }
+        .fullScreenCover(item: $tutorialMode) { mode in
+            ReaderTutorialView(mode: mode)
+        }
     }
+
+    private var remoteIsOurs: Bool { !offeringTutorial && tutorialMode == nil }
 }
 
 private struct ReaderContent: View {
@@ -112,7 +137,11 @@ private struct ReaderContent: View {
             ReaderBookmarkOverlay(session: session)
             ReaderHUD(session: session)
             ReaderPageTimerBadge(session: session)
-            ReaderControlsHint(session: session)
+            if session.isTutorial {
+                ReaderTutorialOverlay(session: session)
+            } else {
+                ReaderControlsHint(session: session)
+            }
             if session.isMenuPresented {
                 switch session.overlay {
                 case .menu:

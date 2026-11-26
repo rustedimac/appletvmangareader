@@ -13,6 +13,12 @@ Menu (Back) closes one thing at a time before it closes the reader. The first
 few times each reader mode opens, a hint at the top of the screen says this,
 and the same list is at the bottom of the reader options under **Controls**.
 
+**Tutorial.** The first time a reader opens, the app offers a short
+controls tutorial on a bundled sample comic (Pepper&Carrot episode 1, CC BY
+4.0, see docs/TUTORIAL_SAMPLE.md). Each step names one input with a caption
+and moves on when it's done; Menu leaves it. Replay it from Settings >
+Remote and Controller > Learn the Controls. Steps: `ReaderTutorial.steps(for:)`.
+
 Speeds (auto-scroll and the page timer) are named steps, never numbers:
 Very Slow, Slow (the default), Medium, Fast, Very Fast.
 

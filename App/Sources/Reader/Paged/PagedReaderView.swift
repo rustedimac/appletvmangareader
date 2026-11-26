@@ -93,6 +93,7 @@ struct PagedReaderView: View {
             viewport = arrivedForward ? .start(settings.direction) : .end(settings.direction)
         }
         .onChange(of: settings.fit) { _, _ in viewport = .start(settings.direction) }
+        .onChange(of: viewport.isZoomed) { _, zoomed in session.noteZoom(zoomed) }
         .task(id: PreloadKey(chapterID: session.chapter.id, spread: session.currentSpread,
                              count: session.pageCount, loaded: session.loadState == .loaded,
                              target: targetPixels(container), crop: settings.cropBorders)) {

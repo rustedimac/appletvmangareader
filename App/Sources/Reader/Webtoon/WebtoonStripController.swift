@@ -458,6 +458,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
             }
             if began {
                 userHasScrolled = true
+                session.note(.scroll)
                 let from = driver.target ?? scrollView.contentOffset.y
                 let target = WebtoonScrolling.stepTarget(from: Double(from), forward: forward,
                                                          viewport: Double(viewport.height),
@@ -557,6 +558,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
     /// Puts the top of the next (or previous) page at the top of the screen.
     func jumpPage(forward: Bool) {
         userHasScrolled = true
+        session.note(.scroll)
         let current = Int(((driver.target ?? scrollView.contentOffset.y) * scale).rounded())
         guard let i = layout.itemIndex(atY: current) else { return }
         var j = i
@@ -591,6 +593,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
             sv.contentOffset.y = (y * scale).rounded() / scale
         case .ended:
             driver.fling(velocity: -pan.velocity(in: sv).y * swipeGain)
+            session.note(.scroll)
         default:
             break
         }

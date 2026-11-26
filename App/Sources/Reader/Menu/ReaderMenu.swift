@@ -193,8 +193,11 @@ struct ReaderMenu: View {
             }
             Divider()
             picturePane
-            Divider()
-            defaultsSection
+            // The tutorial saves no settings, so no Set as Default there.
+            if !session.isTutorial {
+                Divider()
+                defaultsSection
+            }
             Divider()
             ReaderControlsLegend(mode: settings.mode)
         }

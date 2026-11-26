@@ -71,9 +71,11 @@ final class ReaderSession {
                 if isAutoScrolling { isAutoScrolling = false }
                 stopAutoTurn()
                 hideHUD()
+                if overlay == .menu { note(.openOptions) }
             } else {
                 overlay = .menu
                 scrubberFromMenu = false
+                note(.closeOptions)
             }
         }
     }
@@ -82,7 +84,12 @@ final class ReaderSession {
     private(set) var overlay: ReaderOverlay = .menu
     /// Webtoon auto-scroll is running. The strip sets this; it stops when
     /// the menu opens or a chapter loads. Setting it false stops the strip.
-    var isAutoScrolling = false
+    var isAutoScrolling = false {
+        didSet {
+            guard isAutoScrolling != oldValue else { return }
+            note(isAutoScrolling ? .startPlay : .stopPlay)
+        }
+    }
     /// Paged reader: the page-turn timer is running (Play/Pause).
     private(set) var isAutoTurning = false
     /// The page number and reading info are showing (a tap on the touch
@@ -98,6 +105,13 @@ final class ReaderSession {
     @ObservationIgnored private var lastGamepadMenu: CFTimeInterval = 0
     @ObservationIgnored private var lastPlayToggle: CFTimeInterval = 0
     @ObservationIgnored var hudDuration: Duration = .seconds(3)
+    /// Set while this session is the controls tutorial on the sample
+    /// (`ReaderTutorial`). A tutorial saves nothing: no progress, recent
+    /// series, bookmarks or reader settings.
+    private(set) var tutorial: ReaderTutorial.Progress?
+    var isTutorial: Bool { tutorial != nil }
+    /// Tutorial only: pages bookmarked in this run, kept in memory.
+    private(set) var tutorialBookmarks: Set<Int> = []
     /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
     private(set) var autoScrollLevel: Int
     /// Paged reader: pages of this chapter whose image didn't load after
@@ -132,14 +146,15 @@ final class ReaderSession {
     /// - Parameter startPage: page to open at. Nil resumes from the
     ///   chapter's saved progress.
     init(model: AppModel, server: MangaServer, series: SeriesSummary, chapters: [Chapter],
-         start: Chapter, startPage: Int? = nil) {
+         start: Chapter, startPage: Int? = nil, tutorial: ReadingMode? = nil) {
         self.model = model
         self.server = server
         self.series = series
         self.chapters = chapters.isEmpty ? [start] : chapters
         self.chapter = start
         self.initialPage = startPage
-        let settings = model.readerSettings(for: series)
+        self.tutorial = tutorial.map { ReaderTutorial.Progress(mode: $0) }
+        let settings = tutorial.map(TutorialSample.settings(for:)) ?? model.readerSettings(for: series)
         self.settings = settings
         self.navigator = ReaderNavigator(pageCount: 0, settings: settings)
         self.autoScrollLevel = WebtoonAutoScroll.nearestStep(model.autoScrollLevel)
@@ -212,7 +227,7 @@ final class ReaderSession {
     func start() async {
         guard !started else { return }
         started = true
-        model.noteReading(series)
+        if !isTutorial { model.noteReading(series) }
         await load(chapter: chapter, startPage: initialPage)
     }
 
@@ -330,6 +345,7 @@ final class ReaderSession {
     private func handle(_ result: PageTurnResult) {
         switch result {
         case .moved, .showTransition:
+            note(.turnPage)
             progressChanged()
         case .leaveChapter(let edge):
             guard chapter(across: edge) != nil else { return }
@@ -398,6 +414,7 @@ final class ReaderSession {
         guard newSettings != settings else { return }
         settings = newSettings
         navigator.updateSettings(newSettings)
+        guard !isTutorial else { return }
         model.setReaderSettings(newSettings, for: series.ref)
     }
 
@@ -408,6 +425,7 @@ final class ReaderSession {
         guard level != autoScrollLevel else { return }
         autoScrollLevel = level
         model.setAutoScrollLevel(level)
+        note(.changeSpeed)
     }
 
     // MARK: Remote: Play/Pause, HUD, Back
@@ -456,6 +474,7 @@ final class ReaderSession {
     func startAutoTurn() {
         guard settings.mode == .paged, loadState == .loaded, edge == nil, !isAutoTurning else { return }
         isAutoTurning = true
+        note(.startPlay)
         autoTurnTask = Task { [weak self] in
             while let self, self.isAutoTurning {
                 let seconds = WebtoonAutoScroll.secondsPerPage(self.autoScrollLevel)
@@ -470,7 +489,10 @@ final class ReaderSession {
     func stopAutoTurn() {
         autoTurnTask?.cancel()
         autoTurnTask = nil
-        if isAutoTurning { isAutoTurning = false }
+        if isAutoTurning {
+            isAutoTurning = false
+            note(.stopPlay)
+        }
     }
 
     /// A tap on the touch surface: shows the page number (or hides it).
@@ -482,6 +504,7 @@ final class ReaderSession {
     func showHUD() {
         guard !isMenuPresented else { return }
         isHUDVisible = true
+        note(.showPageNumber)
         hudTask?.cancel()
         let duration = hudDuration
         hudTask = Task { [weak self] in
@@ -527,6 +550,32 @@ final class ReaderSession {
             return true
         }
         return false
+    }
+
+    // MARK: Tutorial
+
+    /// Something the person did, for the tutorial's current step.
+    func note(_ goal: ReaderTutorial.Goal) {
+        guard tutorial != nil else { return }
+        tutorial?.record(goal)
+    }
+
+    /// Paged reader: the page was zoomed in or out (the view owns zoom).
+    func noteZoom(_ zoomed: Bool) {
+        note(zoomed ? .zoomIn : .zoomOut)
+    }
+
+    /// Tutorial only: bookmarks the page on screen in memory.
+    func toggleTutorialBookmark() {
+        let page = min(currentPage, max(0, pageCount - 1))
+        if tutorialBookmarks.contains(page) {
+            tutorialBookmarks.remove(page)
+            show(ReaderNotice(text: "Bookmark removed", systemImage: "bookmark.slash"))
+        } else {
+            tutorialBookmarks.insert(page)
+            show(ReaderNotice(text: "Bookmarked page \(page + 1)", systemImage: "bookmark.fill"))
+        }
+        note(.bookmark)
     }
 
     // MARK: Game controller
@@ -584,7 +633,7 @@ final class ReaderSession {
     /// Writes the position to this profile's saved state if it moved. Cheap
     /// enough for every page turn; survives the app being killed.
     private func writeLocalProgress() {
-        guard let progress = pendingProgress else { return }
+        guard !isTutorial, let progress = pendingProgress else { return }
         visitedPages[progress.chapterID] = progress.page
         guard progress != lastLocal else { return }
         lastLocal = progress
@@ -606,7 +655,7 @@ final class ReaderSession {
         saveTask?.cancel()
         saveTask = nil
         writeLocalProgress()
-        guard let progress = pendingProgress, progress != lastSaved else { return }
+        guard !isTutorial, let progress = pendingProgress, progress != lastSaved else { return }
         // Never move a finished chapter back to unread.
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
         lastSaved = progress
