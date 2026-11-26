@@ -20,6 +20,7 @@ struct SearchView: View {
             }
             .searchable(text: $query, prompt: "Series title")
             .seriesNavigation()
+            .themedScreen()
         }
         .resetsNavigationWhenLeft()
         .task(id: "\(model.contentKey)|\(query)") {

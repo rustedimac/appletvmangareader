@@ -83,6 +83,10 @@ struct SettingsView: View {
                         Label("Remote and Controller", systemImage: "appletvremote.gen4")
                     }
                     .accessibilityIdentifier("settings.controls")
+
+                    SettingsPicker("Theme", selection: themeBinding, options: AppTheme.allCases,
+                                   systemImage: "paintpalette") { $0.title }
+                        .accessibilityIdentifier("settings.theme")
                 }
 
                 // A guest can't change servers, logins, sync or backups.
@@ -152,6 +156,11 @@ struct SettingsView: View {
         }
 
         GuestStartSection()
+    }
+
+    /// Settings > Theme for the active profile (see `AppTheme`).
+    private var themeBinding: Binding<AppTheme> {
+        Binding(get: { model.appTheme }, set: { theme in model.updateBrowse { $0.theme = theme } })
     }
 
     /// In-app profiles are the fallback when there are no Apple TV users.

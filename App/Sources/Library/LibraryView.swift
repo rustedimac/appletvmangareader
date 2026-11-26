@@ -25,6 +25,7 @@ struct LibraryView: View {
             // so an edit in Settings (address, login) applies right away.
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: model.state.server($0.id) ?? $0) }
             .seriesNavigation()
+            .themedScreen()
         }
         .resetsNavigationWhenLeft()
     }
@@ -37,8 +38,7 @@ private struct ServerListView: View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Servers")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                 ForEach(servers) { server in
                     NavigationLink(value: server) {
                         HStack(spacing: 24) {
@@ -84,7 +84,7 @@ struct ServerLibraryView: View {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 20) {
                         Text(server.name)
-                            .font(.title3.bold())
+                            .themedHeading(.title3, fallback: .title3.bold())
                         if let errorMessage {
                             BrowseMessage(title: "Couldn't reach \(server.name)", message: errorMessage,
                                           systemImage: "wifi.exclamationmark") { Task { await load() } }
@@ -124,6 +124,7 @@ struct ServerLibraryView: View {
             }
             await load()
         }
+        .themedScreen()
     }
 
     /// The A–Z bar only makes sense when the grid is sorted by title.

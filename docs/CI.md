@@ -1,5 +1,9 @@
 # CI and where tests run
 
+What to test and how to judge it: [TESTING_GUIDE.md](TESTING_GUIDE.md). Every
+feature PR adds or updates its rows there (`tools/check_testing_guide.py`
+runs in the UI lint job).
+
 ## GitHub Actions: smoke on PRs, full suite on main
 
 `.github/workflows/ci.yml` runs on GitHub's runners:

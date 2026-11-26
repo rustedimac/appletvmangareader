@@ -230,6 +230,18 @@ final class HomeLayoutTests: XCTestCase {
 final class BrowsePreferencesTests: XCTestCase {
     let profile = UUID()
 
+    func testThemeRoundTripsAndUnknownFallsBack() throws {
+        var prefs = BrowsePreferences()
+        XCTAssertEqual(prefs.theme, .standard)
+        prefs.theme = .blackStock
+        let encoded = try JSONEncoder().encode(prefs)
+        XCTAssertEqual(String(decoding: encoded, as: UTF8.self), #"{"theme":"blackStock"}"#)
+        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: encoded).theme, .blackStock)
+        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: Data(#"{"theme":"vaporwave"}"#.utf8)).theme,
+                       .standard, "a theme from a newer version falls back to Default")
+        XCTAssertEqual(AppTheme.allCases.filter(\.isLight), [.celadon, .newsprint])
+    }
+
     func testDefaultsEncodeToNothingAndOldStateDecodes() throws {
         let data = try JSONEncoder().encode(BrowsePreferences())
         XCTAssertEqual(String(decoding: data, as: UTF8.self), "{}")

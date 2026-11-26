@@ -43,6 +43,7 @@ struct ProfilePickerView: View {
                     return PINGate<EmptyView>.feedback(result)
                 }
             }
+            .themedScreen()
         }
     }
 

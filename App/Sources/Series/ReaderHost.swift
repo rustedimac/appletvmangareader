@@ -17,5 +17,9 @@ struct ReaderHost: View {
 
     var body: some View {
         ReaderView(series: route.series, chapters: route.chapters, start: route.start, startPage: route.startPage)
+            // The reader keeps its own page colors and dark menus whatever
+            // the app theme (Settings > Theme). This cover is its own
+            // presentation, so it doesn't change the screens behind it.
+            .preferredColorScheme(.dark)
     }
 }

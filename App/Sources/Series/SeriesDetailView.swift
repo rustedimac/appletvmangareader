@@ -45,6 +45,7 @@ struct SeriesDetailView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 60)
         }
+        .themedScreen()
         .defaultFocus($focus, .primary)
         .task { await load() }
         .fullScreenCover(item: $reader, onDismiss: {
@@ -86,7 +87,7 @@ struct SeriesDetailView: View {
 
             VStack(alignment: .leading, spacing: 20) {
                 Text(summary.title)
-                    .font(.title2.bold())
+                    .themedHeading(.title2, fallback: .title2.bold())
                     .lineLimit(2)
                     .accessibilityIdentifier("series.title")
                 if let line = metaLine, !line.isEmpty {
@@ -205,8 +206,7 @@ struct SeriesDetailView: View {
         } else {
             LazyVStack(alignment: .leading, spacing: 12) {
                 Text("Chapters")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                 ForEach(detail.displayChapters(newestFirst: newestFirst)) { chapter in
                     let earlier = detail.chapters(before: chapter)
                     ChapterRow(chapter: chapter, seriesHasProgress: detail.hasProgress,
