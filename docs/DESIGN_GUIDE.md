@@ -262,7 +262,8 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 
 - Every setting a series (or a library) can override also has a global
   default for the profile, on the matching settings screen: reader settings
-  in Default Reader Settings, library sort and grid order in Customize Home.
+  in Default Reader Settings, library sort, grid order and filters in Library
+  Defaults (linked from Settings, Customize Home and every Sort & View).
 - The narrower value only overrides; while it's unset, changing the global
   default changes that series too.
 - Wherever a narrower value is set, offer "Reset to Default" next to it, and

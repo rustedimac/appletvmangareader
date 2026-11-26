@@ -75,6 +75,21 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     public static func chapterCount(for n: Int) -> Int { 3 + n % 12 }
 
+    /// Even series are ongoing, odd ones completed, except every fifth
+    /// series is on hiatus and every seventh cancelled.
+    public static func status(for n: Int) -> PublicationStatus {
+        if n % 7 == 0 { return .cancelled }
+        if n % 5 == 0 { return .hiatus }
+        return n % 2 == 0 ? .ongoing : .completed
+    }
+
+    public static let genreNames = ["Adventure", "Comedy", "Mystery"]
+
+    /// "Demo" plus one of `genreNames`, by id.
+    public static func genres(for n: Int) -> [String] {
+        [genreNames[n % genreNames.count], "Demo"]
+    }
+
     private func summary(_ n: Int) -> SeriesSummary {
         let read = chapters(n).filter(\.isRead).count
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
@@ -128,8 +143,20 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     /// "Harbor", ...); added and updated are newest id first; read is most
     /// recently read first, then by title.
     public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: sort, filter: .empty)
+    }
+
+    public var libraryFilterSupport: LibraryFilterSupport { .all }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                       filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
         try await wait()
         let inCategory = Array(1...seriesCount).filter { category.id != "short" || $0 % 3 == 0 }
+            .filter { n in
+                let read = chapters(n).filter(\.isRead).count
+                let total = Self.chapterCount(for: n)
+                return filter.matches(status: Self.status(for: n), unread: total - read, total: total, genres: Self.genres(for: n))
+            }
         let byTitle = inCategory.sorted { Self.title(for: $0).localizedStandardCompare(Self.title(for: $1)) == .orderedAscending }
         let ids: [Int]
         switch sort {
@@ -144,6 +171,11 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         guard start < ids.count else { return Paged(items: [], hasMore: false) }
         let end = min(ids.count, start + pageSize)
         return Paged(items: ids[start..<end].map(summary), hasMore: end < ids.count)
+    }
+
+    public func filterGenres(in category: MangaCategory) async throws -> [String] {
+        try await wait()
+        return LibraryFilter.genreList(Self.genreNames + ["Demo"])
     }
 
     public func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary] {
@@ -173,8 +205,8 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         let n = try number(seriesID)
         return SeriesDetail(summary: summary(n),
                             synopsis: "A generated demo series used to try out the app without a server. Number \(n) of \(seriesCount).",
-                            authors: ["Demo Author"], genres: ["Adventure", "Demo"],
-                            status: n % 2 == 0 ? "Ongoing" : "Completed", chapters: chapters(n))
+                            authors: ["Demo Author"], genres: Self.genres(for: n),
+                            status: Self.status(for: n).title, chapters: chapters(n))
     }
 
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {

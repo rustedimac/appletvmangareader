@@ -444,6 +444,26 @@ hold the accessors.
   `lastReadChapter`, sorts on the client, and keeps page 1's answer for
   five minutes so later pages don't download the category again. If the
   server rejects those fields it falls back to the basic ones.
+- **Filters.** `LibraryFilter` (Browse/LibraryFilter.swift): publication
+  status (`PublicationStatus`: ongoing, completed, hiatus, cancelled; a set,
+  any of them), read progress (`ReadProgressFilter`: any, not started, in
+  progress, not finished, finished) and genres (names, any of them). Parts
+  combine with And. Each backend says what it can filter with
+  `MangaServer.libraryFilterSupport`; Sort & View offers only those and
+  `series(in:page:pageSize:sort:filter:)` ignores the rest. Kavita sends
+  FilterV2 statements (PublicationStatus 2 Contains, ReadProgress 20 as a
+  percentage, Genres 18 Contains genre ids from `api/Metadata/genres`).
+  Komga sends `seriesStatus` / `readStatus` / `genre` search conditions.
+  Suwayomi filters its in-memory category (it also asks for `status genre`)
+  and counts read progress in chapters. Free Library filters genres from
+  its catalog. OPDS has nothing to filter on. Status mappings are in the
+  `PublicationStatus` doc comment.
+- **Library Defaults** (`Settings/LibraryDefaultsView`, from Settings,
+  Customize Home and Sort & View): `BrowsePreferences.libraryDefaults`
+  (`LibraryDefaults`: sort, grid order, status and read-progress filter).
+  `LibraryOptions` fields stay nil until a library sets its own;
+  `BrowsePreferences.resolvedOptions(for:)` fills them from the defaults.
+  Genres are per library only (each library has its own list).
 - **A–Z jump.** `AlphabetIndex` maps titles to `#`/A–Z (accents and
   full-width letters folded, CJK under `#`) and finds the first title at or
   past a letter; `.needsMore` means the grid loads the next page and tries
