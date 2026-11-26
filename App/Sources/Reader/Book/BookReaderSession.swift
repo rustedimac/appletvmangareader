@@ -387,14 +387,19 @@ final class BookReaderSession {
         let chapter = self.chapter
         let series = self.series
         let model = self.model
-        Task {
-            await model.recordProgress(chapter: chapter, series: series,
-                                       page: progress.section, completed: progress.completed)
-        }
+        model.startRecordingProgress(chapter: chapter, series: series,
+                                     page: progress.section, completed: progress.completed)
     }
+
+    @ObservationIgnored private var refreshedOnClose = false
 
     func close() {
         flushProgress()
+        // The view closes it on Menu and again on disappear.
+        if !refreshedOnClose {
+            refreshedOnClose = true
+            model.refreshSeriesProgress(series.ref)
+        }
         for task in fetches.values { task.cancel() }
     }
 }

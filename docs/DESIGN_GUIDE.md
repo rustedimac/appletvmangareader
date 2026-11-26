@@ -152,6 +152,17 @@ Posters (`SeriesPoster`):
   badge text on a translucent tint: it disappears on light covers.
   `PosterLayoutUITests` checks the title rules.
 
+Every poster progress bar carries its percentage ("40%", from
+`PosterBadges.percentText`, never "0%" once something is read or "100%"
+before the end) unless the profile turns off Show Percentage Read
+(`BrowsePreferences.showsProgressPercent`, on by default). Beside the bar
+under the title it is `.caption2` `.secondary`, fixed size, on the same row,
+so the bar gives up width and the number never clips. On the cover (when the
+title bar isn't shown) it sits bottom trailing above the thin bar on the
+same dark plate as the format badge. Posters lay
+`AppModel.withCurrentProgress` over their summary, so progress made after a
+row loaded (reading, Mark as Unread) shows without reloading the row.
+
 ## 7. Components
 
 Shared views live in `App/Sources/Shared/Design/`. Use them for new screens.
