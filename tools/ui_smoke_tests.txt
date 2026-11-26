@@ -1,0 +1,13 @@
+# UI test classes that run on every PR push (about 13 minutes serial).
+# The full suite runs on every merge to main and nightly; see docs/CI.md.
+# Pick classes that cover a main path in a short time. Keep the total near
+# 15 minutes: every minute here is paid by every PR push.
+SmokeUITests
+BrowseUITests
+PagedReaderUITests
+WebtoonReaderUITests
+BookReaderUITests
+ProfilesUITests
+AppleTVUserUITests
+ServersUITests
+MarkUnreadUITests

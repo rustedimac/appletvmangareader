@@ -162,7 +162,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                   query: ["pageNumber": "1", "pageSize": String(fetch), "libraryId": String(single)],
                                   body: EmptyBody())
             }
-            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(items.map { summary($0, feedDate: $0.latestReadDate) }.scoped(to: categoryScope).prefix(limit))
         case .newlyAdded:
             var filter = KavitaFilterV2()
             if let libraries { filter.statements = [KavitaFilterV2.libraries(libraries)] }
@@ -171,15 +171,17 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                   query: ["pageNumber": "1", "pageSize": String(limit)],
                                   body: filter)
             }
-            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(items.map { summary($0, feedDate: $0.created) }.scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
             // Kavita returns a fixed-size list with no library filter.
             let items: [KavitaRecentlyUpdatedDTO] = try await withAuth {
                 try await $0.post("api/Series/recently-updated-series", body: EmptyBody())
             }
             let all = items.map {
-                SeriesSummary(ref: ref($0.seriesId), title: $0.seriesName ?? "Untitled",
-                              coverURL: coverURL(seriesID: $0.seriesId), libraryID: $0.libraryId.map(String.init))
+                var s = SeriesSummary(ref: ref($0.seriesId), title: $0.seriesName ?? "Untitled",
+                                      coverURL: coverURL(seriesID: $0.seriesId), libraryID: $0.libraryId.map(String.init))
+                s.feedDate = Self.realDate($0.created)
+                return s
             }
             return Array(all.scoped(to: categoryScope).prefix(limit))
         }
@@ -216,7 +218,10 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                         seriesFormat: ContentFormat(kavitaFormat: series.format))
             )
             // Kavita sends 0001-01-01 for "never".
-            detail.latestChapterAt = series.lastChapterAdded.flatMap { $0.timeIntervalSince1970 > 0 ? $0 : nil }
+            detail.latestChapterAt = Self.realDate(series.lastChapterAdded)
+            if let library = series.libraryName, !library.isEmpty {
+                detail.placement = SeriesPlacement(categories: [library])
+            }
             return detail
         }
     }
@@ -303,6 +308,13 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                              unreadCount: unread, libraryID: dto.libraryId.map(String.init),
                              pageCount: dto.pages, pagesRead: dto.pagesRead,
                              format: ContentFormat(kavitaFormat: dto.format))
+    }
+
+    /// `summary(_:)` with the date that orders a Home feed.
+    func summary(_ dto: KavitaSeriesDTO, feedDate: Date?) -> SeriesSummary {
+        var s = summary(dto)
+        s.feedDate = Self.realDate(feedDate)
+        return s
     }
 
     func coverURL(seriesID: Int) -> URL? {
