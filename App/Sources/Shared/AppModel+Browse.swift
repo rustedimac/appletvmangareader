@@ -12,6 +12,7 @@ extension AppModel {
 
     var homeLayout: HomeLayout { browsePreferences.home }
     var gridDensity: GridDensity { browsePreferences.gridDensity }
+    var posterCaption: PosterCaption { browsePreferences.posterCaption }
     /// Merged Home rows (default) or one row per server.
     var homeServerRows: HomeServerRows { homeLayout.serverRows }
     /// Where posters name their server in rows that mix servers.
@@ -57,6 +58,8 @@ extension AppModel {
     /// Called whenever series detail loads, with the summary the user
     /// navigated with. Saves only when the Caught Up row changes.
     func noteSeriesDetail(_ detail: SeriesDetail, summary: SeriesSummary) {
+        seriesCounts.record(SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format ?? summary.format),
+                            for: summary.ref)
         var prefs = browsePreferences
         let before = prefs.caughtUp
         prefs.noteCaughtUp(detail, summary: summary, now: Date())

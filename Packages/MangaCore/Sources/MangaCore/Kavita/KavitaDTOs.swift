@@ -7,7 +7,35 @@ struct KavitaUserDTO: Decodable {
     var username: String?
     var token: String?
     var refreshToken: String?
+    /// The user's OPDS auth key.
     var apiKey: String?
+    /// Every auth key on the account (Kavita 0.9+).
+    var authKeys: [KavitaAuthKeyDTO]?
+}
+
+struct KavitaLoginDTO: Encodable {
+    var username: String
+    var password: String
+}
+
+/// `AuthKeyDto`.
+struct KavitaAuthKeyDTO: Decodable {
+    var key: String
+    var name: String
+    var expiresAtUtc: Date?
+
+    func isExpired(now: Date) -> Bool {
+        guard let expiresAtUtc else { return false }
+        return expiresAtUtc <= now
+    }
+}
+
+/// `RotateAuthKeyRequestDto`, for `api/Account/create-auth-key`. No
+/// `expiresUtc` means the key never expires.
+struct KavitaCreateAuthKeyDTO: Encodable {
+    var keyLength: Int
+    var name: String
+    var expiresUtc: String?
 }
 
 struct KavitaLibraryDTO: Decodable {
@@ -78,6 +106,7 @@ struct KavitaChapterDTO: Decodable {
     var volumeId: Int?
     var created: Date?
     var lastModifiedUtc: Date?
+    var lastReadingProgressUtc: Date?
     var files: [KavitaMangaFileDTO]?
 }
 

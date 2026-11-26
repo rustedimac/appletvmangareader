@@ -27,7 +27,8 @@ struct HomeView: View {
                         Label("Customize Home", systemImage: "slider.horizontal.3")
                     }
                     .accessibilityIdentifier("home.customize")
-                    .frame(maxWidth: .infinity)
+                    // Down from any poster in the last row reaches it.
+                    .centeredFocusRow()
                     .padding(.top, 20)
                 }
                 .padding(.bottom, 60)
@@ -153,9 +154,14 @@ struct HomeView: View {
         let key = reloadKey
         generation += 1
         let mine = generation
+        // Queued progress goes up first so Continue Reading is current.
+        await model.syncPendingProgress()
+        guard !Task.isCancelled, mine == generation else { return }
         let servers = model.servers
-        let sources = servers.map {
-            HomeSource(server: model.client(for: $0), includeContinueReading: model.syncsProgress(to: $0.id))
+        let sources = servers.map { server in
+            let syncs = model.syncsProgress(to: server.id)
+            return HomeSource(server: model.client(for: server), includeContinueReading: syncs,
+                              localContinueReading: syncs ? [] : model.localContinueReading(for: server))
         }
         let previous = loadedKey == key ? Dictionary(sections.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) : [:]
         var fresh: [UUID: HomeServerSection] = [:]

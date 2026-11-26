@@ -196,7 +196,7 @@ final class BookmarkTests: XCTestCase {
         XCTAssertEqual(items, [ServerBookmark(seriesID: "5", chapterID: "42", volumeID: "10", page: 4)])
         let url = try XCTUnwrap(mock.lastRequest(containing: "series-bookmarks")?.url?.absoluteString)
         XCTAssertTrue(url.contains("seriesId=5"), url)
-        XCTAssertEqual(mock.lastRequest(containing: "series-bookmarks")?.value(forHTTPHeaderField: "Authorization"), "Bearer jwt-1")
+        XCTAssertEqual(mock.lastRequest(containing: "series-bookmarks")?.value(forHTTPHeaderField: "x-api-key"), "KEY")
     }
 
     func testKavitaAllBookmarksIncludeSeries() async throws {

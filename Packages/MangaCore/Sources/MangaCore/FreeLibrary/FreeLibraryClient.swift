@@ -37,7 +37,8 @@ public final class FreeLibraryClient: MangaServer {
     func ref(_ id: String) -> SeriesRef { SeriesRef(serverID: config.id, seriesID: id) }
 
     func summary(_ s: FreeLibraryCatalog.Series) -> SeriesSummary {
-        SeriesSummary(ref: ref(s.id), title: s.title, coverURL: coverURL(s), libraryID: s.collection)
+        SeriesSummary(ref: ref(s.id), title: s.title, coverURL: coverURL(s), libraryID: s.collection,
+                      chapterCount: s.chapters.flatMap { $0.isEmpty ? nil : $0.count })
     }
 
     /// The catalog's `added` (yyyy-MM-dd) as noon UTC that day, so Newly

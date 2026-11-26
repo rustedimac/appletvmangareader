@@ -17,6 +17,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
     private let title: String
     private let hero: Hero
     private let content: Content
+    @State private var navigator = SettingsNavigator()
 
     init(_ title: String, @ViewBuilder hero: () -> Hero, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -64,6 +65,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 .accessibilityIdentifier("settingsPage.form")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .settingsNavigation(navigator)
     }
 }
 

@@ -7,12 +7,13 @@
 | `Packages/MangaCore` | Swift package with all non-UI logic. No SwiftUI. Tested with `swift test`. |
 | `MangaCore/Models` | Shared value types: `ServerConfig`, `Profile`, `SeriesSummary`, `SeriesDetail`, `Chapter`, `PageDescriptor`, `HomeFeed`. |
 | `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
+| `MangaCore/Kavita` | `KavitaClient` (REST, auth key in `x-api-key`, username/password sign-in via `KavitaClient.signIn`) and `KavitaOPDS` URL parsing. |
+| `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`; no auth, basic auth, or `login` + Bearer tokens). |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
-| `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`, optional basic auth). |
 | `MangaCore/Komga` | `KomgaClient` (REST `api/v1`/`api/v2`, API key or basic auth). |
 | `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
-| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
+| `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain), `ProgressSync` (queued pushes, latest-wins merge). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
@@ -83,7 +84,8 @@ answers, as a safety net.
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 
 Kavita
-- Login: `POST api/Plugin/authenticate?apiKey=…&pluginName=…` → `{ token }`, used as `Authorization: Bearer`.
+- Auth: every call sends the profile's auth key as `x-api-key`. Older servers that refuse it get `POST api/Plugin/authenticate?apiKey=…&pluginName=…` → `{ token }` as `Authorization: Bearer`. Logging in replaces the user's only refresh token, so the app avoids it (see [PROGRESS_SYNC.md](PROGRESS_SYNC.md)).
+- Username/password sign-in: `POST api/Account/login`, then reuse or `create-auth-key` "Apple TV Manga Reader". The password is never stored.
 - Images take `?apiKey=` and need no Bearer header: `api/Reader/image`, `api/Image/series-cover`.
 - `api/Reader/file-dimensions?chapterId=` gives every page's width/height up front, so spreads are known before loading.
 - List endpoints return a `Pagination` response header.
@@ -282,6 +284,28 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Reading progress sync
+
+Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
+
+- `AppModel.recordProgress` writes local progress (with a secret-free
+  `SeriesSummary` for the local Continue Reading row), queues a
+  `PendingProgress` when the profile syncs, pushes, and clears the queue
+  entry once the server accepts it.
+- `AppModel.seriesDetail` merges the server's chapters with queued changes
+  through `ProgressSync.reconcile` (latest `lastReadAt` wins per chapter)
+  and pushes the local winners. `AppModel.syncPendingProgress` runs it for
+  every series with a queue before Home loads.
+- `SeriesDetail.continueChapter` follows Kavita's continue point: the most
+  recently read unfinished chapter, else the first unread after the last
+  read one.
+- Profiles that don't sync to a server get `HomeSource.localContinueReading`.
+- The server editor signs Kavita in with a username and password
+  (`AppModel.resolveCredential`, faked in UI tests: reader / secret) and
+  turns sync on for Suwayomi logins that map to a server user.
+- Tests: `ProgressSyncTests`, sign-in tests in `KavitaClientTests` and
+  `SuwayomiClientTests`, UI tests in `ProgressSyncUITests`.
 
 ## Library browsing and Home layout
 
