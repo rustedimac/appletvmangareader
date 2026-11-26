@@ -225,11 +225,21 @@ final class ContentFilteredServerTests: XCTestCase {
         XCTAssertTrue(page.items.isEmpty)
         XCTAssertFalse(page.hasMore)
 
-        let some = ContentFilteredServer(base: CountingServer(seriesCount: 12), filter: ContentFilter(hiddenGenres: ["Horror"]))
-        // Page 3 of size 2 is 5, 6: 5 is hidden.
-        let p3 = try await some.series(in: MangaCategory(id: "all", name: "All"), page: 3, pageSize: 2)
-        XCTAssertEqual(p3.items.map(\.ref.seriesID), ["6"])
-        XCTAssertTrue(p3.hasMore)
+        // A page with one hidden and one shown series keeps just the shown one.
+        let plain = CountingServer(seriesCount: 12)
+        let some = ContentFilteredServer(base: plain, filter: ContentFilter(hiddenGenres: ["Horror"]))
+        let all = MangaCategory(id: "all", name: "All")
+        let isHorror = { (s: SeriesSummary) in Int(s.ref.seriesID)! % 5 == 0 }
+        var mixedPage: Int?
+        for n in 1...6 {
+            let items = try await plain.series(in: all, page: n, pageSize: 2).items
+            if items.contains(where: isHorror) && !items.allSatisfy(isHorror) { mixedPage = n; break }
+        }
+        let n = try XCTUnwrap(mixedPage, "the demo library should have a page with series 5 or 10 beside another")
+        let expected = try await plain.series(in: all, page: n, pageSize: 2).items.filter { !isHorror($0) }
+        let filtered = try await some.series(in: all, page: n, pageSize: 2)
+        XCTAssertEqual(filtered.items.map(\.ref.seriesID), expected.map(\.ref.seriesID))
+        XCTAssertEqual(filtered.items.count, 1)
     }
 
     func testSortedPagesKeepTheSortAndFilter() async throws {
