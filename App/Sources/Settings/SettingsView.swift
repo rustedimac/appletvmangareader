@@ -44,6 +44,25 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.readerDefaults")
 
+                    // A guest keeps the host's filter and can't change it.
+                    if !model.isGuest {
+                        NavigationLink {
+                            PINGate(kind: .profile(model.activeProfile.id),
+                                    reason: "Enter the PIN to change what this profile can see.") {
+                                ContentSettingsView()
+                            }
+                        } label: {
+                            HStack {
+                                Label("Content & PIN", systemImage: model.hasPIN(model.activeProfile.id) ? "lock.fill" : "lock.open")
+                                Spacer()
+                                Text(model.contentFilter.isActive ? "Filtered" : "Everything shown")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.content")
+                    }
+
                     NavigationLink {
                         BrowseSettingsView()
                     } label: {
@@ -81,10 +100,13 @@ struct SettingsView: View {
         Section {
             ForEach(model.servers) { server in
                 NavigationLink {
-                    if server.kind == .freeLibrary {
-                        FreeLibrarySettingsView(server: server)
-                    } else {
-                        ServerEditorView(editing: server)
+                    PINGate(kind: .profile(model.activeProfile.id),
+                            reason: "Enter the PIN to change servers.") {
+                        if server.kind == .freeLibrary {
+                            FreeLibrarySettingsView(server: server)
+                        } else {
+                            ServerEditorView(editing: server)
+                        }
                     }
                 } label: {
                     ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
@@ -94,7 +116,10 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.server.\(server.name)")
             }
             NavigationLink {
-                ServerEditorView(editing: nil)
+                PINGate(kind: .profile(model.activeProfile.id),
+                        reason: "Enter the PIN to add a server.") {
+                    ServerEditorView(editing: nil)
+                }
             } label: {
                 Label("Add Server", systemImage: "plus")
             }

@@ -87,9 +87,29 @@ public protocol MangaServer: Sendable {
     /// Adds any auth headers the server needs to fetch an image URL it
     /// returned (covers and pages).
     func authorize(_ request: URLRequest) -> URLRequest
+
+    /// The genres and tags used on the server, for the content filter
+    /// settings. Not limited by `categoryScope`.
+    func contentFacets() async throws -> ContentFacets
+
+    /// Ids of the library series `filter` hides (genres, tags, age rating).
+    /// Empty when the filter is inactive. Throws rather than guessing, so
+    /// callers can fail closed. `ContentFilteredServer` uses this to filter
+    /// every list.
+    func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String>
 }
 
 public extension MangaServer {
+    /// Backends without genre data offer nothing to filter on.
+    func contentFacets() async throws -> ContentFacets { ContentFacets() }
+
+    /// A backend that can't tell what a filter hides fails closed: with an
+    /// active filter it shows nothing rather than everything.
+    func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
+        guard filter.isActive else { return [] }
+        throw MangaError.decoding("This server can't apply content filters.")
+    }
+
     func markRead(chapters: [Chapter], libraryID: String?) async throws {
         for chapter in chapters {
             try await saveProgress(chapter: chapter, libraryID: libraryID,
@@ -138,12 +158,21 @@ public extension MangaServer {
 public enum MangaServerFactory {
     /// `categoryScope` limits the client to these library/category ids
     /// (`ProfileServerSettings.selectedCategoryIDs`); nil means everything.
+    /// An active `contentFilter` wraps the client in `ContentFilteredServer`.
     ///
     /// A server with several addresses gets a `FailoverTransport`, so the
     /// client reaches it through whichever address answers.
     public static func make(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>? = nil,
+                            contentFilter: ContentFilter = .none,
                             transport: HTTPTransport = URLSessionTransport(),
                             router: ServerAddressRouter = .shared) -> MangaServer {
+        let client = makeUnfiltered(config: config, credential: credential, categoryScope: categoryScope,
+                                    transport: transport, router: router)
+        return ContentFilteredServer.wrapping(client, filter: contentFilter)
+    }
+
+    static func makeUnfiltered(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>?,
+                               transport: HTTPTransport, router: ServerAddressRouter) -> MangaServer {
         let transport: HTTPTransport = config.hasAlternateAddresses
             ? FailoverTransport(inner: transport, config: config, router: router)
             : transport

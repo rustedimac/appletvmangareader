@@ -11,6 +11,18 @@ final class AppModel {
     private(set) var state: AppState
     @ObservationIgnored let stateStore: StateStore
     @ObservationIgnored let secrets: SecretStore
+    /// Profile PIN hashes (Keychain in the app, in memory for UI tests).
+    @ObservationIgnored let pins: PINStore
+    /// Which PIN-protected profiles are unlocked this session.
+    private(set) var locks = ProfileLocks()
+    /// Bumped whenever a PIN is set or removed. The Keychain isn't
+    /// observable, so views that read `hasPIN` depend on this instead.
+    private(set) var pinRevision = 0
+    /// For each server, the series the active profile's content filter
+    /// hides there. Used for lists built from local data (Favorites, Top
+    /// Shelf). A server missing here hides all of its favorites while a
+    /// filter is on. Refreshed by `refreshHiddenSeries()`.
+    private(set) var hiddenSeries: [UUID: Set<String>] = [:]
     @ObservationIgnored let transport: HTTPTransport
     @ObservationIgnored private var clientCache: [String: MangaServer] = [:]
     /// True while the "Who's reading?" picker is showing. Set at launch when
@@ -54,9 +66,11 @@ final class AppModel {
     /// A guest's book positions, in memory only.
     @ObservationIgnored var guestBookPositions = BookPositionStore(backing: InMemoryKeyValueStore())
 
-    init(stateStore: StateStore, secrets: SecretStore, transport: HTTPTransport = URLSessionTransport(),
+    init(stateStore: StateStore, secrets: SecretStore, pins: PINStore = InMemoryPINStore(),
+         transport: HTTPTransport = URLSessionTransport(),
          identity: DeviceUserIdentity = SingleUserDevice(), sharedServers: SharedServerStore? = nil) {
         self.stateStore = stateStore
+        self.pins = pins
         let perAppleTVUser = identity.separatesAppDataPerUser
         self.perAppleTVUser = perAppleTVUser
         self.sharedServers = perAppleTVUser ? sharedServers : nil
@@ -71,14 +85,18 @@ final class AppModel {
         if let id = launch.profileID, id != state.activeProfileID { state.setActiveProfile(id) }
         self.isPickingProfile = launch.showsPicker
         adoptSharedServers()
+        // A profile that asks for its PIN never opens straight away.
+        if needsPINToOpen(activeProfile.id) { isPickingProfile = true }
     }
 
     static func live() -> AppModel {
         if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
             let store = StateStore(backing: InMemoryKeyValueStore())
             ServerAddressRouter.shared.reset(store: InMemoryKeyValueStore())
+            let pins = InMemoryPINStore()
             if let seeded = UITestingSeed.state() { store.save(seeded) }
-            let model = AppModel(stateStore: store, secrets: InMemorySecretStore(),
+            UITestingSeed.seedPINs(store.load(), into: pins)
+            let model = AppModel(stateStore: store, secrets: InMemorySecretStore(), pins: pins,
                                  identity: FixedDeviceUserIdentity(separatesAppDataPerUser: UITestingSeed.perAppleTVUser),
                                  sharedServers: InMemorySharedServerStore(UITestingSeed.sharedServers()))
             if ProcessInfo.processInfo.arguments.contains("-demoServers") { model.installDemoServers() }
@@ -95,6 +113,7 @@ final class AppModel {
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
+                             pins: KeychainPINStore(),
                              identity: AppleTVUserIdentity(),
                              sharedServers: KeychainSharedServerStore())
         model.installFreeLibraryIfNeeded()
@@ -156,8 +175,11 @@ final class AppModel {
     var servers: [ServerConfig] { state.servers }
 
     func switchProfile(_ id: UUID) {
+        let previous = activeProfile.id
         update { $0.setActiveProfile(id) }
         resetClients()
+        hiddenSeries = [:]
+        if previous != id { locks.lock(previous) }
     }
 
     @discardableResult
@@ -176,6 +198,9 @@ final class AppModel {
     func removeProfile(_ id: UUID) {
         guard state.profiles.count > 1 else { return }
         for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
+        pins.setPIN(nil, profile: id)
+        pinRevision += 1
+        locks.lock(id)
         update { $0.removeProfile(id) }
         resetClients()
     }
@@ -186,10 +211,12 @@ final class AppModel {
     /// the libraries/categories that profile imports.
     func client(for server: ServerConfig) -> MangaServer {
         let scope = selectedCategories(for: server)
-        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.addresses.map(\.absoluteString).joined(separator: ","))|\(Self.scopeKey(scope))"
+        let filter = contentFilter
+        let key = "\(activeProfile.id.uuidString)|\(server.id.uuidString)|\(server.addresses.map(\.absoluteString).joined(separator: ","))|\(Self.scopeKey(scope))|\(filter.cacheKey)"
         if let cached = clientCache[key] { return cached }
         let credential = secrets.credential(profile: loginProfileID, server: server.id)
-        let client = makeClient(server, credential, scope, transport)
+        // Every screen gets the profile's content filter through the client.
+        let client = ContentFilteredServer.wrapping(makeClient(server, credential, scope, transport), filter: filter)
         clientCache[key] = client
         return client
     }
@@ -199,9 +226,10 @@ final class AppModel {
         scope.map { "only:" + $0.sorted().joined(separator: ",") } ?? "all"
     }
 
-    /// Changes whenever the active profile's selection for `server` does.
+    /// Changes whenever the active profile's selection for `server` or its
+    /// content filter does.
     func scopeKey(for server: ServerConfig) -> String {
-        Self.scopeKey(selectedCategories(for: server))
+        Self.scopeKey(selectedCategories(for: server)) + "|" + contentFilter.cacheKey
     }
 
     func client(for ref: SeriesRef) -> MangaServer? {
@@ -593,7 +621,8 @@ final class AppModel {
 
     /// This profile's own Continue Reading for a server it doesn't sync to.
     func localContinueReading(for server: ServerConfig) -> [SeriesSummary] {
-        state.localContinueReading(server: server.id, profile: activeProfile.id)
+        // Local like Favorites, so the content filter applies here too.
+        visibleSeries(state.localContinueReading(server: server.id, profile: activeProfile.id))
     }
 
     // MARK: Reader settings
@@ -619,5 +648,113 @@ final class AppModel {
     func setDefaultReaderSettings(_ settings: ReaderSettings) {
         let profile = activeProfile.id
         update { $0.setDefaultReaderSettings(settings, profile: profile) }
+    }
+
+    // MARK: Content filter
+
+    /// What the active profile hides (genres, tags, age limit).
+    var contentFilter: ContentFilter { state.contentFilter(profile: activeProfile.id) }
+
+    func setContentFilter(_ filter: ContentFilter) {
+        let profile = activeProfile.id
+        update { $0.setContentFilter(filter, profile: profile) }
+        clientCache.removeAll()
+        hiddenSeries = [:]
+    }
+
+    /// Genres and tags across every server, for the filter checklist.
+    /// Servers that can't be reached are skipped.
+    func contentFacets() async -> ContentFacets {
+        let clients = servers.map { client(for: $0) }
+        let all = await withTaskGroup(of: ContentFacets?.self) { group in
+            for c in clients { group.addTask { try? await c.contentFacets() } }
+            var out: [ContentFacets] = []
+            for await f in group { if let f { out.append(f) } }
+            return out
+        }
+        return ContentFacets.merged(all, keeping: contentFilter)
+    }
+
+    /// Loads which series each server hides for the active profile, for
+    /// `favorites` and Top Shelf. Servers that fail stay missing, so their
+    /// favorites stay hidden.
+    func refreshHiddenSeries() async {
+        let filter = contentFilter
+        guard filter.isActive else {
+            hiddenSeries = [:]
+            return
+        }
+        let clients = servers.map { client(for: $0) }
+        let loaded = await withTaskGroup(of: (UUID, Set<String>?).self) { group in
+            for c in clients {
+                group.addTask { (c.config.id, try? await c.hiddenSeriesIDs(for: filter)) }
+            }
+            var out: [UUID: Set<String>] = [:]
+            for await (id, ids) in group { if let ids { out[id] = ids } }
+            return out
+        }
+        guard filter == contentFilter else { return }
+        hiddenSeries = loaded
+    }
+
+    /// Series from local data that the active profile may see. Anything
+    /// built from saved series (Favorites, Top Shelf) goes through this.
+    func visibleSeries(_ series: [SeriesSummary]) -> [SeriesSummary] {
+        ContentVisibility.visible(series, filter: contentFilter, hidden: hiddenSeries)
+    }
+
+    /// The active profile's bookmarks, leaving out series its content
+    /// filter hides.
+    var visibleBookmarks: [Bookmark] {
+        let allowed = Set(visibleSeries(bookmarks.map(\.series)).map(\.ref))
+        return bookmarks.filter { allowed.contains($0.series.ref) }
+    }
+
+    // MARK: Profile PINs
+
+    func hasPIN(_ profile: UUID) -> Bool {
+        _ = pinRevision
+        return pins.hasPIN(profile: profile)
+    }
+
+    /// True when the profile has a PIN that hasn't been entered this session.
+    func isLocked(_ profile: UUID) -> Bool { !locks.isUnlocked(profile, store: pins) }
+
+    func requiresPINToOpen(_ profile: UUID) -> Bool { state.requiresPINToOpen(profile: profile) }
+
+    /// Opening this profile asks for its PIN first.
+    func needsPINToOpen(_ profile: UUID) -> Bool {
+        requiresPINToOpen(profile) && isLocked(profile)
+    }
+
+    func setRequiresPINToOpen(_ on: Bool, profile: UUID) {
+        update { $0.setRequiresPINToOpen(on, profile: profile) }
+    }
+
+    /// Sets a new PIN (the profile stays unlocked) or removes it with nil.
+    func setPIN(_ pin: String?, for profile: UUID) {
+        pins.setPIN(pin, profile: profile)
+        pinRevision += 1
+        if pin == nil {
+            setRequiresPINToOpen(false, profile: profile)
+            locks.lock(profile)
+        } else {
+            locks.markUnlocked(profile)
+        }
+    }
+
+    /// Checks a PIN against `candidates`, unlocking the one it matches.
+    func attemptPIN(_ pin: String, candidates: [UUID]) -> ProfileLocks.Result {
+        locks.attempt(pin, candidates: candidates, store: pins)
+    }
+
+    /// Profiles that have a PIN.
+    var protectedProfiles: [UUID] { state.profiles.map(\.id).filter { hasPIN($0) } }
+
+    /// Locks every profile again (the app went to the background). Shows
+    /// the picker if the active profile needs its PIN to open.
+    func lockAll() {
+        locks.lockAll()
+        if needsPINToOpen(activeProfile.id) { isPickingProfile = true }
     }
 }

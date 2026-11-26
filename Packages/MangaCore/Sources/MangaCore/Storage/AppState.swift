@@ -115,6 +115,12 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Genres, tags and age limit hidden for this profile. Nil (the
+    /// default, and for data saved before filters existed) hides nothing.
+    public var contentFilter: ContentFilter?
+    /// Whether opening the profile asks for its PIN. The PIN itself is in
+    /// the Keychain (`PINStore`); without one this does nothing.
+    public var requiresPINToOpen: Bool?
     /// Book (EPUB/text) reader settings. Nil until changed.
     public var bookSettings: BookSettings?
     /// Bookmarked pages across every server.
@@ -144,7 +150,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 bookmarks: [Bookmark] = [],
                 favoritesSort: FavoritesSort = .default,
                 recentSeries: [String: SeriesSummary]? = nil,
-                browse: BrowsePreferences? = nil) {
+                browse: BrowsePreferences? = nil,
+                contentFilter: ContentFilter? = nil,
+                requiresPINToOpen: Bool? = nil) {
         self.bookSettings = bookSettings
         self.serverSettings = serverSettings
         self.favorites = favorites
@@ -155,10 +163,13 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.favoritesSort = favoritesSort
         self.recentSeries = recentSeries
         self.browse = browse
+        self.contentFilter = contentFilter
+        self.requiresPINToOpen = requiresPINToOpen
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse, welcomeCompleted
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse, welcomeCompleted,
+             contentFilter, requiresPINToOpen
     }
 
     // State saved by older versions lacks the newer fields.
@@ -179,6 +190,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
         // A browse shape this build can't read falls back to defaults.
         browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
         welcomeCompleted = try? c.decodeIfPresent(Bool.self, forKey: .welcomeCompleted)
+        contentFilter = try c.decodeIfPresent(ContentFilter.self, forKey: .contentFilter)
+        requiresPINToOpen = try c.decodeIfPresent(Bool.self, forKey: .requiresPINToOpen)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -195,6 +208,8 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encodeIfPresent(recentSeries, forKey: .recentSeries)
         try c.encodeIfPresent(browse, forKey: .browse)
         try c.encodeIfPresent(welcomeCompleted, forKey: .welcomeCompleted)
+        try c.encodeIfPresent(contentFilter, forKey: .contentFilter)
+        try c.encodeIfPresent(requiresPINToOpen, forKey: .requiresPINToOpen)
     }
 }
 
@@ -476,6 +491,35 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
         mutateData(profile) { $0.defaultReaderSettings = settings.normalizedPairing }
+    }
+
+    // MARK: Content filter and PIN
+
+    public func contentFilter(profile: UUID) -> ContentFilter {
+        profileData[profile.uuidString]?.contentFilter ?? .none
+    }
+
+    public mutating func setContentFilter(_ filter: ContentFilter, profile: UUID) {
+        mutateData(profile) { $0.contentFilter = filter.isActive ? filter : nil }
+    }
+
+    public func requiresPINToOpen(profile: UUID) -> Bool {
+        profileData[profile.uuidString]?.requiresPINToOpen ?? false
+    }
+
+    public mutating func setRequiresPINToOpen(_ on: Bool, profile: UUID) {
+        mutateData(profile) { $0.requiresPINToOpen = on ? true : nil }
+    }
+
+    /// Favorites the profile may see: in its imported libraries/categories
+    /// and not hidden by its content filter. `hidden` maps server ids to
+    /// the ids its filter hides (see `ContentVisibility`); with an active
+    /// filter, servers missing from it show none of their favorites.
+    public func visibleFavorites(profile: UUID, hidden: [UUID: Set<String>]) -> [Favorite] {
+        let filter = contentFilter(profile: profile)
+        let favorites = visibleFavorites(profile: profile)
+        let allowed = Set(ContentVisibility.visible(favorites.map(\.series), filter: filter, hidden: hidden).map(\.ref))
+        return favorites.filter { allowed.contains($0.series.ref) }
     }
 
     // MARK: Book settings

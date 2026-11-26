@@ -35,6 +35,14 @@ final class GuestSessionTests: XCTestCase {
         XCTAssertEqual(guest.freeLibraryRemoved, true)
     }
 
+    func testGuestKeepsTheHostsContentFilter() {
+        var (owner, host) = ownerState()
+        let filter = ContentFilter(hiddenGenres: ["Horror"])
+        owner.setContentFilter(filter, profile: host)
+        let guest = GuestSession(hostProfileID: host).makeState(from: owner)
+        XCTAssertEqual(guest.contentFilter(profile: GuestSession.profileID), filter)
+    }
+
     func testGuestStartsWithNoneOfTheOwnersReading() {
         let (owner, host) = ownerState()
         let guest = GuestSession(hostProfileID: host).makeState(from: owner)

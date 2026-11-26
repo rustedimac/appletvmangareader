@@ -38,7 +38,7 @@ extension AppModel {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "-demoFinished"), i + 1 < args.count,
            let server = servers.first(where: { $0.name == "Demo Kavita" }) {
-            (client(for: server) as? SampleLibraryServer)?.markAllRead(seriesID: args[i + 1])
+            (client(for: server).unfiltered as? SampleLibraryServer)?.markAllRead(seriesID: args[i + 1])
         }
     }
 }

@@ -14,7 +14,7 @@ struct BookmarksView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView(.vertical) {
-                let groups = BookmarkGroup.make(model.bookmarks)
+                let groups = BookmarkGroup.make(model.visibleBookmarks)
                 if groups.isEmpty {
                     BrowseMessage(title: "No bookmarks yet",
                                   message: "While reading, open the menu and choose Bookmark This Page. In the page reader you can also press up on the remote.",
@@ -39,6 +39,7 @@ struct BookmarksView: View {
         .resetsNavigationWhenLeft(path: $path)
         // Again after a server is added or a login changes.
         .task(id: model.contentKey) { await model.syncAllBookmarks() }
+        .task(id: model.contentFilter.cacheKey) { await model.refreshHiddenSeries() }
         .fullScreenCover(item: $reader) { ReaderHost(route: $0) }
     }
 

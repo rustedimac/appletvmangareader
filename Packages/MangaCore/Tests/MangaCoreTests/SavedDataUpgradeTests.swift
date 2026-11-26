@@ -36,6 +36,9 @@ enum SavedFormats {
         // Adds `welcomeCompleted` to profile data (first-run welcome, #43),
         // on top of every field above.
         "appstate-v1-2026-11-26-welcome",
+        // Adds a profile's `contentFilter` and `requiresPINToOpen` (#19), on
+        // top of every field above.
+        "appstate-v1-2026-11-26-filters",
     ]
     static var newestAppState: String { appStateFixtures.last! }
 

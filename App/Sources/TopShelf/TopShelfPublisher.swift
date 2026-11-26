@@ -5,7 +5,8 @@ import MangaCore
 
 /// Keeps the Top Shelf in step with the active profile. After any saved
 /// change it rebuilds `TopShelfSnapshot` (Continue Reading and Favorites),
-/// writes it and the covers to the App Group, and asks tvOS to reload the
+/// leaving out what the profile's content filter hides, writes it and
+/// the covers to the App Group, and asks tvOS to reload the
 /// Top Shelf extension. The extension only reads those files.
 @MainActor
 final class TopShelfPublisher {
@@ -35,7 +36,13 @@ final class TopShelfPublisher {
     func publish() async {
         // The Top Shelf shows the owner's reading, never a guest's.
         guard let model, !model.isGuest else { return }
-        let snapshot = TopShelfSnapshot.make(from: model.state)
+        // The Top Shelf follows the profile's content filter, and shows
+        // nothing for a profile that asks for its PIN to open.
+        let profile = model.activeProfile.id
+        if model.contentFilter.isActive { await model.refreshHiddenSeries() }
+        guard !Task.isCancelled else { return }
+        let snapshot = TopShelfSnapshot.make(from: model.state, hidden: model.hiddenSeries,
+                                             isPrivate: model.requiresPINToOpen(profile) && model.hasPIN(profile))
         guard snapshot != published else { return }
         published = snapshot
         let changed = (try? store.save(snapshot)) ?? false

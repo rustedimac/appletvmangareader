@@ -161,6 +161,9 @@ struct HomeView: View {
         // Queued progress goes up first so Continue Reading is current.
         await model.syncPendingProgress()
         guard !Task.isCancelled, mine == generation else { return }
+        // Filtered clients cache the hidden ids, so the feeds reuse them.
+        await model.refreshHiddenSeries()
+        guard !Task.isCancelled, mine == generation else { return }
         let servers = model.servers
         let sources = servers.map { server in
             let syncs = model.syncsProgress(to: server.id)

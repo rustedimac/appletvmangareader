@@ -44,6 +44,9 @@ public struct GuestSession: Equatable, Sendable {
         data.defaultReaderSettings = host.defaultReaderSettings
         data.bookSettings = host.bookSettings
         data.webtoonAutoScrollLevel = host.webtoonAutoScrollLevel
+        // The host's content filter comes along, so a guest session can't
+        // be a way around it.
+        data.contentFilter = host.contentFilter
         var state = AppState(profiles: [Self.profile], activeProfileID: Self.profileID,
                              servers: owner.servers, profileData: [Self.profileID.uuidString: data])
         state.freeLibraryRemoved = owner.freeLibraryRemoved

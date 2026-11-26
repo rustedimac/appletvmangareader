@@ -182,6 +182,8 @@ final class AppStateUpgradeTests: XCTestCase {
                          now: Date(timeIntervalSinceReferenceDate: 2))
         s.setReaderSettings(.webtoonDefault, for: ref, profile: p)
         s.setSelectedCategories(["1"], profile: p, server: server.id)
+        s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"], maxAgeRating: .teen), profile: p)
+        s.setRequiresPINToOpen(true, profile: p)
         let backing = InMemoryKeyValueStore()
         StateStore(backing: backing).save(s)
         let store = StateStore(backing: backing)
@@ -218,6 +220,29 @@ final class AppStateUpgradeTests: XCTestCase {
         XCTAssertEqual(Set(s.profiles.map(\.id)), [me, kid])
         XCTAssertEqual(s.activeProfile?.id, kid)
         XCTAssertEqual(s.progress(SeriesRef(serverID: kavita, seriesID: "12"), profile: me)?.page, 17)
+    }
+
+    func testDamagedProfileKeepsItsFilterAndPINRule() throws {
+        // Added by #19: older saves have no filter and open freely.
+        let old = makeStore(with: F.v1MarkUnread).0.load()
+        XCTAssertEqual(old.contentFilter(profile: kid), .none)
+        XCTAssertFalse(old.requiresPINToOpen(profile: kid))
+
+        // A bad favorite on the kid's profile must not drop its filter or
+        // its PIN rule along with it.
+        let kidData = #""0E5B8C3A-2222-4A7B-9C3D-000000000002":{"#
+        let damaged = F.v1MarkUnread.replacingOccurrences(
+            of: kidData + #""defaultReaderSettings""#,
+            with: kidData + #""contentFilter":{"hiddenGenres":["Horror"],"hiddenTags":[],"hideUnrated":true,"maxAgeRating":6},"favorites":[{"broken":1}],"requiresPINToOpen":true,"defaultReaderSettings""#)
+            .replacingOccurrences(of: #""favorites":[],"progress":{"5A1D2C3B-BBBB"#, with: #""progress":{"5A1D2C3B-BBBB"#)
+        XCTAssertNotEqual(damaged, F.v1MarkUnread)
+        let (store, _) = makeStore(with: damaged)
+        let s = store.load()
+        XCTAssertEqual(store.lastLoad, .salvaged)
+        XCTAssertTrue(s.requiresPINToOpen(profile: kid))
+        XCTAssertTrue(s.contentFilter(profile: kid).isGenreHidden("Horror"))
+        XCTAssertTrue(s.contentFilter(profile: kid).hideUnrated)
+        XCTAssertEqual(s.progress(SeriesRef(serverID: suwayomi, seriesID: "7"), profile: kid)?.page, 4)
     }
 
     func testGarbageStartsFreshButIsKept() {

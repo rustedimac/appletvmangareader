@@ -135,7 +135,9 @@ struct ServerLibraryView: View {
     /// Opens the picker for which libraries/categories this profile imports.
     private var chooseLink: some View {
         NavigationLink {
-            CategorySelectionView(server: server)
+            PINGate(kind: .profile(model.activeProfile.id), reason: "Enter the PIN to change what this profile imports.") {
+                CategorySelectionView(server: server)
+            }
         } label: {
             Label("Choose \(server.kind.categoryNoun)", systemImage: "checklist")
         }

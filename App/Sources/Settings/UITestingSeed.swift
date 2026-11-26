@@ -6,6 +6,10 @@ import MangaCore
 ///
 /// - `-uiTestingSeed profiles`: two profiles, so the picker shows at launch.
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
+/// - `-uiTestingSeed pins`: "Me" with PIN 1111 that's asked for on open, and
+///   "Kid" with PIN 3333 (not asked on open) and Horror hidden.
+/// - `-uiTestingSeed filtered`: one profile with the Horror genre hidden
+///   (use with `-demoServers`; Horror is every fifth demo series).
 /// - `-uiTestingSeed multiAddress`: a Kavita server with a home and a remote address.
 /// - `-uiTestingTab settings`: start on the Settings tab.
 /// - `-uiTestingNavigationResetDelay 2`: tabs return to their top screen
@@ -62,6 +66,12 @@ enum UITestingSeed {
         case "servers":
             s.addServer(ServerConfig(kind: .kavita, name: "Test Kavita", baseURL: URL(string: "http://kavita.test")!))
             s.addServer(ServerConfig(kind: .suwayomi, name: "Test Suwayomi", baseURL: URL(string: "http://suwayomi.test")!))
+        case "pins":
+            let kid = s.addProfile(name: "Kid", symbol: "star.fill", colorIndex: 3)
+            s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"]), profile: kid.id)
+            if let me = s.profiles.first { s.setRequiresPINToOpen(true, profile: me.id) }
+        case "filtered":
+            if let me = s.profiles.first { s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"]), profile: me.id) }
         case "multiAddress":
             s.addServer(ServerConfig(kind: .kavita, name: "Home Kavita", baseURL: URL(string: "http://kavita.test")!,
                                      alternateURLs: [URL(string: "https://kavita-remote.test")!]))
@@ -70,6 +80,18 @@ enum UITestingSeed {
         }
         applyAppleTVUserSeed(&s)
         return s
+    }
+
+    /// PINs for the "pins" seed. Only the hashes go in the store.
+    static func seedPINs(_ state: AppState, into pins: PINStore) {
+        guard isUITesting, value(after: "-uiTestingSeed") == "pins" else { return }
+        for profile in state.profiles {
+            switch profile.name {
+            case "Me": pins.setPIN("1111", profile: profile.id)
+            case "Kid": pins.setPIN("3333", profile: profile.id)
+            default: break
+            }
+        }
     }
 }
 

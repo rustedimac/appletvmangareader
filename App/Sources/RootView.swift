@@ -15,7 +15,7 @@ struct RootView: View {
     var body: some View {
         content
             .fullScreenCover(item: $link) { route in
-                DeepLinkView(link: route.link)
+                DeepLinkHost(route: route)
             }
             .onOpenURL { url in
                 if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
@@ -26,6 +26,8 @@ struct RootView: View {
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }
             .onChange(of: scenePhase) { _, phase in
+                // PINs are asked for again after the app has been away.
+                if phase == .background { model.lockAll() }
                 if phase == .active {
                     Task { await model.refreshStaleFavorites() }
                     Task { await model.retryPendingProgressNow() }
