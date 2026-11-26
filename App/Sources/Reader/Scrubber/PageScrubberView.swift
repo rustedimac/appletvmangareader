@@ -8,7 +8,8 @@ import MangaCore
 /// Siri Remote: left/right moves one page (in reading direction, so for
 /// right-to-left manga page 1 is on the right and pressing left moves
 /// forward), up jumps 10 pages back and down 10 pages forward, click opens
-/// the page, Menu or Play/Pause closes the scrubber.
+/// the page, Menu or a Play/Pause press closes the scrubber (Menu goes back
+/// to the reader options when it was opened from them).
 ///
 /// Thumbnails come from the same image pipeline as the pages, decoded
 /// small, and only for the part of the strip that's on screen.
@@ -35,7 +36,7 @@ struct PageScrubberView: View {
         }
         .ignoresSafeArea()
         .focusSection()
-        .onPlayPauseCommand { session.isMenuPresented = false }
+        .onExitCommand { session.back() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.scrubber")
     }

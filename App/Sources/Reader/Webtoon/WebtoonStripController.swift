@@ -51,15 +51,6 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
     /// after is dropped, in case one controller press arrives both as a
     /// Play/Pause press and as the X button.
     private var lastAutoToggle: CFTimeInterval = 0
-    /// Pending "Select held" action: holding Select opens the menu even
-    /// while auto-scroll runs. Nil once it fired or the click ended.
-    private var selectHold: DispatchWorkItem?
-    private var selectHoldFired = false
-    /// How long Select must be held to count as a hold.
-    private let selectHoldDuration: TimeInterval = 0.5
-
-    /// Opens the reader menu.
-    var onMenu: (() -> Void)?
 
     /// Divider and footer heights, in points.
     private let breakHeightPoints: CGFloat = 220
@@ -102,8 +93,6 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
 
     /// Stops the scroll driver and pending loads. Call when the view goes away.
     func teardown() {
-        selectHold?.cancel()
-        selectHold = nil
         setAutoScroll(false)
         driver.stop()
         loader.cancelAll()
@@ -485,48 +474,16 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
             if began { jumpPage(forward: type == .rightArrow) }
             return true
         case .select:
-            // Act on release so a hold can be told apart from a click.
-            if began {
-                selectHold?.cancel()
-                selectHoldFired = false
-                let hold = DispatchWorkItem { [weak self] in
-                    guard let self else { return }
-                    self.selectHoldFired = true
-                    self.selectHold = nil
-                    self.openMenu()
-                }
-                selectHold = hold
-                DispatchQueue.main.asyncAfter(deadline: .now() + selectHoldDuration, execute: hold)
-                return true
-            }
-            if selectHoldFired {
-                selectHoldFired = false
-                return true
-            }
-            guard let hold = selectHold else { return true }
-            hold.cancel()
-            selectHold = nil
-            if driver.autoLevel != nil {
-                // A click pauses auto-scroll; the next one opens the menu.
-                setAutoScroll(false)
-            } else if !retryFailedPagesOnScreen() {
-                // A failed page on screen takes the click: retry it in place.
-                openMenu()
-            }
-            return true
-        case .playPause:
-            if began { toggleAutoScroll() }
+            // A click retries a failed page on screen; otherwise it does
+            // nothing here (holding Play/Pause opens the options, and
+            // Play/Pause stops auto-scroll).
+            if began { retryFailedPagesOnScreen() }
             return true
         default:
+            // Play/Pause is caught by `ReaderRemoteCatcher`; Menu goes up
+            // the responder chain to `ReaderView`.
             return false
         }
-    }
-
-    /// Click (auto-scroll off) or hold Select: stop moving, open the menu.
-    private func openMenu() {
-        setAutoScroll(false)
-        driver.stop()
-        onMenu?()
     }
 
     /// Reloads failed pages that are at least partly on screen. Returns

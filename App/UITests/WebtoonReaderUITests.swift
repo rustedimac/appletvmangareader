@@ -119,7 +119,7 @@ final class WebtoonReaderUITests: XCTestCase {
     func testClickOpensMenuAndScrollingWorksAfterClosingIt() {
         launch()
         expectIndicator("Chapter 1 · 1 / 6")
-        remote.press(.select)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         remote.press(.menu)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element("reader.menu"))

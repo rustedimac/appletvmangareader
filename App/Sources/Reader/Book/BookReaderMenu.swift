@@ -39,7 +39,7 @@ struct BookReaderMenu: View {
         .focusSection()
         .defaultFocus($focus, "size.larger")
         .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
-        .onPlayPauseCommand { session.isMenuPresented = false }
+        .onExitCommand { session.isMenuPresented = false }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("book.menu")
     }

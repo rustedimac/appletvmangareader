@@ -121,10 +121,10 @@ final class PagedReaderUITests: XCTestCase {
         XCTAssertEqual(second.frame.minY, first.frame.minY, accuracy: 1)
     }
 
-    func testSwipeDownOpensMenuAndMenuButtonClosesIt() {
+    func testHoldingPlayPauseOpensMenuAndMenuButtonClosesIt() {
         launch()
         expectIndicator("1 / 6")
-        press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         press(.menu)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element("reader.menu"))

@@ -65,7 +65,7 @@ final class BookmarksUITests: XCTestCase {
     }
 
     private func openMenu() {
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(element("reader.menu.mode.paged"), "hasFocus == true")
     }
@@ -148,7 +148,7 @@ final class BookmarksUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-readerDemo", "-readerMode", "webtoon"]
         app.launch()
         XCTAssertTrue(element("reader.webtoon").waitForExistence(timeout: 15))
-        remote.press(.select)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         let button = element("reader.menu.bookmark")
         choose(button)

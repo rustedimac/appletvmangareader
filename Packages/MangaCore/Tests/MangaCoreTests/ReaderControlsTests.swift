@@ -2,29 +2,46 @@ import XCTest
 @testable import MangaCore
 
 final class ReaderControlsTests: XCTestCase {
-    func testEveryReaderHasAMenuRouteBesidesPlayPause() {
+    func testHoldingPlayPauseOpensTheOptionsInEveryReader() {
         for mode in ReadingMode.allCases {
             let entries = ReaderControls.remote(for: mode)
-            let hold = entries.first { $0.input.contains("hold Select") || $0.input == "Hold Select" }
-            XCTAssertNotNil(hold, "\(mode) needs a hold-Select route to the options")
-            XCTAssertTrue(hold?.action.hasPrefix("Reader options") == true)
+            XCTAssertEqual(entries.first { $0.input == "Hold Play/Pause" }?.action, "Reader options", "\(mode)")
             XCTAssertTrue(entries.contains { $0.input.hasPrefix("Menu") })
         }
-        XCTAssertTrue(ReaderControls.bookRemote.contains { $0.input.hasPrefix("Click or hold Select") })
+        XCTAssertEqual(ReaderControls.bookRemote.first { $0.input == "Hold Play/Pause" }?.action, "Reader options")
     }
 
-    func testPlayPauseAutoScrollsOnlyInVerticalMode() {
+    func testOnlyOneInputOpensTheOptions() {
+        for entries in ReadingMode.allCases.map(ReaderControls.remote(for:)) + [ReaderControls.bookRemote] {
+            XCTAssertEqual(entries.filter { $0.action == "Reader options" }.count, 1,
+                           "no second route to the options: \(entries)")
+        }
+    }
+
+    func testPlayPausePlaysInBothImageReaders() {
         let paged = ReaderControls.remote(for: .paged).first { $0.input == "Play/Pause" }
         let webtoon = ReaderControls.remote(for: .webtoon).first { $0.input == "Play/Pause" }
-        XCTAssertEqual(paged?.action, "Reader options")
+        XCTAssertTrue(paged?.action.contains("timer") == true)
         XCTAssertEqual(webtoon?.action, "Start or stop auto-scroll")
     }
 
     func testGamepadGuideMatchesTheMapping() {
-        XCTAssertEqual(GamepadMapping.action(for: .buttonY, mode: .webtoon), .toggleMenu)
-        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input.hasPrefix("Y") && $0.action == "Reader options" })
-        XCTAssertEqual(GamepadMapping.action(for: .buttonX, mode: .webtoon), .toggleAutoScroll)
-        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input == "X" && $0.action.contains("auto-scroll") })
+        XCTAssertEqual(GamepadMapping.action(for: .menu, mode: .webtoon), .toggleMenu)
+        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input.hasPrefix("☰") && $0.action == "Reader options" })
+        XCTAssertEqual(GamepadMapping.action(for: .buttonY, mode: .paged), .toggleBookmark)
+        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input == "Y" && $0.action.contains("Bookmark") })
+        XCTAssertEqual(GamepadMapping.action(for: .buttonX, mode: .webtoon), .togglePlay)
+        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input == "X" && $0.action.contains("Auto-scroll") })
+        XCTAssertEqual(GamepadMapping.action(for: .rightShoulder, mode: .paged), .jumpChapter(forward: true))
+        XCTAssertTrue(ReaderControls.gamepad.contains { $0.input.hasPrefix("L1 / R1") && $0.action.contains("chapter") })
+        XCTAssertFalse(ReaderControls.gamepad.contains { $0.input.contains("L2") }, "nothing needs triggers")
+    }
+
+    func testHintsNameTheHoldRoute() {
+        for mode in ReadingMode.allCases {
+            XCTAssertTrue(ReaderControls.hint(for: mode).hasPrefix("Hold Play/Pause for reader options"))
+        }
+        XCTAssertEqual(ReaderControls.hudHint, "Hold for options")
     }
 
     func testHintShowsAFewTimesThenStops() {

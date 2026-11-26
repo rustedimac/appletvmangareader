@@ -2,37 +2,38 @@ import XCTest
 @testable import MangaCore
 
 final class GamepadMappingTests: XCTestCase {
-    func testShouldersTurnPagesTowardTheirSideOfTheScreen() {
+    func testShouldersJumpChapters() {
         for mode in ReadingMode.allCases {
-            XCTAssertEqual(GamepadMapping.action(for: .leftShoulder, mode: mode), .turnPage(.left))
-            XCTAssertEqual(GamepadMapping.action(for: .rightShoulder, mode: mode), .turnPage(.right))
+            XCTAssertEqual(GamepadMapping.action(for: .leftShoulder, mode: mode), .jumpChapter(forward: false))
+            XCTAssertEqual(GamepadMapping.action(for: .rightShoulder, mode: mode), .jumpChapter(forward: true))
         }
     }
 
-    func testTriggersJumpChapters() {
+    func testTriggersAreUnusedSoSmallControllersMissNothing() {
         for mode in ReadingMode.allCases {
-            XCTAssertEqual(GamepadMapping.action(for: .leftTrigger, mode: mode), .jumpChapter(forward: false))
-            XCTAssertEqual(GamepadMapping.action(for: .rightTrigger, mode: mode), .jumpChapter(forward: true))
+            XCTAssertNil(GamepadMapping.action(for: .leftTrigger, mode: mode))
+            XCTAssertNil(GamepadMapping.action(for: .rightTrigger, mode: mode))
         }
     }
 
-    func testXTogglesAutoScrollOnlyInVerticalMode() {
-        XCTAssertEqual(GamepadMapping.action(for: .buttonX, mode: .webtoon), .toggleAutoScroll)
-        XCTAssertNil(GamepadMapping.action(for: .buttonX, mode: .paged))
+    func testXPlaysInBothModes() {
+        XCTAssertEqual(GamepadMapping.action(for: .buttonX, mode: .webtoon), .togglePlay)
+        XCTAssertEqual(GamepadMapping.action(for: .buttonX, mode: .paged), .togglePlay)
     }
 
-    func testYAndOptionsToggleTheMenu() {
-        XCTAssertEqual(GamepadMapping.action(for: .buttonY, mode: .paged), .toggleMenu)
-        XCTAssertEqual(GamepadMapping.action(for: .options, mode: .webtoon), .toggleMenu)
+    func testMenuOpensOptionsYBookmarksViewTogglesTheHUD() {
+        XCTAssertEqual(GamepadMapping.action(for: .menu, mode: .paged), .toggleMenu)
+        XCTAssertEqual(GamepadMapping.action(for: .buttonY, mode: .webtoon), .toggleBookmark)
+        XCTAssertEqual(GamepadMapping.action(for: .options, mode: .paged), .toggleHUD)
     }
 
-    func testOnlyTheMenuToggleWorksWhileTheMenuIsOpen() {
+    func testOnlyTheMenuButtonWorksWhileTheOptionsAreOpen() {
         for button in GamepadButton.allCases {
             let action = GamepadMapping.action(for: button, mode: .webtoon, menuOpen: true)
-            if button == .buttonY || button == .options {
+            if button == .menu {
                 XCTAssertEqual(action, .toggleMenu)
             } else {
-                XCTAssertNil(action, "\(button) should do nothing while the menu is open")
+                XCTAssertNil(action, "\(button) should do nothing while the options are open")
             }
         }
     }
@@ -72,7 +73,7 @@ final class WebtoonAutoScrollTests: XCTestCase {
         XCTAssertEqual(speeds, speeds.sorted())
         XCTAssertEqual(Set(speeds).count, speeds.count)
         XCTAssertEqual(WebtoonAutoScroll.levels, 1...10)
-        XCTAssertTrue(WebtoonAutoScroll.levels.contains(WebtoonAutoScroll.defaultLevel))
+        XCTAssertTrue(WebtoonAutoScroll.steps.contains(WebtoonAutoScroll.defaultLevel))
     }
 
     func testSpeedScalesWithTheScreen() {
@@ -81,16 +82,40 @@ final class WebtoonAutoScrollTests: XCTestCase {
         XCTAssertEqual(big, small * 2, accuracy: 0.0001)
     }
 
-    func testSteppingIsClamped() {
-        XCTAssertEqual(WebtoonAutoScroll.stepped(3, by: 1), 4)
-        XCTAssertEqual(WebtoonAutoScroll.stepped(10, by: 1), 10)
-        XCTAssertEqual(WebtoonAutoScroll.stepped(1, by: -1), 1)
-        XCTAssertEqual(WebtoonAutoScroll.stepped(50, by: -1), 9, "out-of-range levels are clamped first")
-        XCTAssertFalse(WebtoonAutoScroll.canStep(10, by: 1))
-        XCTAssertTrue(WebtoonAutoScroll.canStep(10, by: -1))
+    func testSpeedsAreNamedNeverNumbered() {
+        XCTAssertEqual(WebtoonAutoScroll.steps.map(WebtoonAutoScroll.label),
+                       ["Very Slow", "Slow", "Medium", "Fast", "Very Fast"])
+        for level in WebtoonAutoScroll.levels {
+            XCTAssertFalse(WebtoonAutoScroll.label(level).contains { $0.isNumber })
+        }
+        XCTAssertEqual(WebtoonAutoScroll.label(WebtoonAutoScroll.defaultLevel), "Slow")
+    }
+
+    func testSavedLevelsMapToTheNearestStep() {
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(1), 1)
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(2), 1, "ties go to the slower step")
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(4), 3)
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(6), 5)
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(10), 9)
+        XCTAssertEqual(WebtoonAutoScroll.nearestStep(50), 9, "out-of-range levels are clamped first")
+        XCTAssertEqual(WebtoonAutoScroll.label(4), "Slow")
+    }
+
+    func testSteppingMovesBetweenNamedStepsAndStopsAtTheEnds() {
+        XCTAssertEqual(WebtoonAutoScroll.stepped(3, by: 1), 5)
+        XCTAssertEqual(WebtoonAutoScroll.stepped(3, by: -1), 1)
+        XCTAssertEqual(WebtoonAutoScroll.stepped(4, by: 1), 5, "an old level steps from its nearest step")
+        XCTAssertEqual(WebtoonAutoScroll.stepped(9, by: 1), 9)
+        XCTAssertEqual(WebtoonAutoScroll.stepped(1, by: -2), 1)
+        XCTAssertFalse(WebtoonAutoScroll.canStep(9, by: 1))
+        XCTAssertTrue(WebtoonAutoScroll.canStep(9, by: -1))
         XCTAssertFalse(WebtoonAutoScroll.canStep(1, by: -1))
-        XCTAssertEqual(WebtoonAutoScroll.label(3), "Speed 3 of 10")
-        XCTAssertEqual(WebtoonAutoScroll.label(0), "Speed 1 of 10")
+        XCTAssertTrue(WebtoonAutoScroll.canStep(10, by: -1))
+    }
+
+    func testPageTimerGetsShorterAsTheStepGetsFaster() {
+        let seconds = WebtoonAutoScroll.steps.map(WebtoonAutoScroll.secondsPerPage)
+        XCTAssertEqual(seconds, [30, 20, 12, 8, 5])
     }
 
     func testSwipeUpSpeedsUpAndSwipeDownSlowsDown() {

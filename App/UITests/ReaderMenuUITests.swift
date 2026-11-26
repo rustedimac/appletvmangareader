@@ -40,7 +40,7 @@ final class ReaderMenuUITests: XCTestCase {
     }
 
     private func openMenu() {
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(menuItem("mode.paged"), "hasFocus == true")
     }

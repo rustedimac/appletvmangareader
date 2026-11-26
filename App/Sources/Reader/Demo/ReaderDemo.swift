@@ -17,6 +17,8 @@ import MangaCore
 /// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
 ///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
 /// - `-readerBook` opens the book reader on `DemoBookServer` instead
+/// - `-readerDemoCover` presents the reader in a full-screen cover, as the
+///   app does, over an "Open Reader" button
 enum ReaderDemo {
     static var isEnabled: Bool { ProcessInfo.processInfo.arguments.contains("-readerDemo") }
 
@@ -36,27 +38,44 @@ enum ReaderDemo {
     struct RootView: View {
         @Environment(AppModel.self) private var model
         @State private var ready = false
+        @State private var coverOpen = false
+
+        private static var inCover: Bool { ProcessInfo.processInfo.arguments.contains("-readerDemoCover") }
+
+        @ViewBuilder private var reader: some View {
+            if ProcessInfo.processInfo.arguments.contains("-readerBook") {
+                ReaderView(series: DemoBookServer.series, chapters: DemoBookServer.chapters,
+                           start: DemoBookServer.chapters[0], server: DemoBookServer())
+            } else {
+                let chapters = DemoMangaServer.chapters
+                let defaults = UserDefaults.standard
+                let n = max(1, min(chapters.count, defaults.integer(forKey: "readerStartChapter")))
+                let startPage = defaults.object(forKey: "readerStartPage") as? Int
+                    ?? Int(defaults.string(forKey: "readerStartPage") ?? "")
+                ReaderView(series: DemoMangaServer.series, chapters: chapters, start: chapters[n - 1],
+                           startPage: startPage ?? 0, server: ReaderDemo.server)
+                    .environment(\.imagePipeline, ReaderDemo.pipeline)
+            }
+        }
 
         var body: some View {
             // A ZStack with a real background, not an empty Group: onAppear
             // never fires on a view with nothing in it.
             ZStack {
                 Color.black.ignoresSafeArea()
-                if ready, ProcessInfo.processInfo.arguments.contains("-readerBook") {
-                    ReaderView(series: DemoBookServer.series, chapters: DemoBookServer.chapters,
-                               start: DemoBookServer.chapters[0], server: DemoBookServer())
+                if ready, Self.inCover {
+                    // The app presents the reader in a full-screen cover;
+                    // `-readerDemoCover` does the same, so tests see how
+                    // Menu (Back) behaves there.
+                    Button("Open Reader") { coverOpen = true }
+                        .accessibilityIdentifier("demo.openReader")
+                        .fullScreenCover(isPresented: $coverOpen) { reader }
                 } else if ready {
-                    let chapters = DemoMangaServer.chapters
-                    let defaults = UserDefaults.standard
-                    let n = max(1, min(chapters.count, defaults.integer(forKey: "readerStartChapter")))
-                    let startPage = defaults.object(forKey: "readerStartPage") as? Int
-                        ?? Int(defaults.string(forKey: "readerStartPage") ?? "")
-                    ReaderView(series: DemoMangaServer.series, chapters: chapters, start: chapters[n - 1],
-                               startPage: startPage ?? 0, server: ReaderDemo.server)
-                        .environment(\.imagePipeline, ReaderDemo.pipeline)
+                    reader
                 }
             }
             .onAppear {
+                if Self.inCover { coverOpen = true }
                 var settings = ReaderSettings.default
                 let defaults = UserDefaults.standard
                 if let d = defaults.string(forKey: "readerDirection").flatMap(ReadingDirection.init(rawValue:)) {

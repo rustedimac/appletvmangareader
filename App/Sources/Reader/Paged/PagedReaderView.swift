@@ -5,19 +5,21 @@ import MangaCore
 /// to edge at a common height, or one page alone (cover, wide spread, or
 /// single-page layout).
 ///
-/// Siri Remote: left/right (click or swipe) turns the page, following the
-/// reading direction. Holding Select, Play/Pause or swipe down opens the
-/// reader menu; a click zooms (#17). Swipe or click up bookmarks the page
-/// (again removes it) unless there is more of the page above to pan to.
-/// The full map is `ReaderControls` / docs/CONTROLS.md. Going
-/// past the first or last spread shows a chapter transition card; pressing
-/// again opens the previous or next chapter.
+/// Siri Remote (docs/READER_CONTROLS.md section 10, `ReaderControls`):
+/// left/right (click or swipe) turns the page, following the reading
+/// direction. Up bookmarks the page (again removes it) and down opens the
+/// page thumbnails, unless there is more of the page that way to pan to.
+/// Holding Select zooms in; a click zooms out (or retries a page that
+/// didn't load). Play/Pause and the tap that shows the page number are
+/// caught for every reader by `ReaderRemoteCatcher` in `ReaderView`.
+/// Going past the first or last spread shows a chapter transition card;
+/// pressing again opens the previous or next chapter.
 ///
 /// Fit and zoom: with Fit Width (or Fit Height on a wide spread) the spread
 /// is bigger than the screen and the remote pans over it before turning
-/// (`PagedRemote` has the rules). Clicking zooms in to `zoomScale` around
-/// the middle of the screen; click again or press Menu to zoom out. Turning
-/// the page resets the zoom.
+/// (`PagedRemote` has the rules). Holding Select zooms in to `zoomScale`
+/// around the middle of the screen; a click or Menu zooms out. Turning the
+/// page resets the zoom.
 ///
 /// Crop Borders: each page's white or black margins are detected once
 /// (`BorderCropDetector`, cached in `PageCropCache`) and trimmed. In a
@@ -55,8 +57,11 @@ struct PagedReaderView: View {
                                viewport: viewport, container: geo.size, scale: displayScale)
                         .id(spread)
                 }
-                if session.loadState == .loaded, session.pageCount > 0 {
-                    PageIndicator(session: session, viewport: viewport)
+                if session.loadState == .loaded, session.pageCount > 0,
+                   ReaderHUDPolicy.showsPageNumber(session) || viewport.isZoomed {
+                    PageIndicator(session: session, viewport: viewport,
+                                  showsPage: ReaderHUDPolicy.showsPageNumber(session))
+                        .transition(.opacity)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -71,13 +76,12 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
-        .onPlayPauseCommand { session.isMenuPresented = true }
-        // Holding Select opens the menu, as in every reader.
-        .onLongPressGesture(minimumDuration: 0.5) { session.isMenuPresented = true }
-        // Select retries failed pages on screen first, otherwise zooms.
-        .onTapGesture { if !session.retryVisibleFailedPages() { toggleZoom() } }
-        // Menu zooms out first; when not zoomed it falls through to
-        // ReaderView, which closes the reader.
+        // Holding Select zooms in.
+        .onLongPressGesture(minimumDuration: 0.5) { zoomIn() }
+        // A click retries failed pages on screen first, otherwise zooms out.
+        .onTapGesture { if !session.retryVisibleFailedPages(), viewport.isZoomed { setZoom(1) } }
+        // Menu hides the page number, then zooms out; otherwise it falls
+        // through to ReaderView (`ReaderSession.back()`, then close).
         .onExitCommand(perform: exitAction)
         .onAppear {
             focused = true
@@ -103,6 +107,7 @@ struct PagedReaderView: View {
     }
 
     private var exitAction: (() -> Void)? {
+        if session.isHUDVisible { return { session.hideHUD() } }
         guard viewport.isZoomed else { return nil }
         return { setZoom(1) }
     }
@@ -174,7 +179,6 @@ struct PagedReaderView: View {
         // The transition card has nothing to pan.
         if session.edge != nil {
             if press == .left || press == .right { turn(press == .left ? .left : .right) }
-            else if press == .down { session.isMenuPresented = true }
             return
         }
         switch PagedRemote.action(for: press, viewport: viewport, canvas: currentCanvas,
@@ -184,11 +188,22 @@ struct PagedReaderView: View {
         case .turn(let screenDirection):
             turn(screenDirection)
         case .openMenu:
-            session.isMenuPresented = true
+            // Down with nothing below to pan to: page thumbnails.
+            remoteOnly { session.openScrubber(fromMenu: false) }
         case .none:
             // Up with nothing above to pan to bookmarks the page (again
             // removes it).
-            if press == .up { session.toggleBookmark() }
+            if press == .up { remoteOnly { session.toggleBookmark() } }
+        }
+    }
+
+    /// Up/down extras (bookmark, thumbnails) are Siri Remote only: on a game
+    /// controller the d-pad only navigates (Y bookmarks). The controller's
+    /// d-pad event can arrive just after the arrow press, so wait a moment.
+    private func remoteOnly(_ action: @escaping () -> Void) {
+        guard GameControllerHub.shared.hasExtendedGamepad else { return action() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            if !GameControllerHub.shared.dpadRecentlyActive { action() }
         }
     }
 
@@ -197,9 +212,9 @@ struct PagedReaderView: View {
         session.turn(direction)
     }
 
-    private func toggleZoom() {
-        guard session.edge == nil, session.currentSpread != nil else { return }
-        setZoom(viewport.isZoomed ? 1 : settings.clampedZoomScale)
+    private func zoomIn() {
+        guard session.edge == nil, session.currentSpread != nil, !viewport.isZoomed else { return }
+        setZoom(settings.clampedZoomScale)
     }
 
     private func setZoom(_ zoom: Double) {
@@ -555,6 +570,9 @@ struct PageFailureCard: View {
 private struct PageIndicator: View {
     let session: ReaderSession
     let viewport: PagedViewport
+    /// The page number shows only with the HUD (a tap); the zoom badge
+    /// shows whenever the page is zoomed.
+    var showsPage = true
 
     var body: some View {
         VStack {
@@ -566,11 +584,13 @@ private struct PageIndicator: View {
                         .accessibilityLabel("Zoomed \(ReaderMenuOptions.zoomLabel(viewport.zoom))")
                         .accessibilityIdentifier("reader.zoom")
                 }
-                Text(text)
-                    .accessibilityIdentifier("reader.pageIndicator")
-                    .accessibilityLabel(text)
-                    // Read by UI tests: zoom and pan position.
-                    .accessibilityValue(String(format: "zoom %.2f x %.2f y %.2f", viewport.zoom, viewport.x, viewport.y))
+                if showsPage {
+                    Text(text)
+                        .accessibilityIdentifier("reader.pageIndicator")
+                        .accessibilityLabel(text)
+                        // Read by UI tests: zoom and pan position.
+                        .accessibilityValue(String(format: "zoom %.2f x %.2f y %.2f", viewport.zoom, viewport.x, viewport.y))
+                }
             }
             .font(.caption)
             .monospacedDigit()

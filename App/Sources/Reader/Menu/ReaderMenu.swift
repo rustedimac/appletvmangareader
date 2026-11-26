@@ -5,10 +5,11 @@ import MangaCore
 /// over the page while `session.isMenuPresented` is true, so the page stays
 /// visible and every change shows up behind it straight away.
 ///
-/// Siri Remote: in the paged reader swipe down or Play/Pause opens it, in
-/// the vertical reader a click does (the readers handle that).
+/// Siri Remote: holding Play/Pause opens it in every reader (and closes
+/// it), caught by `ReaderRemoteCatcher`; a Play/Pause press also closes it.
 /// Up/down moves between rows, left/right between options, click picks.
-/// Menu closes it (ReaderView handles that) and so does Play/Pause.
+/// Menu closes it (`ReaderSession.back()`). The bottom of the settings tab
+/// lists every control for the reader on screen (`ReaderControls`).
 ///
 /// Changes apply live through `session.updateSettings(_:)`, which saves them
 /// for this series. "Set as Default" copies them to the profile default that
@@ -53,7 +54,9 @@ struct ReaderMenu: View {
         .focusSection()
         .defaultFocus($focus, initialFocus)
         .onAppear { setFocus(initialFocus) }
-        .onPlayPauseCommand { session.isMenuPresented = false }
+        // Handled here too, so Back always closes the drawer first even if
+        // focus is still settling inside it.
+        .onExitCommand { session.back() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.menu")
     }
@@ -180,10 +183,20 @@ struct ReaderMenu: View {
             ForEach(ReaderMenuOptions.items(for: settings)) { item in
                 row(item)
             }
+            if settings.mode == .paged {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Page Timer")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    playControls
+                }
+            }
             Divider()
             picturePane
             Divider()
             defaultsSection
+            Divider()
+            ReaderControlsLegend(mode: settings.mode)
         }
         .padding(.top, 20)
     }
@@ -236,7 +249,7 @@ struct ReaderMenu: View {
             case .webtoonWidth:
                 widthStepper
             case .autoScroll:
-                autoScrollControls
+                playControls
             }
         }
     }
@@ -304,15 +317,17 @@ struct ReaderMenu: View {
         }
     }
 
-    /// Auto-scroll speed (saved for the profile, not the series) and a
-    /// button that closes the menu and starts it.
-    private var autoScrollControls: some View {
+    /// Auto-scroll (vertical) or page-timer (paged) speed, as a named step
+    /// (saved for the profile, not the series), and a button that closes the
+    /// menu and starts it. The same speed drives both.
+    private var playControls: some View {
         let level = session.autoScrollLevel
+        let webtoon = settings.mode == .webtoon
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 28) {
                 Button {
                     session.isMenuPresented = false
-                    session.webtoonInput?.toggleAutoScroll()
+                    session.togglePlay()
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
@@ -330,7 +345,7 @@ struct ReaderMenu: View {
                 .accessibilityIdentifier("reader.menu.autoScroll.slower")
 
                 Text(WebtoonAutoScroll.label(level))
-                    .font(.callout.monospacedDigit())
+                    .font(.callout)
                     .frame(minWidth: 180)
                     .accessibilityIdentifier("reader.menu.autoScroll.value")
 
@@ -345,7 +360,9 @@ struct ReaderMenu: View {
                 .accessibilityIdentifier("reader.menu.autoScroll.faster")
             }
             .font(.callout)
-            Text("Play/Pause starts and stops it. While it runs, swipe up or down to change speed.")
+            Text(webtoon
+                 ? "Play/Pause starts and stops it. While it runs, swipe up or down to change speed."
+                 : "Play/Pause starts and stops it. It stops at the end of the chapter.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -616,5 +633,51 @@ extension AppModel {
     func setMenuDefaultReaderSettings(_ settings: ReaderSettings) {
         let profile = activeProfile.id
         update { $0.setDefaultReaderSettings(settings, profile: profile) }
+    }
+}
+
+
+/// "Controls" at the bottom of the settings tab: every Siri Remote control
+/// for the reader on screen, plus the game controller's when one is
+/// connected, from `ReaderControls` so it always matches the readers.
+/// Rows are focusable so the drawer can scroll down to them.
+struct ReaderControlsLegend: View {
+    let mode: ReadingMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Controls")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("reader.menu.controls")
+            group("Siri Remote", ReaderControls.remote(for: mode), id: "remote")
+            if GameControllerHub.shared.hasExtendedGamepad {
+                group("Game Controller", ReaderControls.gamepad, id: "gamepad")
+            }
+        }
+    }
+
+    private func group(_ title: String, _ entries: [ReaderControls.Entry], id: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(entries) { entry in
+                // A button with no action: focusable so the drawer scrolls.
+                Button {} label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 24) {
+                        Text(entry.input)
+                            .frame(width: 300, alignment: .leading)
+                        Text(entry.action)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .font(.callout)
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("reader.menu.controls.\(id).\(entry.input)")
+            }
+        }
     }
 }

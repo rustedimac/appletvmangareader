@@ -97,3 +97,11 @@ func openFocusedPoster(_ app: XCUIApplication, maxPresses: Int = 6,
     XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10), file: file, line: line)
     return id
 }
+
+extension XCUIRemote {
+    /// Holds Play/Pause, the route to the reader options in every reader
+    /// (docs/READER_CONTROLS.md section 10, `ReaderRemoteCatcher`).
+    func holdPlayPause() {
+        press(.playPause, forDuration: 1.0)
+    }
+}

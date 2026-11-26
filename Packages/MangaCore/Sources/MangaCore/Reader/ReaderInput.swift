@@ -2,10 +2,12 @@ import Foundation
 
 // MARK: Game controllers
 
-/// Buttons of an extended game controller (Xbox, PlayStation, MFi) that the
-/// reader listens to directly. The d-pad, A and B are left to tvOS, which
-/// turns them into arrow, select and Menu presses for the focus engine, so
-/// they already work everywhere a Siri Remote does.
+/// Buttons of a game controller (Xbox, PlayStation, MFi, and small
+/// reading controllers such as the 8BitDo Micro) that the reader listens to
+/// directly. The d-pad, A and B are left to tvOS, which turns them into
+/// arrow, select and Menu presses for the focus engine, so they already
+/// work everywhere a Siri Remote does. In the reader the d-pad only
+/// navigates (docs/READER_CONTROLS.md).
 public enum GamepadButton: String, CaseIterable, Sendable {
     case leftShoulder
     case rightShoulder
@@ -13,7 +15,9 @@ public enum GamepadButton: String, CaseIterable, Sendable {
     case rightTrigger
     case buttonX
     case buttonY
-    /// The small "options" / "view" / "share" button.
+    /// The ☰ menu / Options / Start button.
+    case menu
+    /// The small "view" / "share" / "select" button.
     case options
 }
 
@@ -24,37 +28,46 @@ public enum ReaderInputAction: Equatable, Sendable {
     case turnPage(ScreenDirection)
     /// Open the previous or next chapter from its first page.
     case jumpChapter(forward: Bool)
-    /// Open or close the reader menu.
+    /// Open or close the reader options.
     case toggleMenu
-    /// Start or stop webtoon auto-scroll.
-    case toggleAutoScroll
+    /// Start or stop auto-scroll (vertical) or the page-turn timer (paged):
+    /// the reader's "play".
+    case togglePlay
+    /// Bookmark the page on screen, or remove its bookmark.
+    case toggleBookmark
+    /// Show or hide the page number and the other reading info.
+    case toggleHUD
 }
 
 /// Which controller button does what in the reader. Kept out of the UI so
-/// the mapping is unit tested and the same in both readers.
+/// the mapping is unit tested and the same in every reader. Chosen with
+/// John (docs/READER_CONTROLS.md section 10): it works on controllers with
+/// no sticks or triggers, so nothing needs L2/R2.
 ///
-/// - Shoulders (L1/R1, LB/RB) turn pages: left shoulder toward the left of
-///   the screen, right shoulder toward the right, like the remote's
-///   left/right, so they follow the reading direction the same way.
-/// - Triggers (L2/R2, LT/RT) jump a whole chapter back or forward.
-/// - X toggles auto-scroll in the vertical reader.
-/// - Y or Options opens and closes the reader menu.
+/// - ☰ Menu opens and closes the reader options.
+/// - Y bookmarks the page.
+/// - X plays: auto-scroll in the vertical reader, the page-turn timer in
+///   the page reader.
+/// - L1 / R1 (LB / RB) open the previous / next chapter.
+/// - View / Share shows or hides the page number.
+/// - L2 / R2 do nothing for now.
 /// - Either stick scrolls the vertical reader smoothly (`GamepadStick`).
 public enum GamepadMapping {
     /// The action for a button press. `menuOpen`: only the menu toggle
-    /// works while the menu is showing, so its focus stays put.
+    /// works while the options are showing, so their focus stays put.
     public static func action(for button: GamepadButton, mode: ReadingMode,
                               menuOpen: Bool = false) -> ReaderInputAction? {
         if menuOpen {
-            return button == .buttonY || button == .options ? .toggleMenu : nil
+            return button == .menu ? .toggleMenu : nil
         }
         switch button {
-        case .leftShoulder: return .turnPage(.left)
-        case .rightShoulder: return .turnPage(.right)
-        case .leftTrigger: return .jumpChapter(forward: false)
-        case .rightTrigger: return .jumpChapter(forward: true)
-        case .buttonX: return mode == .webtoon ? .toggleAutoScroll : nil
-        case .buttonY, .options: return .toggleMenu
+        case .menu: return .toggleMenu
+        case .buttonY: return .toggleBookmark
+        case .buttonX: return .togglePlay
+        case .leftShoulder: return .jumpChapter(forward: false)
+        case .rightShoulder: return .jumpChapter(forward: true)
+        case .options: return .toggleHUD
+        case .leftTrigger, .rightTrigger: return nil
         }
     }
 }
@@ -87,45 +100,74 @@ public enum GamepadStick {
 
 // MARK: Webtoon auto-scroll
 
-/// Auto-scroll for the vertical reader: the strip moves on its own at one
-/// of `levels` speeds. Speeds are fractions of the screen height per second
-/// so they read the same on any screen. The level is saved per profile.
+/// Auto-scroll for the vertical reader and the page-turn timer for the page
+/// reader. People pick a named speed ("Slow", "Fast"), never a number
+/// (John, 2026-11-26). Internally the speed is still a level in `levels`
+/// (saved per profile, so older saved values keep working); only the
+/// levels in `steps` are offered, and any other saved level is shown and
+/// used as its nearest step.
 ///
-/// Siri Remote while it runs: Play/Pause stops it, a click stops it, swipe
-/// or click up/down makes it slower/faster. A game controller's X toggles it.
+/// Siri Remote: Play/Pause starts and stops it; while it runs, swipe or
+/// click up/down for slower/faster. A game controller's X toggles it.
 public enum WebtoonAutoScroll {
     /// Screens per second at each level, slow to fast. Level 1 takes about
     /// 30 seconds per screen, level 10 about 2.
     public static let screensPerSecond: [Double] = [0.033, 0.05, 0.07, 0.09, 0.12, 0.15, 0.2, 0.26, 0.34, 0.45]
     public static var levels: ClosedRange<Int> { 1...screensPerSecond.count }
+    /// The levels people can choose, slow to fast, with their names.
+    public static let steps: [Int] = [1, 3, 5, 7, 9]
+    public static let stepNames: [String] = ["Very Slow", "Slow", "Medium", "Fast", "Very Fast"]
+    /// Seconds per page of the page reader's timer at each step.
+    public static let pageSeconds: [Double] = [30, 20, 12, 8, 5]
+    /// "Slow": today's speed before named steps.
     public static let defaultLevel = 3
 
     public static func clamped(_ level: Int) -> Int {
         min(levels.upperBound, max(levels.lowerBound, level))
     }
 
+    /// Index into `steps` of the step nearest `level` (ties go to the slower one).
+    public static func stepIndex(_ level: Int) -> Int {
+        let level = clamped(level)
+        var best = 0
+        for (i, step) in steps.enumerated() where abs(step - level) < abs(steps[best] - level) {
+            best = i
+        }
+        return best
+    }
+
+    /// The offered level nearest `level`.
+    public static func nearestStep(_ level: Int) -> Int { steps[stepIndex(level)] }
+
     /// Points per second for `level` on a `viewport`-point-tall screen.
     public static func speed(level: Int, viewport: Double) -> Double {
         screensPerSecond[clamped(level) - 1] * viewport
     }
 
+    /// The level `by` steps faster (positive) or slower from `level`.
     public static func stepped(_ level: Int, by steps: Int) -> Int {
-        clamped(clamped(level) + steps)
+        let i = min(self.steps.count - 1, max(0, stepIndex(level) + steps))
+        return self.steps[i]
     }
 
     public static func canStep(_ level: Int, by steps: Int) -> Bool {
-        stepped(level, by: steps) != clamped(level)
+        stepped(level, by: steps) != nearestStep(level)
     }
 
-    /// "Speed 3 of 10".
+    /// "Slow". Never a number.
     public static func label(_ level: Int) -> String {
-        "Speed \(clamped(level)) of \(levels.upperBound)"
+        stepNames[stepIndex(level)]
+    }
+
+    /// Seconds per page for the page reader's timer at `level`.
+    public static func secondsPerPage(_ level: Int) -> Double {
+        pageSeconds[stepIndex(level)]
     }
 
     /// A vertical swipe on the touch surface while auto-scroll runs, in
     /// points of finger travel (negative is up). Up speeds up, down slows
-    /// down, one level per `perLevel` points, at least one level for any
-    /// swipe past `minimum`. Returns the level change.
+    /// down, one step per `perLevel` points, at least one step for any
+    /// swipe past `minimum`. Returns the step change.
     public static func levelChange(forSwipe translationY: Double, minimum: Double = 40,
                                    perLevel: Double = 250) -> Int {
         guard abs(translationY) >= minimum else { return 0 }
