@@ -280,7 +280,8 @@ final class AppModel {
     /// The page to open `chapter` at when none was asked for.
     func resumePage(for chapter: Chapter, sessionPage: Int?) -> Int {
         ResumePosition.startPage(for: chapter, sessionPage: sessionPage,
-                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id))
+                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id),
+                                 serverReadAt: chapter.lastReadAt)
     }
 
     /// Records progress locally, and on the server if this profile syncs
@@ -317,13 +318,63 @@ final class AppModel {
             do {
                 try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: completed)
                 self?.update { $0.clearPending(ref, chapterIDs: [chapter.id], through: now, profile: profile) }
+                self?.pushSucceeded()
             } catch {
-                // Stays queued.
+                // Stays queued; retried with backoff.
+                self?.schedulePendingRetry()
             }
         }
         progressSaves[ref] = task
         return task
     }
+
+    // MARK: Retrying queued pushes
+
+    /// Consecutive failed attempts to push queued progress.
+    @ObservationIgnored private var pushFailures = 0
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
+    @ObservationIgnored var retryBackoff = RetryBackoff()
+
+    private var syncingServerIDs: [UUID] { servers.map(\.id).filter { syncsProgress(to: $0) } }
+
+    var hasPendingProgress: Bool {
+        state.hasPending(servers: syncingServerIDs, profile: activeProfile.id)
+    }
+
+    private func pushSucceeded() {
+        if !hasPendingProgress {
+            pushFailures = 0
+            retryTask?.cancel()
+            retryTask = nil
+        }
+    }
+
+    /// After a failed push, tries the queue again in 5 s, then 10 s, 20 s,
+    /// ... up to every 5 minutes, until the server takes it. One retry is
+    /// scheduled at a time; nothing runs once the queue is empty.
+    func schedulePendingRetry() {
+        guard retryTask == nil, hasPendingProgress else { return }
+        pushFailures += 1
+        let seconds = retryBackoff.delay(afterFailures: pushFailures)
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            self.retryTask = nil
+            // Reschedules itself (with a longer wait) if anything is left.
+            await self.syncPendingProgress()
+        }
+    }
+
+    /// Back in the foreground (or the network is back): push now instead
+    /// of waiting out the backoff.
+    func retryPendingProgressNow() async {
+        retryTask?.cancel()
+        retryTask = nil
+        pushFailures = 0
+        guard hasPendingProgress else { return }
+        await syncPendingProgress()
+    }
+
 
     /// The last progress save started for each series (each waits for the
     /// one before it).
@@ -454,7 +505,8 @@ final class AppModel {
                                               page: p.page, completed: p.completed)
                 update { $0.clearPending(ref, chapterIDs: [p.chapterID], through: p.at, profile: profile) }
             } catch {
-                break // Still offline; try again later.
+                schedulePendingRetry()
+                break // Still offline; retried with backoff.
             }
         }
         return resolution.detail
@@ -470,6 +522,7 @@ final class AppModel {
                 if (try? await seriesDetail(ref)) == nil { break } // Server unreachable.
             }
         }
+        if hasPendingProgress { schedulePendingRetry() } else { pushSucceeded() }
     }
 
     /// This profile's own Continue Reading for a server it doesn't sync to.
