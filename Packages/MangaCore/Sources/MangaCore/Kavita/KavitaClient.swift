@@ -325,12 +325,24 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             if n >= specialVolumeNumber { return (2, 0) }
             return (0, n)
         }
-        let sorted = volumes.sorted { volumeRank($0) < volumeRank($1) }
+        // Numbers decide; ties (specials and loose volumes often share one)
+        // fall back to the names in natural order, then the ids.
+        let sorted = volumes.sorted { a, b in
+            let (ra, rb) = (volumeRank(a), volumeRank(b))
+            if ra != rb { return ra < rb }
+            let byName = NaturalSort.compare(a.name ?? "", b.name ?? "")
+            return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+        }
         var result: [Chapter] = []
         var sequence = 0.0
         for volume in sorted {
             let rank = volumeRank(volume)
-            let chapters = (volume.chapters ?? []).sorted { ($0.sortOrder ?? $0.minNumber ?? 0) < ($1.sortOrder ?? $1.minNumber ?? 0) }
+            let chapters = (volume.chapters ?? []).sorted { a, b in
+                let (oa, ob) = (a.sortOrder ?? a.minNumber ?? 0, b.sortOrder ?? b.minNumber ?? 0)
+                if oa != ob { return oa < ob }
+                let byName = NaturalSort.compare(chapterSortName(a), chapterSortName(b))
+                return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+            }
             for dto in chapters {
                 let pages = dto.pages ?? 0
                 let read = dto.pagesRead ?? 0
@@ -352,6 +364,12 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             }
         }
         return result
+    }
+
+    /// What a chapter is called on disk or in its metadata, for ordering
+    /// chapters Kavita gives the same sort number (e.g. specials).
+    static func chapterSortName(_ dto: KavitaChapterDTO) -> String {
+        [dto.range, dto.title, dto.titleName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
     }
 
     /// Kavita sends `0001-01-01T00:00:00` for "never".

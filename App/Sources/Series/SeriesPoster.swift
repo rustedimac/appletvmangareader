@@ -289,7 +289,8 @@ struct BrowseMessage: View {
             }
         }
         .padding(60)
-        .frame(maxWidth: .infinity)
+        // Try Again is reachable from anywhere in the rows above or below.
+        .centeredFocusRow()
     }
 }
 

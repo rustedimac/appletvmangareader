@@ -19,13 +19,28 @@ final class ProgressSyncUITests: XCTestCase {
     }
 
     /// Opens the full-screen keyboard for a field, types, and goes back.
+    /// The editor is a long list, so focusing a field can scroll it; a
+    /// click during the scroll is sometimes dropped. Clicks again while the
+    /// field itself (not the keyboard) still has focus.
     private func enter(_ text: String, into field: XCUIElement) {
-        select(field)
-        usleep(1_000_000)
+        XCTAssertTrue(focus(field))
+        usleep(800_000)
+        remote.press(.select)
+        for _ in 0..<2 {
+            usleep(1_200_000)
+            guard fieldHasFocus(field) else { break }
+            remote.press(.select)
+        }
+        usleep(800_000)
         app.typeText(text)
         usleep(500_000)
         remote.press(.menu)
         usleep(1_000_000)
+    }
+
+    private func fieldHasFocus(_ field: XCUIElement) -> Bool {
+        field.hasFocus || app.descendants(matching: .any)
+            .matching(NSPredicate(format: "hasFocus == true AND identifier == %@", field.identifier)).count > 0
     }
 
     private func openDemoKavitaEditor() {

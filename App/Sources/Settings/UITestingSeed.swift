@@ -8,6 +8,10 @@ import MangaCore
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
 /// - `-uiTestingSeed multiAddress`: a Kavita server with a home and a remote address.
 /// - `-uiTestingTab settings`: start on the Settings tab.
+/// - `-serverEditorPrefill <kind>|<address>[|<api key>]`: Add Server opens
+///   with these fields filled in, as if pasted (the tvOS simulator can't
+///   paste from the Mac). Works in Debug builds even without `-uiTesting`,
+///   e.g. `-serverEditorPrefill "kavita|http://kavita.local:5000/api/opds/fake-key"`.
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 
@@ -19,6 +23,22 @@ enum UITestingSeed {
     static var isUITesting: Bool { arguments.contains("-uiTesting") }
 
     static var initialTab: String? { isUITesting ? value(after: "-uiTestingTab") : nil }
+
+    struct ServerPrefill {
+        var kind: ServerKind
+        var address: String
+        var apiKey: String
+    }
+
+    static var serverEditorPrefill: ServerPrefill? {
+        #if !DEBUG
+        guard isUITesting else { return nil }
+        #endif
+        guard let raw = value(after: "-serverEditorPrefill") else { return nil }
+        let parts = raw.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+        guard parts.count >= 2, let kind = ServerKind(rawValue: parts[0]) else { return nil }
+        return ServerPrefill(kind: kind, address: parts[1], apiKey: parts.count > 2 ? parts[2] : "")
+    }
 
     static func state() -> AppState? {
         guard isUITesting, let seed = value(after: "-uiTestingSeed") else { return nil }
