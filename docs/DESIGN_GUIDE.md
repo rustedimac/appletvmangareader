@@ -210,6 +210,9 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - Inside a settings `Form`, add `.settingsTextFieldRow()` to every field. It
   removes the row platter so the field's own capsule is the only outline
   (otherwise tvOS draws a capsule inside a capsule).
+- Segmented pickers in a settings `Form` get `.settingsSegmentedRow()` for
+  the same reason: without it the row platter shows as a third rounded
+  layer behind the picker's track, with corners that don't match.
 - Outside a form, cap the width at `Size.textField` and give them a visible
   label or a prompt that says what to type. Prefer pickers or buttons when
   the choices are known (HIG: minimize text entry on tvOS).
