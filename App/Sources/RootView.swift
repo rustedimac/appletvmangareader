@@ -9,6 +9,8 @@ struct RootView: View {
     @State private var tab = UITestingSeed.initialTab ?? "home"
     /// A Top Shelf item the user opened.
     @State private var link: DeepLinkRoute?
+    /// Sends a tab back to its top screen after it's been out of sight.
+    @State private var navigationReset = NavigationReset()
 
     var body: some View {
         content
@@ -41,22 +43,30 @@ struct RootView: View {
                 HomeView()
                     .tabItem { Text("Home") }
                     .tag("home")
+                    .navigationResetTab("home")
                 LibraryView()
                     .tabItem { Text("Library") }
                     .tag("library")
+                    .navigationResetTab("library")
                 FavoritesView()
                     .tabItem { Text("Favorites") }
                     .tag("favorites")
+                    .navigationResetTab("favorites")
                 BookmarksView()
                     .tabItem { Text("Bookmarks") }
                     .tag("bookmarks")
+                    .navigationResetTab("bookmarks")
                 SearchView()
                     .tabItem { Text("Search") }
                     .tag("search")
+                    .navigationResetTab("search")
                 SettingsView()
                     .tabItem { Text("Settings") }
                     .tag("settings")
+                    .navigationResetTab("settings")
             }
+            .environment(navigationReset)
+            .onChange(of: tab) { old, new in navigationReset.tabChanged(from: old, to: new) }
             // Rebuild every tab for the newly picked profile.
             .id(model.activeProfile.id)
         }
