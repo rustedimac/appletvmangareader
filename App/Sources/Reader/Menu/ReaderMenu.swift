@@ -562,16 +562,11 @@ struct ReaderMenu: View {
     }
 }
 
-<<<<<<< HEAD
 /// A selectable option: a ring that fills with a check when chosen. Only
 /// for a short sort toggle beside a grid (Favorites); a setting in a menu
 /// or settings page is a `PanelValueRow`, and sections use `SectionTabBar`.
 /// One line, with `RowMetrics.textInset` above and below, so chips side by
 /// side always share one height.
-=======
-/// A selectable option: a ring that fills with a check when chosen. For a
-/// setting's value only; tabs that switch sections use `SectionTabBar`.
->>>>>>> origin/claude/project-thread-mbr9t1
 struct OptionButton: View {
     let title: String
     let isSelected: Bool
