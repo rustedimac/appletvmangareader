@@ -154,7 +154,7 @@ final class BookReaderSession {
                 fraction = 1
             case nil:
                 let resume = BookPositionStore.resume(chapter: chapter,
-                                                      saved: AppModel.bookPositions.position(profile: profile, chapter: chapter),
+                                                      saved: model.bookPositionStore.position(profile: profile, chapter: chapter),
                                                       sectionCount: manifest.sectionCount)
                 section = resume.section
                 fraction = resume.fraction
@@ -379,22 +379,27 @@ final class BookReaderSession {
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
         let sectionChanged = lastSaved?.section != progress.section || lastSaved?.completed != progress.completed
         lastSaved = progress
-        AppModel.bookPositions.setPosition(BookPosition(section: progress.section,
-                                                        fraction: cursor.fraction(pageCount: pageCount)),
-                                           profile: model.activeProfile.id, chapter: chapter)
+        model.bookPositionStore.setPosition(BookPosition(section: progress.section,
+                                                         fraction: cursor.fraction(pageCount: pageCount)),
+                                            profile: model.activeProfile.id, chapter: chapter)
         // The server only knows sections, so only write when that changes.
         guard sectionChanged else { return }
         let chapter = self.chapter
         let series = self.series
         let model = self.model
-        Task {
-            await model.recordProgress(chapter: chapter, series: series,
-                                       page: progress.section, completed: progress.completed)
-        }
+        model.startRecordingProgress(chapter: chapter, series: series,
+                                     page: progress.section, completed: progress.completed)
     }
+
+    @ObservationIgnored private var refreshedOnClose = false
 
     func close() {
         flushProgress()
+        // The view closes it on Menu and again on disappear.
+        if !refreshedOnClose {
+            refreshedOnClose = true
+            model.refreshSeriesProgress(series.ref)
+        }
         for task in fetches.values { task.cancel() }
     }
 }

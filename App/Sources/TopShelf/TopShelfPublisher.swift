@@ -33,7 +33,8 @@ final class TopShelfPublisher {
     }
 
     func publish() async {
-        guard let model else { return }
+        // The Top Shelf shows the owner's reading, never a guest's.
+        guard let model, !model.isGuest else { return }
         let snapshot = TopShelfSnapshot.make(from: model.state)
         guard snapshot != published else { return }
         published = snapshot

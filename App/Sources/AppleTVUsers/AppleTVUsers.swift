@@ -36,8 +36,8 @@ extension AppModel {
     /// True when the profile is using a login another Apple TV user entered.
     func usesSharedLogin(for server: ServerConfig) -> Bool {
         guard let store = secrets as? SharedFallbackSecretStore else { return false }
-        return !store.hasOwnCredential(profile: activeProfile.id, server: server.id)
-            && store.credential(profile: activeProfile.id, server: server.id) != nil
+        return !store.hasOwnCredential(profile: loginProfileID, server: server.id)
+            && store.credential(profile: loginProfileID, server: server.id) != nil
     }
 
     /// Pulls in servers other Apple TV users added or removed, then writes

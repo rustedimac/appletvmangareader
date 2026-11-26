@@ -11,6 +11,12 @@ extension AppModel {
         return BookPositionStore(backing: UserDefaultsStore())
     }()
 
+    /// Where book positions go for the active profile: in memory for a
+    /// guest, so a guest session leaves nothing behind.
+    var bookPositionStore: BookPositionStore {
+        isGuest ? guestBookPositions : Self.bookPositions
+    }
+
     /// The active profile's book reader settings.
     var bookSettings: BookSettings {
         state.bookSettings(profile: activeProfile.id)
