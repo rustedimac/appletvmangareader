@@ -317,11 +317,6 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         return s
     }
 
-    /// Kavita sends 0001-01-01 for "never".
-    static func realDate(_ date: Date?) -> Date? {
-        date.flatMap { $0.timeIntervalSince1970 > 0 ? $0 : nil }
-    }
-
     func coverURL(seriesID: Int) -> URL? {
         try? anonymous.url("api/Image/series-cover", query: ["seriesId": String(seriesID), "apiKey": apiKey])
     }
