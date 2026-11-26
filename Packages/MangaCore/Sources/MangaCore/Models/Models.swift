@@ -32,13 +32,53 @@ public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var kind: ServerKind
     public var name: String
+    /// The main address. Every URL the clients build starts with it;
+    /// `FailoverTransport` swaps it for whichever address answers.
     public var baseURL: URL
+    /// Other addresses of the same server, e.g. a remote or reverse-proxy
+    /// address for when the Apple TV isn't on the home network. Tried in
+    /// order after `baseURL` (see `ServerAddressRouter`). Saved only when
+    /// there are some, so older builds and backups read the same JSON.
+    public var alternateURLs: [URL]
 
-    public init(id: UUID = UUID(), kind: ServerKind, name: String, baseURL: URL) {
+    public init(id: UUID = UUID(), kind: ServerKind, name: String, baseURL: URL, alternateURLs: [URL] = []) {
         self.id = id
         self.kind = kind
         self.name = name
         self.baseURL = baseURL
+        self.alternateURLs = alternateURLs
+    }
+
+    /// Every address in the order they're tried, main address first,
+    /// without repeats.
+    public var addresses: [URL] {
+        var seen = Set<String>()
+        return ([baseURL] + alternateURLs).filter { seen.insert($0.absoluteString).inserted }
+    }
+
+    /// True when there's more than one address to choose from.
+    public var hasAlternateAddresses: Bool { addresses.count > 1 }
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, name, baseURL, alternateURLs
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        kind = try c.decode(ServerKind.self, forKey: .kind)
+        name = try c.decode(String.self, forKey: .name)
+        baseURL = try c.decode(URL.self, forKey: .baseURL)
+        alternateURLs = (try? c.decodeIfPresent([URL].self, forKey: .alternateURLs)) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(name, forKey: .name)
+        try c.encode(baseURL, forKey: .baseURL)
+        if !alternateURLs.isEmpty { try c.encode(alternateURLs, forKey: .alternateURLs) }
     }
 }
 
@@ -169,6 +209,11 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var chapterCount: Int?
     /// What `chapterCount` counts. Nil means chapters.
     public var countUnit: SeriesCountUnit?
+    /// Unread chapters for a listing that reports pages (Kavita), where
+    /// `unreadCount` is pages. Fetched per poster with the chapter count
+    /// (`SeriesCount.unread`), so the poster can show the same unread
+    /// badge as a Suwayomi poster. Nil when unknown.
+    public var unreadChapters: Int? = nil
     /// When the series got its place in a Home feed: last read (Continue
     /// Reading), added (Newly Added) or last new chapter (Recently
     /// Updated). Set by feeds when the server says, so rows from several
@@ -397,5 +442,6 @@ extension SeriesSummary {
         chapterCount = c.tolerant(.chapterCount)
         countUnit = c.tolerant(.countUnit)
         feedDate = c.tolerant(.feedDate)
+        unreadChapters = c.tolerant(.unreadChapters)
     }
 }

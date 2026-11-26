@@ -11,7 +11,7 @@ people can move their data with **Back Up and Restore over Wi‑Fi**.
 | --- | --- |
 | Profiles (name, symbol, color) | Kavita API keys, Suwayomi usernames and passwords (Keychain only) |
 | | Anything from a guest session (never saved) |
-| Servers (name, kind, address) | Profile PINs, once that feature lands (#19) |
+| Servers (name, kind, every address) | Profile PINs, once that feature lands (#19) |
 | Per profile and server: library/category choice, "sync progress to server" | Image caches |
 | Favorites | Which profile is active on this device |
 | Reading progress: position and every read/unread chapter | |

@@ -19,10 +19,14 @@ final class SeriesCountStore {
     func count(for ref: SeriesRef) -> SeriesCount? { counts[ref] }
 
     /// Saves a count learned elsewhere (series detail), unless the server
-    /// already gave one (its unit may be more precise, like volumes).
+    /// already gave one (its unit may be more precise, like volumes). The
+    /// unread number is always taken: it's the newer one.
     func record(_ count: SeriesCount, for ref: SeriesRef) {
-        guard counts[ref] == nil else { return }
-        counts[ref] = count
+        guard counts[ref] != nil else {
+            counts[ref] = count
+            return
+        }
+        if let unread = count.unread, counts[ref]?.unread != unread { counts[ref]?.unread = unread }
     }
 
     /// Queues a request for `ref` unless it's known, queued or failed.

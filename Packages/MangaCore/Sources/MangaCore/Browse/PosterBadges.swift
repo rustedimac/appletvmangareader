@@ -30,14 +30,23 @@ public struct PosterBadges: Equatable, Sendable {
 
     /// Kavita reports pages (total and read), so it gets a progress bar
     /// from pages; its `unreadCount` is pages, too big a number for a
-    /// badge. Suwayomi library grids report chapters, so they get the
+    /// badge, so the badge uses `unreadChapters` (fetched per poster). Suwayomi library grids report chapters, so they get the
     /// unread chapter count. Anything else falls back to `unreadCount`.
     /// `style` picks what goes under the title.
     public init(series: SeriesSummary, caption style: PosterCaption = .default) {
         let fraction: Double?
         if let pages = series.pageCount, pages > 0, let read = series.pagesRead {
             fraction = min(1, max(0, Double(read) / Double(pages)))
-            self.init(corner: read >= pages ? .finished : .none, progress: Self.partial(fraction!))
+            // The badge counts chapters, like every other server's.
+            let corner: Corner
+            if read >= pages {
+                corner = .finished
+            } else if let unread = series.unreadChapters, unread > 0 {
+                corner = .unread(unread)
+            } else {
+                corner = .none
+            }
+            self.init(corner: corner, progress: Self.partial(fraction!))
         } else if let chapters = series.chapterCount, chapters > 0, let unread = series.unreadCount {
             let read = max(0, chapters - unread)
             fraction = min(1, Double(read) / Double(chapters))
@@ -81,6 +90,28 @@ public struct PosterBadges: Equatable, Sendable {
         if let read = progress ?? titleProgress { parts.append("\(Int((read * 100).rounded())) percent read") }
         if let caption { parts.append(caption) }
         return parts.joined(separator: ", ")
+    }
+
+    /// How much of the series is read (0...1), measured the way its poster
+    /// measures it: pages when the listing reports them (Kavita), else
+    /// chapters. Nil when the server says neither.
+    public static func readFraction(_ series: SeriesSummary) -> Double? {
+        if let pages = series.pageCount, pages > 0, let read = series.pagesRead {
+            return min(1, max(0, Double(read) / Double(pages)))
+        }
+        if let chapters = series.chapterCount, chapters > 0, let unread = series.unreadCount {
+            return min(1, Double(max(0, chapters - unread)) / Double(chapters))
+        }
+        return nil
+    }
+
+    /// "42% read" for the series page, from its loaded chapters, so it
+    /// agrees with the series' poster and changes as soon as the page
+    /// reloads after reading. Nil for a series with no chapters.
+    public static func readText(detail: SeriesDetail, summary: SeriesSummary) -> String? {
+        guard !detail.chapters.isEmpty else { return nil }
+        let current = SeriesProgressOverride(detail: detail).applied(to: summary)
+        return readFraction(current).map { "\(percentText($0)) read" }
     }
 
     /// "40%" next to a progress bar. Never "0%" once something is read or

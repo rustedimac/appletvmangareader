@@ -106,7 +106,7 @@ struct BrowseSettingsView: View {
                 .accessibilityIdentifier("browse.showsPercent")
                 .accessibilityValue(showsPercent ? "on" : "off")
                 .padding(.top, 30)
-                Text("Puts \"40%\" next to every poster progress bar.")
+                Text("Puts \"40%\" next to every poster progress bar, and \"40% read\" on series pages.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 

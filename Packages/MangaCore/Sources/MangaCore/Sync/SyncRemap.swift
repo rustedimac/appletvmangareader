@@ -35,7 +35,8 @@ public struct SyncRemap: Sendable, Equatable {
         for local in state.servers where !remoteServers.contains(where: { $0.id == local.id }) {
             if let match = remoteServers.first(where: {
                 !localServerIDs.contains($0.id) && !taken.contains($0.id)
-                    && $0.kind == local.kind && sameAddress($0.baseURL, local.baseURL)
+                    && $0.kind == local.kind
+                    && $0.addresses.contains { remote in local.addresses.contains { mine in sameAddress(remote, mine) } }
             }) {
                 remap.servers[local.id] = match.id
                 taken.insert(match.id)

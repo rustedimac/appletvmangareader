@@ -47,6 +47,8 @@ public enum ConnectionErrorMessage {
                 return "That doesn't look like a web address. Try something like \(example)."
             case .graphQL:
                 return mangaError.errorDescription ?? notThisServer(name, host: host, example: example)
+            case .unreachable:
+                return mangaError.errorDescription ?? "Couldn't reach \(name) at any of its addresses."
             }
         }
 

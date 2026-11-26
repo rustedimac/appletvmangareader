@@ -37,7 +37,8 @@ final class OPDSUITests: XCTestCase {
         XCTAssertFalse(app.element("serverEditor.sync").exists, "OPDS keeps progress on the Apple TV")
         XCTAssertTrue(app.element("serverEditor.save").isEnabled)
 
-        select(app.element("serverEditor.test"))
+        XCTAssertTrue(focus(app.element("serverEditor.test"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         let connected = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Connected to Test Catalog'")).firstMatch
         XCTAssertTrue(connected.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Latest series"].waitForExistence(timeout: 10))
