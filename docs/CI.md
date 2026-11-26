@@ -5,7 +5,17 @@
 Every PR runs `.github/workflows/ci.yml` on GitHub's macOS runners:
 
 - **MangaCore unit tests**: `swift test` in `Packages/MangaCore` (about 1 minute, 15 minute timeout).
-- **tvOS app build and UI tests**: `xcodegen generate` and then `xcodebuild test` on a tvOS simulator (about 35 minutes at 80 UI tests, 60 minute timeout). Test results stream into the job log as they finish, and the xcresult is uploaded when a run fails or times out.
+- **tvOS app build and UI tests**: `xcodegen generate`, `xcodebuild build-for-testing`, then `xcodebuild test-without-building` on a tvOS simulator (60 minute timeout). Test results stream into the job log as they finish, and the xcresult is uploaded when a run fails or times out.
+
+### What limits CI, and what doesn't help
+
+The repository gets at most **5 macOS runners at once** (GitHub free plan). With many open PRs, runs wait in that queue far longer than they run, so what matters is runner minutes per run, not only how long one run takes.
+
+- `simctl list` runs in the background during `build-for-testing`. Its first call starts CoreSimulator, which took 2 to 3 minutes on its own. Build plus simulator start went from about 6 minutes to under 2 (PR #42).
+- **Don't run UI tests on parallel simulator clones.** Tried in PR #42 with 3 clones: each test ran 2 to 5 times slower on the 3-core runner (a 10 second reader test took 25 to 40 seconds, CategorySelection tests failed under the load), and the job hit the 60 minute timeout.
+- **Don't shard the UI tests across several runners.** Each shard pays for its own build and simulator start, so sharding uses more runner minutes and makes the queue longer.
+- The UI tests themselves are the cost: 43 minutes at 91 tests on main (run 280). A few take far longer than the rest, e.g. `CategorySelectionUITests.testServerEditorListsCategoriesAndSavesTicks` (170 s), `DesignLayoutUITests.testSettingsScreens` (127 s), `FreeLibraryUITests.testSettingsShowsCreditsAndCanRemoveAndRestore` (82 s). Speeding those up, or not running every UI test on every PR push, is where further time comes from.
+
 
 Push runs happen only on `main`. Each PR gets one run per push, and a new push cancels the previous run for that PR.
 

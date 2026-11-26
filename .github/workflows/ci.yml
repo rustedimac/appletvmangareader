@@ -41,13 +41,10 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    # Serial, the UI suite took 43 minutes at 91 tests (plus ~6 for build and
-    # simulator start). Parallel simulator clones cut that; see docs/CI.md.
+    # The UI suite took 43 minutes at 91 tests. Tests run one at a time on
+    # purpose: parallel simulator clones made each test 2-5x slower on these
+    # 3-core runners and the job timed out (PR #42). See docs/CI.md.
     timeout-minutes: 60
-    env:
-      # Simulator clones that run UI test classes side by side on the one
-      # runner. Same runner minutes for more tests, so it helps the queue too.
-      UI_TEST_WORKERS: 3
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -91,8 +88,6 @@ jobs:
             -scheme MangaReader \
             -destination "id=$UDID" \
             -derivedDataPath "$DD" \
-            -parallel-testing-enabled YES \
-            -parallel-testing-worker-count "$UI_TEST_WORKERS" \
             -resultBundlePath build/Results.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/xcodebuild.log \
