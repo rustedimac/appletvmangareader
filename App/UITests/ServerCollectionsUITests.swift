@@ -131,8 +131,13 @@ final class ServerCollectionsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["This list is empty"].waitForExistence(timeout: 10))
 
         // Demo Suwayomi offers none, so its bar has no list buttons.
+        // Back out one screen at a time: list → lists grid → server → servers.
         remote.press(.menu)
+        XCTAssertTrue(waitFor(app.staticTexts["collections.title"], "exists == true"), "lists grid didn't come back")
+        usleep(600_000)
         remote.press(.menu)
+        XCTAssertTrue(waitFor(app.buttons["category.all"], "exists == true"), "server library didn't come back")
+        usleep(600_000)
         remote.press(.menu)
         let suwayomi = app.buttons["library.server.Demo Suwayomi"]
         XCTAssertTrue(suwayomi.waitForExistence(timeout: 10))

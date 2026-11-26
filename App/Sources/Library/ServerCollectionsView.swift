@@ -316,7 +316,11 @@ struct ReadingListView: View {
             .accessibilityElement(children: .combine)
             .accessibilityValue(entry.isRead ? "read" : entry.progress.map { "\(Int(($0 * 100).rounded())) percent read" } ?? "unread")
             .accessibilityIdentifier("readingList.entry.\(entry.itemID)")
-            NavigationLink(value: entry.seriesSummary) {
+            // A destination link: this screen was pushed with one, and a
+            // value link here doesn't reach the stack's SeriesSummary route.
+            NavigationLink {
+                SeriesDetailView(series: entry.seriesSummary)
+            } label: {
                 Image(systemName: "ellipsis")
                     .accessibilityLabel("Go to \(entry.seriesTitle)")
             }
