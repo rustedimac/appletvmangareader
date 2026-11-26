@@ -218,11 +218,16 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   the choices are known (HIG: minimize text entry on tvOS).
 - Show the right keyboard (`.keyboardType(.URL)`), and turn off
   autocorrection for names, addresses and keys.
-- Passwords and keys use a plain SwiftUI `SecureField`, with no font or
-  scale modifier. Its dots already match Apple's own Settings app (measured
-  at 4K: 33–34 px dots, about 0.6× the cap height of field text). `.font(.body)`
-  shrinks them and a UIKit `isSecureTextEntry` wrapper greys them out.
-  `tools/check_secure_fields.py` (CI) enforces this.
+- Field text uses Apple's text-field size, set once by
+  `.settingsTextFieldRow()` (`SettingsFieldFont.text`, headline size at
+  regular weight, 38 pt). Measured against tvOS Settings at 4K: placeholder,
+  typed text (54 px "h") and password dots (32–34 px) match in every state.
+  `.body` made them about 0.76× Apple's size; no font made typed text 1.7×
+  its placeholder.
+- Passwords and keys use a plain SwiftUI `SecureField` with no font or scale
+  modifier of its own, and never a UIKit `isSecureTextEntry` wrapper (greys
+  the dots). `tools/check_secure_fields.py` (CI) enforces both and that every
+  field gets `.settingsTextFieldRow()` or an explicit `SettingsFieldFont`.
 
 ### Rows
 
