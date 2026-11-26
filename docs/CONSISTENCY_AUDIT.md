@@ -10,7 +10,7 @@ matters:
 - **Medium**: visible on a close look, or a trap for the next change.
 - **Low**: code tidiness.
 
-Status: **Fixed** (in the PR that added this file), **Guarded** (a CI check
+Status: **Fixed** (in #46, or on the date given), **Guarded** (a CI check
 now stops new cases), **Open** (left, usually because an open PR is changing
 the same file; the note says when to do it).
 
@@ -46,8 +46,8 @@ to-do list for after those merge.
 | W1 | `ReaderDefaultsView` vs `ReaderMenuItem.title` (MangaCore) | The same settings have different names and case: "Mode" / "Reading Mode", "Pages" / "Page Layout", "Column width" / "Column Width", "Show first page alone" / "First Page Alone", "Scroll per click" (no menu twin). | Default Reader Settings uses `ReaderMenuItem.title` for every row it shares with the menu, Title Case for the rest. | High | Open (ReaderDefaultsView in #17, #35, #37) |
 | W2 | `ReaderDefaultsView` "Reset to Defaults" vs `ReaderMenu` "Reset to Default" | Singular vs plural for the same idea. | "Reset to Default" in the menu (one default to go back to), "Reset to Defaults" on the settings page (all of them). Fine as is if intended; otherwise pick one. | Low | Open |
 | W3 | `BookReaderView` "isn't available for this source" | "source" appears nowhere else; the app says "server". | "server". | Low | Open (BookReaderView in #19) |
-| W4 | `CategoryPickerView` loading/failed rows | "Couldn't load libraries. Try Again" is one button label with the action glued to the error. | Error as the row's title, "Try Again" as its own button, like `BrowseMessage`. | Low | Open |
-| W5 | Context menus (`BookmarksView`, `SeriesBookmarksSection`, `ReaderMenu`, `SeriesPoster`, `SeriesDetailView`) | Some items are `Label` with an SF Symbol ("Mark as Unread"), others plain text ("Remove Bookmark", "Go to Series"). | Every context-menu item is a `Label` with a symbol. | Low | Open |
+| W4 | `CategoryPickerView` loading/failed rows | "Couldn't load libraries. Try Again" is one button label with the action glued to the error. | Error as the row's title, "Try Again" as its own button, like `BrowseMessage`. | Low | **Fixed** 2026-11-26: error text row plus its own Try Again button |
+| W5 | Context menus (`BookmarksView`, `SeriesBookmarksSection`, `ReaderMenu`, `SeriesPoster`, `SeriesDetailView`) | Some items are `Label` with an SF Symbol ("Mark as Unread"), others plain text ("Remove Bookmark", "Go to Series"). | Every context-menu item is a `Label` with a symbol. | Low | Partly fixed 2026-11-26 (`SeriesBookmarksSection`); rest open (#19, #35, #40 touch the others) |
 | W6 | Category nouns | Consistent: `ServerKind.categoryNoun` gives Libraries / Categories / Sections / Collections and every screen uses it. | Keep it; never hard-code "Libraries". | — | OK |
 
 ## 3. Visual tokens
@@ -78,7 +78,7 @@ to-do list for after those merge.
 | --- | --- | --- | --- | --- | --- |
 | C1 | 13 call sites | Error text is built three ways: `(error as? LocalizedError)?.errorDescription ?? error.localizedDescription` (8), `error.localizedDescription` (4), `engine.lastError ?? …` (1). | One `Error.userMessage` helper in MangaCore. | Low | Open |
 | C2 | Whole app | No logging at all (no `Logger`/`os_log`), and 162 `try?` that drop errors. Sync, image and network failures leave no trace on a device. | `Logger(subsystem: "com.rustedimac.MangaReader", category: …)` per area; log the error before every `try?` that hides a failure the user might report. | Medium | Open |
-| C3 | Accessibility identifiers | `lowerCamel.dotted` everywhere except `RemoteImage.loaded/failed/loading` (PascalCase), and `bookmark.*` vs `bookmarks.*`, `category.*` vs `categories.*` for related screens. | `screen.element[.detail]`, lowerCamel. Rename `RemoteImage.*` to `remoteImage.*` together with its UI tests. | Low | Open |
+| C3 | Accessibility identifiers | `lowerCamel.dotted` everywhere except `RemoteImage.loaded/failed/loading` (PascalCase), and `bookmark.*` vs `bookmarks.*`, `category.*` vs `categories.*` for related screens. | `screen.element[.detail]`, lowerCamel. Rename `RemoteImage.*` to `remoteImage.*` together with its UI tests. | Low | Partly fixed 2026-11-26: `remoteImage.*`; bookmark/category prefixes open |
 | C4 | Focus hops | `DispatchQueue.main.async { focus = … }` in `ReaderMenu`, `BookReaderMenu`, plus `asyncAfter` retries (0.1/0.4/1.0 s) in `WebtoonReaderView`. | One `.focusOnAppear(_:)` helper with the run-loop hop documented once. | Low | Open |
 | C5 | Tests | Consistent: MangaCore tests are XCTest `FooTests`, UI tests `FooUITests` with `testDoesSomething` names and `-uiTesting` launch flags. | Keep. | — | OK |
 
@@ -126,11 +126,16 @@ should follow that merge.
 | --- | --- | --- | --- |
 | D1 | README intro | Named only Kavita and Suwayomi; no Komga, OPDS, Free Library, PDF/EPUB or Apple TV users. | **Fixed** |
 | D2 | README Tests | "CI runs both on every push and pull request"; pushes to branches no longer run CI (docs/CI.md). | **Fixed** |
-| D3 | README "Connecting servers" | Only Kavita and Suwayomi. | Open (#15, #19, #39 edit that section); point to docs/SERVERS.md. |
-| D4 | DESIGN_GUIDE §7 Settings headers | Says "primary at 75 % opacity"; `SettingsHeader` uses 0.8. | Open (pick one; the guide is being edited by #36–#38, #41). |
+| D3 | README "Connecting servers" | Only Kavita and Suwayomi. | **Fixed** 2026-11-26: Komga, OPDS and Free Library bullets, link to docs/SERVERS.md |
+| D4 | DESIGN_GUIDE §7 Settings headers | Says "primary at 75 % opacity"; `SettingsHeader` uses 0.8. | **Fixed** 2026-11-26: guide says 80 %, matching the code |
 | D5 | DESIGN_GUIDE §7 Reader drawer | Says content is inset 80 pt from the trailing edge; both drawers use 60. | Open (see R4). |
 | D6 | docs/ICLOUD.md "What syncs" | Doesn't list bookmarks, book settings, Favorites sort, auto-scroll speed or book positions as not synced; Follow-ups still describe #14 bookmarks as "after this lands". | Open (#34, #35, #41, #43 edit it). |
 | D7 | Project plan (`plan/work-breakdown.md`) | No status per workstream, and nothing on Komga/OPDS, Free Library, books, iCloud or Apple TV users, which were all added later. | Open (project file, not in the repo). |
+
+## Run log
+
+- 2026-11-25: first audit, #46.
+- 2026-11-26 (nightly): #15, #36, #37, #38, #39, #41, #51 merged; lint clean, no new findings. Fixed W4, D3, D4, part of W5 and C3.
 
 ## Not checked
 

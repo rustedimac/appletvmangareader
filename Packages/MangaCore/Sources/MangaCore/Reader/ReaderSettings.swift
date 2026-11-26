@@ -92,6 +92,11 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
     public var fit: PageFit
     /// Paged reader: magnification a click on the remote zooms to.
     public var zoomScale: Double
+    /// Single-page paged layout: show a wide page (a scanned two-page
+    /// spread) as two screens, one half at a time, in reading order.
+    public var splitWidePages: Bool
+    /// Brightness, contrast, color mode, sharpening and upscaling.
+    public var picture: PictureSettings
 
     public init(mode: ReadingMode = .paged,
                 direction: ReadingDirection = .rightToLeft,
@@ -103,7 +108,9 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
                 webtoonScrollStep: Double = 0.75,
                 cropBorders: Bool = false,
                 fit: PageFit = .screen,
-                zoomScale: Double = 2.0) {
+                zoomScale: Double = 2.0,
+                splitWidePages: Bool = false,
+                picture: PictureSettings = .default) {
         self.mode = mode
         self.direction = direction
         self.layout = layout
@@ -115,15 +122,18 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         self.cropBorders = cropBorders
         self.fit = fit
         self.zoomScale = zoomScale
+        self.splitWidePages = splitWidePages
+        self.picture = picture
     }
 
     private enum CodingKeys: String, CodingKey {
         case mode, direction, layout, firstPageAlone, shiftPairing, background
-        case webtoonWidth, webtoonScrollStep, cropBorders, fit, zoomScale
+        case webtoonWidth, webtoonScrollStep, cropBorders, fit, zoomScale, splitWidePages, picture
     }
 
     /// Missing or unknown values fall back to the defaults, so settings
-    /// saved by an older build (without newer fields) still load.
+    /// saved (or synced) by an older build without the newer fields still
+    /// load instead of being thrown away.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = ReaderSettings()
@@ -141,6 +151,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         cropBorders = value(.cropBorders, d.cropBorders)
         fit = value(.fit, d.fit)
         zoomScale = value(.zoomScale, d.zoomScale)
+        splitWidePages = value(.splitWidePages, d.splitWidePages)
+        picture = value(.picture, d.picture)
     }
 
     public static let `default` = ReaderSettings()
@@ -158,6 +170,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         switch (mode, layout) {
         case (.paged, .double):
             return SpreadLayout(sizes: sizes, firstPageAlone: firstPageAlone, shift: shiftPairing)
+        case (.paged, .single) where splitWidePages:
+            return .singles(splitting: sizes, direction: direction)
         default:
             return .singles(pageCount: sizes.count)
         }

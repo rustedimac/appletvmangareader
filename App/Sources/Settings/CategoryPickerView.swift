@@ -32,15 +32,13 @@ struct CategoryChecklist: View {
                 ProgressView()
             }
         case .failed(let message):
-            Button {
-                retry()
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Couldn't load \(kind.categoryNoun.lowercased()). Try Again")
-                    Text(message).font(.caption).foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                Text("Couldn't load \(kind.categoryNoun.lowercased())")
+                Text(message).font(.caption).foregroundStyle(.secondary)
             }
-            .accessibilityIdentifier("categories.retry")
+            .accessibilityElement(children: .combine)
+            Button("Try Again", action: retry)
+                .accessibilityIdentifier("categories.retry")
         case .loaded(let selection):
             if selection.available.isEmpty {
                 Text("This server has no \(kind.categoryNoun.lowercased()) your account can see.")

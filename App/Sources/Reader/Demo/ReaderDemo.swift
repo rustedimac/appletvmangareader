@@ -12,6 +12,7 @@ import MangaCore
 /// - `-readerMode paged|webtoon` and `-readerWebtoonWidth <0.3...1.0>`
 /// - `-readerFit screen|width|height`, `-readerCrop 1`, `-readerZoom <scale>`
 /// - `-readerDemoMargins 1`: pages are drawn with white margins (for crop tests)
+/// - `-readerSplitWide YES` splits wide pages (single-page layout)
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
 /// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
 ///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
@@ -75,6 +76,9 @@ enum ReaderDemo {
                 }
                 if defaults.string(forKey: "readerCrop") == "1" { settings.cropBorders = true }
                 if let z = Double(defaults.string(forKey: "readerZoom") ?? "") { settings.zoomScale = z }
+                if defaults.bool(forKey: "readerSplitWide") {
+                    settings.splitWidePages = true
+                }
                 model.setReaderSettings(settings, for: DemoMangaServer.series.ref)
                 ready = true
             }

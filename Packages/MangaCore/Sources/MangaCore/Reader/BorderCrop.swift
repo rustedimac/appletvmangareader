@@ -193,4 +193,17 @@ public enum SpreadCrop {
             CropInsets(top: top, left: 0, bottom: bottom, right: pages[1].right),
         ]
     }
+
+    /// The crop for one half of a split wide page, as fractions of the
+    /// half. The fold in the middle is never cropped; the outer side keeps
+    /// the page's own margin (twice the fraction, since the half is half
+    /// as wide).
+    public static func half(_ crop: CropInsets?, _ side: PageHalf) -> CropInsets {
+        let c = crop ?? .zero
+        let cap = 0.7
+        switch side {
+        case .left: return CropInsets(top: c.top, left: min(cap, c.left * 2), bottom: c.bottom, right: 0)
+        case .right: return CropInsets(top: c.top, left: 0, bottom: c.bottom, right: min(cap, c.right * 2))
+        }
+    }
 }

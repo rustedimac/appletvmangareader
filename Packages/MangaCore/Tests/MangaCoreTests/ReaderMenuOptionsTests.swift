@@ -12,7 +12,7 @@ final class ReaderMenuOptionsTests: XCTestCase {
     func testPagedSingleHidesPairingRows() {
         let s = ReaderSettings(mode: .paged, layout: .single)
         XCTAssertEqual(ReaderMenuOptions.items(for: s),
-                       [.mode, .layout, .direction, .fit, .cropBorders, .zoom, .background])
+                       [.mode, .layout, .direction, .fit, .cropBorders, .zoom, .splitWidePages, .background])
     }
 
     func testWebtoonShowsWidthAndHidesPagedRows() {

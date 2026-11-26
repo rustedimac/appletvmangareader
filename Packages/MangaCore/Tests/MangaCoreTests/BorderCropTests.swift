@@ -168,4 +168,14 @@ final class BorderCropTests: XCTestCase {
         XCTAssertEqual(frames[0].x + frames[0].width, frames[1].x, accuracy: 1e-9)
         XCTAssertEqual(frames[0].height, frames[1].height)
     }
+
+    func testSplitHalvesKeepTheFoldAndDoubleTheOuterMargin() {
+        let page = CropInsets(top: 0.05, left: 0.1, bottom: 0.04, right: 0.2)
+        XCTAssertEqual(SpreadCrop.half(page, .left), CropInsets(top: 0.05, left: 0.2, bottom: 0.04, right: 0))
+        XCTAssertEqual(SpreadCrop.half(page, .right), CropInsets(top: 0.05, left: 0, bottom: 0.04, right: 0.4))
+        XCTAssertEqual(SpreadCrop.half(nil, .left), .zero)
+        // A half always keeps some of its width.
+        XCTAssertGreaterThan(SpreadCrop.half(CropInsets(right: 0.45), .right).visibleWidth, 0.25)
+    }
 }
+

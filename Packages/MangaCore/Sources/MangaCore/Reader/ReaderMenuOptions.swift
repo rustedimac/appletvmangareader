@@ -10,6 +10,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case fit
     case cropBorders
     case zoom
+    case splitWidePages
     case background
     case webtoonWidth
     case autoScroll
@@ -26,9 +27,31 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .fit: return "Page Fit"
         case .cropBorders: return "Crop Borders"
         case .zoom: return "Click to Zoom"
+        case .splitWidePages: return "Split Wide Pages"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
         case .autoScroll: return "Auto-Scroll"
+        }
+    }
+}
+
+/// One row in the reader menu's Picture tab.
+public enum PictureMenuItem: String, CaseIterable, Sendable, Identifiable {
+    case brightness
+    case contrast
+    case color
+    case sharpen
+    case upscaling
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .brightness: return "Brightness"
+        case .contrast: return "Contrast"
+        case .color: return "Color"
+        case .sharpen: return "Sharpen"
+        case .upscaling: return "Upscaling"
         }
     }
 }
@@ -45,7 +68,9 @@ public enum ReaderMenuOptions {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
             if settings.layout == .double { items += [.firstPageAlone, .shiftPairing] }
-            items += [.fit, .cropBorders, .zoom, .background]
+            items += [.fit, .cropBorders, .zoom]
+            if settings.layout == .single { items.append(.splitWidePages) }
+            items.append(.background)
             return items
         case .webtoon:
             return [.mode, .webtoonWidth, .autoScroll, .background]
@@ -60,6 +85,15 @@ public enum ReaderMenuOptions {
         let rounded = (scale * 10).rounded() / 10
         let text = rounded == rounded.rounded() ? String(Int(rounded)) : String(rounded)
         return "\(text)×"
+    }
+
+    /// Rows of the Picture tab. Sharpening and upscaling re-render page
+    /// images, which only the paged reader does.
+    public static func pictureItems(for settings: ReaderSettings) -> [PictureMenuItem] {
+        switch settings.mode {
+        case .paged: return PictureMenuItem.allCases
+        case .webtoon: return [.brightness, .contrast, .color]
+        }
     }
 
     /// Column width steps for the webtoon reader, as a fraction of screen width.

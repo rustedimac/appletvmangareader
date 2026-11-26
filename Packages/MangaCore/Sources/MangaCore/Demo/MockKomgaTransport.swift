@@ -70,6 +70,9 @@ public final class MockKomgaTransport: HTTPTransport, @unchecked Sendable {
         }
 
         let parts = path.split(separator: "/").map(String.init)
+        if method == "GET", parts.count == 4, parts[2] == "libraries", let lib = libraries.first(where: { $0.0 == parts[3] }) {
+            return respond(url, 200, #"{"id":"\#(lib.0)","name":"\#(lib.1)","unavailable":false}"#)
+        }
         if method == "GET", parts.count == 4, parts[2] == "series", let s = series.first(where: { $0.id == parts[3] }) {
             return respond(url, 200, seriesJSON(s))
         }

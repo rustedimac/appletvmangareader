@@ -106,18 +106,27 @@ struct PagedReaderView: View {
 
     // MARK: Layout
 
-    /// Frames for the spread under the current fit and crop settings.
+    /// Frames for the spread under the current fit and crop settings. A
+    /// split wide page is laid out as half its width.
     private func spreadLayout(_ spread: Spread, in size: CGSize) -> SpreadLayoutInfo {
         let order = spread.screenOrder(settings.direction)
-        let crops: [CropInsets] = settings.cropBorders
-            ? SpreadCrop.insets(order.map { session.crop(ofPage: $0) })
-            : order.map { _ in .zero }
+        let half = spread.half
+        let crops: [CropInsets]
+        if !settings.cropBorders {
+            crops = order.map { _ in .zero }
+        } else if let half {
+            crops = order.map { SpreadCrop.half(session.crop(ofPage: $0), half) }
+        } else {
+            crops = SpreadCrop.insets(order.map { session.crop(ofPage: $0) })
+        }
         let sizes: [PageSize?] = zip(order, crops).map { page, crop in
-            session.size(ofPage: page).map { crop.cropped($0) }
+            session.size(ofPage: page).map { size in
+                crop.cropped(half == nil ? size : PageSize(width: size.width / 2, height: size.height))
+            }
         }
         let canvas = SpreadGeometry.canvas(for: sizes, in: Double(size.width), Double(size.height),
                                            fit: settings.fit, scale: Double(displayScale))
-        return SpreadLayoutInfo(pages: order, crops: crops, canvas: canvas)
+        return SpreadLayoutInfo(pages: order, crops: crops, half: half, canvas: canvas)
     }
 
     private var screen: Extent { Extent(width: Double(container.width), height: Double(container.height)) }
@@ -217,20 +226,32 @@ struct PagedReaderView: View {
         for (url, task) in cropTasks where !wanted.contains(url) { task.cancel(); cropTasks[url] = nil }
         let chapterID = session.chapter.id
         let reader = session
-        pipeline.prefetch(urls, server: reader.server, targetSize: target) { url, size in
+        let onSize: @Sendable (URL, PageSize) -> Void = { url, size in
             Task { @MainActor in
                 guard reader.chapter.id == chapterID, let index = byURL[url] else { return }
                 reader.reportSize(size, forPage: index)
             }
         }
+        // Split wide pages decode at twice the width (see
+        // `PageImages.forHalves`), so preload them at that size.
+        let split = Set(session.navigator.layout.spreads.compactMap { $0.half == nil ? nil : $0.first })
+        let halfURLs = Set(indices.filter { split.contains($0) }.compactMap { session.page($0)?.url })
+        let wholeURLs = urls.filter { !halfURLs.contains($0) }
+        let whole = PageImages(pipeline: pipeline, server: reader.server, targetSize: target)
+        let halves = whole.forHalves()
+        pipeline.prefetch(wholeURLs, server: reader.server, targetSize: whole.targetSize, onPixelSize: onSize)
+        if !halfURLs.isEmpty {
+            pipeline.prefetch(Array(halfURLs), server: reader.server, targetSize: halves.targetSize,
+                              onPixelSize: onSize)
+        }
         guard settings.cropBorders else { return }
-        let images = PageImages(pipeline: pipeline, server: reader.server, targetSize: target)
         for url in urls where cropTasks[url] == nil {
             guard let index = byURL[url], reader.crop(ofPage: index) == nil else { continue }
             if let hit = PageCropCache.shared.cached(url) {
                 reader.reportCrop(hit, forPage: index)
                 continue
             }
+            let images = halfURLs.contains(url) ? halves : whole
             cropTasks[url] = Task {
                 defer { cropTasks[url] = nil }
                 guard let page = try? await images.load(url), !Task.isCancelled else { return }
@@ -264,12 +285,21 @@ struct PageImages {
     func load(_ url: URL) async throws -> LoadedImage {
         try await pipeline.load(url, server: server, targetSize: targetSize, scaling: .fit)
     }
+
+    /// For wide pages split in two: each half fills the screen, so the
+    /// whole image is decoded at twice the screen's width.
+    func forHalves() -> PageImages {
+        PageImages(pipeline: pipeline, server: server,
+                   targetSize: CGSize(width: targetSize.width * 2, height: targetSize.height))
+    }
 }
 
 /// A spread's pages in screen order with their crops and frames.
 private struct SpreadLayoutInfo {
     var pages: [Int]
     var crops: [CropInsets]
+    /// Which half shows, for a split wide page.
+    var half: PageHalf?
     var canvas: SpreadCanvas
 }
 
@@ -287,11 +317,15 @@ private struct SpreadView: View {
         let canvas = layout.canvas
         let screen = Extent(width: Double(container.width), height: Double(container.height))
         let offset = viewport.offset(canvas: canvas.size, screen: screen, scale: Double(scale))
+        let halves = layout.half != nil
         ZStack(alignment: .topLeading) {
             ForEach(0..<min(layout.pages.count, canvas.frames.count), id: \.self) { i in
                 let frame = canvas.frames[i]
-                PageImageView(session: session, index: layout.pages[i], images: images,
-                              crop: layout.crops[i], size: CGSize(width: frame.width, height: frame.height))
+                let crop = layout.crops[i]
+                PageImageView(session: session, index: layout.pages[i], images: halves ? images.forHalves() : images,
+                              crop: crop, half: layout.half,
+                              size: CGSize(width: frame.width, height: frame.height),
+                              scale: scale)
                     .frame(width: frame.width, height: frame.height)
                     .offset(x: frame.x, y: frame.y)
             }
@@ -300,6 +334,7 @@ private struct SpreadView: View {
         .scaleEffect(viewport.zoom, anchor: .topLeading)
         .offset(x: -offset.x, y: -offset.y)
         .frame(width: container.width, height: container.height, alignment: .topLeading)
+        .pictureAdjustments(session.settings.picture)
     }
 }
 
@@ -311,23 +346,35 @@ private struct PageImageView: View {
     let session: ReaderSession
     let index: Int
     let images: PageImages
+    /// Margins trimmed from what this view shows (for a split page, from
+    /// its half, as fractions of the half).
     let crop: CropInsets
+    /// Which half shows, for a split wide page.
+    var half: PageHalf? = nil
+    /// The size this view is laid out at.
     let size: CGSize
+    let scale: CGFloat
 
     @State private var loaded: LoadedImage?
+    @State private var processed: CGImage?
 
     private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
 
-    /// Label, value ("loaded", "cropped", "failed", "loading") and hint for VoiceOver and UI tests.
+    /// Label, value ("loaded" or "cropped", "failed", "loading", with
+    /// ", adjusted" when picture controls change the page) and hint for
+    /// VoiceOver and UI tests.
     private var accessibilityText: (label: String, value: String, hint: String) {
-        if loaded != nil { return ("Page \(index + 1)", crop.isZero ? "loaded" : "cropped", "") }
+        let name = half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)"
+        let adjusted = session.settings.picture.isDefault ? "" : ", adjusted"
+        if loaded != nil { return (name, (crop.isZero ? "loaded" : "cropped") + adjusted, "") }
         if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
-        return ("Page \(index + 1)", "loading", "")
+        return (name, "loading", "")
     }
 
     var body: some View {
-        // The image is an overlay, so its larger (uncropped) size never
-        // changes the page's layout or accessibility frame.
+        // The image is an overlay, so its larger (uncropped, or whole
+        // page for a split half) size never changes the page's layout or
+        // accessibility frame.
         Rectangle()
             .fill(.clear)
             .frame(width: size.width, height: size.height)
@@ -335,24 +382,40 @@ private struct PageImageView: View {
             .accessibilityLabel(accessibilityText.label)
             .accessibilityValue(accessibilityText.value)
             .accessibilityHint(accessibilityText.hint)
-            .accessibilityIdentifier("reader.page.\(index)")
+            .accessibilityIdentifier(half.map { "reader.page.\(index).\($0.rawValue)" } ?? "reader.page.\(index)")
             .overlay(alignment: .topLeading) { content.accessibilityHidden(true) }
             .clipped()
             .task(id: LoadKey(url: session.page(index)?.url, target: images.targetSize,
                               crop: session.settings.cropBorders,
                               retry: session.pageRetryTokens[index] ?? 0)) { await load() }
+            .task(id: ProcessKey(loaded: loaded != nil, picture: session.settings.picture, pixels: framePixels)) {
+                await process()
+            }
+    }
+
+    /// The size of what this view shows before cropping (the half, for a
+    /// split page).
+    private var uncropped: CGSize {
+        CGSize(width: size.width / crop.visibleWidth, height: size.height / crop.visibleHeight)
+    }
+
+    /// The whole page image as drawn: twice the half's width for a split page.
+    private var imageSize: CGSize {
+        CGSize(width: uncropped.width * (half == nil ? 1 : 2), height: uncropped.height)
+    }
+
+    /// The device pixels the drawn image covers, for Lanczos upscaling.
+    private var framePixels: CGSize {
+        CGSize(width: (imageSize.width * scale).rounded(), height: (imageSize.height * scale).rounded())
     }
 
     @ViewBuilder
     private var content: some View {
-        if let loaded {
-            let full = CGSize(width: size.width / crop.visibleWidth, height: size.height / crop.visibleHeight)
-            Image(uiImage: loaded.image)
-                .resizable()
-                .interpolation(.high)
-                .antialiased(true)
-                .frame(width: full.width, height: full.height)
-                .offset(x: -crop.left * full.width, y: -crop.top * full.height)
+        if loaded != nil {
+            let x = -crop.left * uncropped.width - (half == .right ? uncropped.width : 0)
+            pageImage
+                .frame(width: imageSize.width, height: imageSize.height)
+                .offset(x: x, y: -crop.top * uncropped.height)
         } else if let failure {
             PageFailureCard(page: index + 1, message: failure)
                 .frame(width: size.width, height: size.height)
@@ -362,11 +425,51 @@ private struct PageImageView: View {
         }
     }
 
+    @ViewBuilder
+    private var pageImage: some View {
+        if let processed {
+            Image(decorative: processed, scale: 1)
+                .resizable()
+                .interpolation(.high)
+                .antialiased(true)
+        } else if let loaded {
+            Image(uiImage: loaded.image)
+                .resizable()
+                .interpolation(.high)
+                .antialiased(true)
+        }
+    }
+
     private struct LoadKey: Hashable {
         var url: URL?
         var target: CGSize
         var crop: Bool
         var retry: Int
+    }
+
+    private struct ProcessKey: Hashable {
+        var loaded: Bool
+        var picture: PictureSettings
+        var pixels: CGSize
+    }
+
+    /// Sharpening and Lanczos upscaling (picture controls). Shows the
+    /// plain image until the processed one is ready.
+    private func process() async {
+        guard let loaded, let url = session.page(index)?.url,
+              let request = PictureProcessor.request(for: url, image: loaded.cgImage,
+                                                     picture: session.settings.picture,
+                                                     framePixels: framePixels) else {
+            processed = nil
+            return
+        }
+        if let hit = PictureProcessor.shared.cached(request) {
+            processed = hit
+            return
+        }
+        let result = await PictureProcessor.shared.process(loaded.cgImage, request)
+        guard !Task.isCancelled else { return }
+        processed = result
     }
 
     private func load() async {
@@ -425,7 +528,7 @@ struct PageFailureCard: View {
                 .foregroundStyle(.black)
                 .padding(.horizontal, 36)
                 .padding(.vertical, 10)
-                .background(.white, in: RoundedRectangle(cornerRadius: Radius.poster))
+                .background(.white, in: Capsule())
             Text("Press Select to retry")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -477,6 +580,9 @@ private struct PageIndicator: View {
         }
         let pages = session.visiblePages.map { $0 + 1 }
         guard let first = pages.first else { return "" }
+        if let half = session.currentSpread?.half {
+            return "\(first) / \(total) · \(half == .left ? "Left" : "Right") half"
+        }
         if let last = pages.last, last != first { return "\(first)–\(last) / \(total)" }
         return "\(first) / \(total)"
     }
@@ -523,7 +629,7 @@ struct ChapterTransitionCard: View {
         .padding(80)
         .frame(maxWidth: 1240)
         .foregroundStyle(.white)
-        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 32))
+        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: Radius.panel))
         .padding(.horizontal, 120)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.transition")

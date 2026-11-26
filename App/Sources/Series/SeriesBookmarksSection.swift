@@ -49,7 +49,9 @@ struct SeriesBookmarksSection: View {
         .disabled(chapter == nil)
         .accessibilityIdentifier("series.bookmark.\(bookmark.chapterID).\(bookmark.page)")
         .contextMenu {
-            Button("Remove Bookmark", role: .destructive) { model.removeBookmark(bookmark) }
+            Button(role: .destructive) { model.removeBookmark(bookmark) } label: {
+                Label("Remove Bookmark", systemImage: "bookmark.slash")
+            }
         }
     }
 }
