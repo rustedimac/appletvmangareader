@@ -11,8 +11,7 @@ struct BrowseSettingsView: View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Home Rows")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                 Text("Click a row to show or hide it. Use the arrows to move it.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -28,8 +27,7 @@ struct BrowseSettingsView: View {
                 .accessibilityIdentifier("homeLayout.reset")
 
                 Text("Poster Size")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                     .padding(.top, 30)
                 HStack(spacing: 30) {
                     ForEach(GridDensity.allCases) { density in
@@ -49,8 +47,7 @@ struct BrowseSettingsView: View {
                     .foregroundStyle(.secondary)
 
                 Text("Under Each Poster")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .themedSectionLabel(.headline, fallback: .headline)
                     .padding(.top, 30)
                 HStack(spacing: 30) {
                     ForEach(PosterCaption.allCases) { caption in

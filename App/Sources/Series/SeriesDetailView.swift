@@ -34,6 +34,7 @@ struct SeriesDetailView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 60)
         }
+        .themedScreen()
         .defaultFocus($focus, .primary)
         .task { await load() }
         .fullScreenCover(item: $reader, onDismiss: { Task { await load() } }) { route in
@@ -68,7 +69,7 @@ struct SeriesDetailView: View {
 
             VStack(alignment: .leading, spacing: 20) {
                 Text(summary.title)
-                    .font(.title2.bold())
+                    .themedHeading(.title2, fallback: .title2.bold())
                     .lineLimit(2)
                     .accessibilityIdentifier("series.title")
                 if let line = metaLine, !line.isEmpty {

@@ -283,6 +283,30 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   `.offset` scrolling or a `ScrollViewReader` that pins content), since
   it can't reset those.
 
+### Themes (Settings > Theme)
+
+A profile picks Default (the system dark look), Celadon, Celadon Tenmoku,
+Risograph Newsprint or Risograph Black Stock (`AppTheme`, synced with the
+browse preferences). Celadon and Risograph come from
+[Theme Lab](https://github.com/rustedimac/theme-lab) as generated Swift
+packages in `Packages/Themes` (refresh steps in its README); the app reads
+them only through `ThemeStyle` (`App/Sources/Shared/Design/ThemeStyle.swift`).
+
+- A theme changes the ground, the tint, headings, section labels and, on the
+  two light themes, body and secondary text. Focus stays the system's (white
+  platter, lift), so nothing focusable is restyled.
+- Light themes switch the app to the light appearance. The reader always
+  stays dark (`ReaderHost` and Top Shelf read links set it), with its own page
+  colors.
+- Screen titles use `.themedHeading(_:fallback:)` and section labels or shelf
+  titles `.themedSectionLabel(_:fallback:)` (or `sectionLabelStyle()` /
+  `SettingsHeader`), never a hard-coded `.foregroundStyle(.primary)` on them.
+- A new top-level or pushed screen that isn't a `SettingsPage` ends with
+  `.themedScreen()` so it paints the theme's ground.
+- Colors come only from a theme's checked pairs (Theme Lab `contrast.json`):
+  Celadon `ink`/`ink-muted` on `bg`, Risograph `ink`/`ink-soft`/`key` on
+  `paper`. Add a pair there before using another token for text.
+
 ## 9. Checklist for a new or changed screen
 
 - [ ] No text or focusable control outside the 60/80 safe area.
@@ -294,6 +318,7 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - [ ] First focus is the obvious action; Menu goes back.
 - [ ] Scrolling to the first item shows the title again.
 - [ ] Looks right with the largest Dynamic Type size and with Bold Text on.
+- [ ] Looks right in a light theme (Celadon) and a dark one (Risograph Black Stock).
 
 ## Layout tests
 

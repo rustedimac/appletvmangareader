@@ -128,6 +128,8 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public var gridDensity: GridDensity
     /// What posters show under the title.
     public var posterCaption: PosterCaption
+    /// The app's look outside the reader.
+    public var theme: AppTheme
     /// Keyed by `LibraryKey.storageKey`.
     public var libraries: [String: LibraryOptions]
     /// Series removed from Continue Reading, keyed by `SeriesRef.storageKey`,
@@ -141,23 +143,25 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public static let dismissedLimit = 100
 
     public init(home: HomeLayout = .default, gridDensity: GridDensity = .default,
-                posterCaption: PosterCaption = .default, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
+                posterCaption: PosterCaption = .default, theme: AppTheme = .default, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
                 caughtUp: [CaughtUpEntry] = []) {
         self.home = home
         self.gridDensity = gridDensity
         self.posterCaption = posterCaption
+        self.theme = theme
         self.libraries = libraries
         self.dismissedContinueReading = dismissedContinueReading
         self.caughtUp = caughtUp
     }
 
-    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, libraries, dismissedContinueReading, caughtUp }
+    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, theme, libraries, dismissedContinueReading, caughtUp }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         home = (try? c.decodeIfPresent(HomeLayout.self, forKey: .home)) ?? .default
         gridDensity = (try? c.decodeIfPresent(GridDensity.self, forKey: .gridDensity)) ?? .default
         posterCaption = (try? c.decodeIfPresent(PosterCaption.self, forKey: .posterCaption)) ?? .default
+        theme = (try? c.decodeIfPresent(AppTheme.self, forKey: .theme)) ?? .default
         libraries = (try? c.decodeIfPresent([String: LibraryOptions].self, forKey: .libraries)) ?? [:]
         dismissedContinueReading = (try? c.decodeIfPresent([String: Date].self, forKey: .dismissedContinueReading)) ?? [:]
         caughtUp = (try? c.decodeIfPresent([CaughtUpEntry].self, forKey: .caughtUp)) ?? []
@@ -168,6 +172,7 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         if !home.isDefault { try c.encode(home, forKey: .home) }
         if gridDensity != .default { try c.encode(gridDensity, forKey: .gridDensity) }
         if posterCaption != .default { try c.encode(posterCaption, forKey: .posterCaption) }
+        if theme != .default { try c.encode(theme, forKey: .theme) }
         if !libraries.isEmpty { try c.encode(libraries, forKey: .libraries) }
         if !dismissedContinueReading.isEmpty { try c.encode(dismissedContinueReading, forKey: .dismissedContinueReading) }
         if !caughtUp.isEmpty { try c.encode(caughtUp, forKey: .caughtUp) }

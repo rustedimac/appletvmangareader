@@ -26,6 +26,7 @@ struct FavoritesView: View {
             }
             .seriesNavigation()
             .task { await model.refreshStaleFavorites() }
+            .themedScreen()
         }
     }
 }

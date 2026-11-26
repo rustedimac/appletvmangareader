@@ -31,6 +31,7 @@ struct ProfilePickerView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear { focused = model.activeProfile.id }
+            .themedScreen()
         }
     }
 

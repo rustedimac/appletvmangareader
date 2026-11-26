@@ -21,6 +21,7 @@ struct LibraryView: View {
             }
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: $0) }
             .seriesNavigation()
+            .themedScreen()
         }
     }
 }
@@ -77,7 +78,7 @@ struct ServerLibraryView: View {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 20) {
                         Text(server.name)
-                            .font(.title3.bold())
+                            .themedHeading(.title3, fallback: .title3.bold())
                         if let errorMessage {
                             BrowseMessage(title: "Couldn't reach \(server.name)", message: errorMessage,
                                           systemImage: "wifi.exclamationmark") { Task { await load() } }
@@ -106,6 +107,7 @@ struct ServerLibraryView: View {
             }
         }
         .task(id: "\(server.id)|\(server.baseURL)|\(model.scopeKey(for: server))") { await load() }
+        .themedScreen()
     }
 
     /// The A–Z bar only makes sense when the grid is sorted by title.

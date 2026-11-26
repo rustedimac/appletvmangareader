@@ -48,6 +48,10 @@ struct SettingsView: View {
                         Label("Customize Home", systemImage: "rectangle.grid.1x2")
                     }
                     .accessibilityIdentifier("settings.customizeHome")
+
+                    SettingsPicker("Theme", selection: themeBinding, options: AppTheme.allCases,
+                                   systemImage: "paintpalette") { $0.title }
+                        .accessibilityIdentifier("settings.theme")
                 }
 
                 Section {
@@ -100,6 +104,11 @@ struct SettingsView: View {
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
+    }
+
+    /// Settings > Theme for the active profile (see `AppTheme`).
+    private var themeBinding: Binding<AppTheme> {
+        Binding(get: { model.appTheme }, set: { theme in model.updateBrowse { $0.theme = theme } })
     }
 
     /// In-app profiles are the fallback when there are no Apple TV users.

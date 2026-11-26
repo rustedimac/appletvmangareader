@@ -215,8 +215,7 @@ struct SeriesShelf: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
+                .themedSectionLabel(.headline, fallback: .headline)
                 .accessibilityIdentifier("shelf.\(identifier ?? title)")
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: PosterMetrics.spacing) {

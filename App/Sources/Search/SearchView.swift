@@ -19,6 +19,7 @@ struct SearchView: View {
             }
             .searchable(text: $query, prompt: "Series title")
             .seriesNavigation()
+            .themedScreen()
         }
         .task(id: query) {
             // Wait for typing to pause before hitting every server.

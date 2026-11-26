@@ -65,6 +65,8 @@ struct DeepLinkView: View {
             if let chapter = detail.chapters.first(where: { $0.id == chapterID }) ?? detail.continueChapter {
                 ReaderView(series: summary(detail), chapters: detail.chapters, start: chapter,
                            startPage: chapter.id == chapterID ? page : nil)
+                    // Dark whatever the app theme, like ReaderHost.
+                    .preferredColorScheme(.dark)
             } else {
                 NavigationStack { SeriesDetailView(series: summary(detail)) }
             }

@@ -33,12 +33,15 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 hero
                     .frame(width: Size.heroColumn, height: Size.heroSymbol * 0.75, alignment: .bottom)
                     .accessibilityHidden(true)
-                Text(title)
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("settingsPage.title")
+                VStack(spacing: Space.s) {
+                    Text(title)
+                        .themedHeading(.title3, fallback: .title3.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("settingsPage.title")
+                    ThemeBrushStroke()
+                }
             }
             .frame(width: Size.heroColumn)
             .frame(maxHeight: .infinity)
@@ -65,6 +68,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 .accessibilityIdentifier("settingsPage.form")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .themedScreen()
         .settingsNavigation(navigator)
     }
 }
@@ -127,6 +131,7 @@ extension LabelStyle where Self == SettingsRowLabelStyle {
 /// sits with its own rows.
 struct SettingsHeader: View {
     let title: String
+    @Environment(\.themeStyle) private var theme
 
     init(_ title: String) {
         self.title = title
@@ -134,10 +139,10 @@ struct SettingsHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.callout.weight(.semibold))
+            .font(theme.headingFont(.callout, fallback: .callout.weight(.semibold)))
             // A concrete color: Form headers otherwise get the system's dim
             // header style, which is hard to read across a room.
-            .foregroundColor(Color(uiColor: .label).opacity(0.8))
+            .foregroundColor(theme.sectionLabel ?? Color(uiColor: .label).opacity(0.8))
             .textCase(nil)
             .lineLimit(1)
             .padding(.top, Space.m)

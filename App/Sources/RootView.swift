@@ -14,6 +14,7 @@ struct RootView: View {
         content
             .fullScreenCover(item: $link) { route in
                 DeepLinkView(link: route.link)
+                    .themedScreen()
             }
             .onOpenURL { url in
                 if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
@@ -26,6 +27,8 @@ struct RootView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await model.refreshStaleFavorites() } }
             }
+            // Settings > Theme, for the active profile.
+            .appTheme(model.appTheme)
     }
 
     @ViewBuilder

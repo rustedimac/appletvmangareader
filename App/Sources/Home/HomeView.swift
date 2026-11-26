@@ -31,6 +31,7 @@ struct HomeView: View {
             }
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
+            .themedScreen()
         }
         .task(id: reloadKey) { await reload() }
         .onAppear {

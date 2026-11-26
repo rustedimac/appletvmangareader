@@ -13,6 +13,7 @@ extension AppModel {
     var homeLayout: HomeLayout { browsePreferences.home }
     var gridDensity: GridDensity { browsePreferences.gridDensity }
     var posterCaption: PosterCaption { browsePreferences.posterCaption }
+    var appTheme: AppTheme { browsePreferences.theme }
 
     // MARK: Libraries
 
