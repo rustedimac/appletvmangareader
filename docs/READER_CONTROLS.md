@@ -52,7 +52,7 @@ Sources read: `main` at dd285e2, plus the branches of the open reader PRs
 | Play/Pause | **Open options** | Open options | Open options |
 | Swipe/click down | **Open options** | Pan down if the page is taller than the screen, otherwise open options | Open options |
 | Swipe/click up | Toggle bookmark | Pan up if possible, otherwise toggle bookmark | Toggle bookmark |
-| Swipe/click left/right | Turn page (follows reading direction). Past the last/first spread: transition card, press again to change chapter | Pan sideways first if zoomed / Fit Height, then turn | Same as main |
+| Swipe/click left/right | Turn page (follows reading direction). Past the last/first spread: transition card, press again to change chapter | Pan sideways if zoomed / Fit Height; pressed toward an edge already reached, turn. Finger on the touch surface drags the page freely | Same as main |
 | Back | Close options, else close reader (bug above) | **Zoom out first**, then as main | Same as main |
 | Tap (no click) | Nothing | Nothing | Nothing |
 

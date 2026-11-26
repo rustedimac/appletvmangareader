@@ -17,6 +17,8 @@ extension AppModel {
     /// asks for its PIN isn't opened yet; the route asks for the PIN first.
     func route(for link: DeepLink) -> DeepLinkRoute? {
         guard state.server(link.ref.serverID) != nil else { return nil }
+        // Top Shelf links belong to a real profile.
+        if isGuest { endGuestSession(showPicker: false) }
         var target = activeProfile.id
         if let profile = link.profile, state.profiles.contains(where: { $0.id == profile }) {
             target = profile

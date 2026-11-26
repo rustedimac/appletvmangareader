@@ -8,7 +8,8 @@ two-page spread reader or a seamless vertical (webtoon) scroll, open PDFs and
 EPUBs, keep favorites (sortable by title, date favorited, latest chapter, last
 read, unread count or server), filter libraries by status (ongoing,
 completed, on hiatus, cancelled), read progress and genre, bookmark pages, and give each person their own
-profile (each Apple TV user gets one automatically).
+profile (each Apple TV user gets one automatically), or let a visitor
+read as a guest without touching anyone's progress.
 
 ## Building
 

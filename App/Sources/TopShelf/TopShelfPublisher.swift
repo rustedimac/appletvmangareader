@@ -34,7 +34,8 @@ final class TopShelfPublisher {
     }
 
     func publish() async {
-        guard let model else { return }
+        // The Top Shelf shows the owner's reading, never a guest's.
+        guard let model, !model.isGuest else { return }
         // The Top Shelf follows the profile's content filter, and shows
         // nothing for a profile that asks for its PIN to open.
         let profile = model.activeProfile.id

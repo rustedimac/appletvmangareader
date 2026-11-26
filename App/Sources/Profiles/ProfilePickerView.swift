@@ -77,6 +77,23 @@ struct ProfilePickerView: View {
                 .focused($focused, equals: profile.id)
                 .accessibilityIdentifier("profilePicker.\(profile.name)")
             }
+            // Reads with the logins of the profile used last; see GuestSession.
+            // Not offered when that profile asks for its PIN to open.
+            if !model.needsPINToOpen(model.activeProfile.id) {
+                Button {
+                    model.startGuestSession()
+                } label: {
+                    VStack(spacing: 24) {
+                        ProfileAvatarView(profile: GuestSession.profile, size: 220)
+                        Text(GuestSession.profile.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                            .frame(maxWidth: 260)
+                    }
+                }
+                .buttonStyle(ProfileTileButtonStyle())
+                .accessibilityIdentifier("profilePicker.guest")
+            }
         }
         .padding(.horizontal, 80)
         .padding(.vertical, 40)
