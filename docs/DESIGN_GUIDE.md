@@ -190,6 +190,11 @@ Form { … }
   the choices are known (HIG: minimize text entry on tvOS).
 - Show the right keyboard (`.keyboardType(.URL)`), and turn off
   autocorrection for names, addresses and keys.
+- Passwords and keys use a plain SwiftUI `SecureField`, with no font or
+  scale modifier. Its dots already match Apple's own Settings app (measured
+  at 4K: 33–34 px dots, about 0.6× the cap height of field text). `.font(.body)`
+  shrinks them and a UIKit `isSecureTextEntry` wrapper greys them out.
+  `tools/check_secure_fields.py` (CI) enforces this.
 
 ### Rows
 

@@ -25,6 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check_pinned_headers.py
+      - run: python3 tools/check_secure_fields.py
 
   core-tests:
     name: MangaCore unit tests
