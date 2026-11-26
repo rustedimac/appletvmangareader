@@ -12,11 +12,9 @@ struct KavitaMetadataItemDTO: Decodable {
 extension KavitaFilterV2.Field {
     static let ageRating = 4
     static let tags = 6
-    static let genres = 18
 }
 
 extension KavitaFilterV2.Comparison {
-    static let greaterThan = 1
     static let lessThanEqual = 4
 }
 
