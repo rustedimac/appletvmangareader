@@ -49,6 +49,7 @@ struct ServerCollectionsView: View {
                 } else if items.isEmpty {
                     BrowseMessage(title: "No \(kind.title.lowercased())", message: kind.emptyMessage,
                                   systemImage: kind.symbolName)
+                        .emptyStateFocus()
                 } else {
                     grid
                 }
@@ -185,6 +186,7 @@ struct CollectionSeriesView: View {
                                       ? "No series match this filter."
                                       : "This collection has no series you can see.",
                                   systemImage: "tray")
+                        .emptyStateFocus()
                 } else {
                     SeriesGrid(series: pager.items) { index in
                         if pager.shouldLoadMore(afterShowing: index) { Task { await loadMore() } }
@@ -246,6 +248,7 @@ struct ReadingListView: View {
                 } else if entries.isEmpty {
                     BrowseMessage(title: "This list is empty",
                                   message: "It has no chapters from the libraries you can see.", systemImage: "list.number")
+                        .emptyStateFocus()
                 } else {
                     if let resume = ReadingListEntry.resumeEntry(in: entries) {
                         ActionRow {
@@ -365,5 +368,16 @@ struct ReadingListView: View {
             }
         }
         loaded = true
+    }
+}
+
+private extension View {
+    /// An empty screen still needs something focused, or tvOS hands the
+    /// Menu press to the tab bar instead of going back. The message takes
+    /// focus without looking like a button.
+    func emptyStateFocus() -> some View {
+        focusable()
+            .accessibilityElement(children: .combine)
+            .centeredFocusRow()
     }
 }
