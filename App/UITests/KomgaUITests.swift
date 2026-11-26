@@ -44,7 +44,8 @@ final class KomgaUITests: XCTestCase {
         XCTAssertTrue(app.element("serverEditor.password").exists)
         XCTAssertTrue(app.element("serverEditor.save").isEnabled)
 
-        select(app.element("serverEditor.test"))
+        XCTAssertTrue(focus(app.element("serverEditor.test"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         let signedIn = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Signed in to Komga'")).firstMatch
         XCTAssertTrue(signedIn.waitForExistence(timeout: 10))
         // Editing a server lists its libraries to import.

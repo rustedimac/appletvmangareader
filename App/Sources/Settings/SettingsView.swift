@@ -141,6 +141,7 @@ private struct ServerRow: View {
     private var subtitle: String {
         if server.kind == .freeLibrary { return "Public-domain classics and Pepper&Carrot · No setup" }
         var parts = [server.kind.displayName, server.baseURL.host ?? server.baseURL.absoluteString]
+        if server.hasAlternateAddresses { parts.append("\(server.addresses.count) addresses") }
         if let pickedCount {
             let noun = pickedCount == 1 ? server.kind.singularCategoryNoun
                                         : server.kind.categoryNoun.lowercased()

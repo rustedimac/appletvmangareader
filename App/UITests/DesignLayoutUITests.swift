@@ -63,7 +63,7 @@ final class DesignLayoutUITests: XCTestCase {
         // No login yet, so Kavita offers username and password sign-in.
         XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         audit(app, "settings-edit-server")
-        focus(app.element("serverEditor.remove"))
+        focus(app.element("serverEditor.remove"), maxPresses: 16)
         audit(app, "settings-edit-server-bottom")
     }
 

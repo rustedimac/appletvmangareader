@@ -81,6 +81,47 @@ final class SyncCoverageTests: XCTestCase {
         }
     }
 
+    /// Saved data kept outside `AppState`, field by field. All of it stays
+    /// on this Apple TV; each format also has an upgrade fixture in
+    /// `Fixtures/SavedData` (see `SavedDataUpgradeTests`).
+    static let localSavedFields: [String: Set<String>] = [
+        // Shared by the Apple TV users of this device (keychain). Servers
+        // reach iCloud through each user's AppState; logins never do.
+        "SharedServerDirectory": ["servers", "removedServerIDs", "credentials"],
+        // Logins stay in the keychain (docs/ICLOUD.md).
+        "ServerCredential": ["apiKey", "username", "password", "suwayomiLogin"],
+        // The iCloud offline queue itself.
+        "SyncJournal": ["deviceID", "pending", "lastSuccessAt", "lastError"],
+    ]
+
+    /// Saved outside `AppState` and should sync, but has no domain yet.
+    static let otherSyncGaps: [String: Set<String>] = [
+        // Place inside a book chapter (`BookPositionStore`).
+        "BookPosition": ["section", "fraction", "updatedAt"],
+    ]
+
+    func testSavedDataOutsideAppStateIsClassified() throws {
+        let server = UUID()
+        var journal = SyncJournal(deviceID: "d")
+        journal.pending["favorite/x"] = SyncRecord(key: "favorite/x", kind: .favorite, payload: nil,
+                                                   modifiedAt: Date(timeIntervalSince1970: 1), deviceID: "d")
+        journal.lastSuccessAt = Date(timeIntervalSince1970: 2)
+        journal.lastError = "e"
+        let encoded: [String: Set<String>] = try [
+            "SharedServerDirectory": jsonKeys(of: SharedServerDirectory(
+                servers: [ServerConfig(id: server, kind: .kavita, name: "K", baseURL: URL(string: "http://k.local")!)],
+                removedServerIDs: [UUID()], credentials: [server.uuidString: ServerCredential(apiKey: "k")])),
+            "ServerCredential": jsonKeys(of: ServerCredential(apiKey: "k", username: "u", password: "p", suwayomiLogin: .basic)),
+            "SyncJournal": jsonKeys(of: journal),
+            "BookPosition": jsonKeys(of: BookPosition(section: 1, fraction: 0.5, updatedAt: Date(timeIntervalSince1970: 3))),
+        ]
+        for (type, keys) in encoded {
+            let classified = (Self.localSavedFields[type] ?? []).union(Self.otherSyncGaps[type] ?? [])
+            XCTAssertEqual(keys.subtracting(classified), [],
+                           "\(type) saves fields that aren't classified in SyncCoverageTests")
+        }
+    }
+
     // MARK: Helpers
 
     static func fullyPopulatedProfileData() -> ProfileData {
