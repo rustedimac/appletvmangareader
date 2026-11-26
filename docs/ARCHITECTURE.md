@@ -150,8 +150,12 @@ OPDS (verified against Komga 1.30.2 and Stump)
 ## Double-page spreads
 
 `SpreadLayout` pairs pages. Wide images are always alone; pairing restarts
-after one. The first page is alone by default (cover). `shiftPairing` flips the
-parity of the first run when a chapter's pairs come out wrong. Unknown sizes
+after one. The first page is alone by default (cover). First Page Alone is
+the only pairing control: flipping it per series is how a book whose pairs come
+out wrong is fixed. The old "Shift by one" (`shiftPairing`) did exactly the
+same thing, so it was folded in: `PagePairing.swift` reads and writes it as
+`firstPageAlone != shiftPairing` with the shift cleared, and the field stays
+only so older saves and iCloud peers decode. Unknown sizes
 count as tall; the reader re-lays out when sizes arrive and keeps the current
 page on screen. See `SpreadLayoutTests` for the exact rules.
 
@@ -193,6 +197,13 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 - Requests for the same URL share one download, which is cancelled only when
   every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
   go ahead of prefetches.
+- Downloads are resilient (`RetryPolicy.images`): each attempt has a
+  20 s limit, counted from when it gets a download slot so queueing never
+  times out, and timeouts, dropped connections, 408/429 and 5xx are retried
+  twice more after 0.75 s and 1.5 s. 401/403/404, bad image bytes and
+  cancellation fail at once. Nothing about a failure is cached, so a later
+  `load` (a Retry button) starts fresh. `PageLoadFailure.message(for:)`
+  turns the error into a short line for the reader.
 - `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
   size, which is how readers learn Suwayomi page sizes. Without a
   `targetSize` it only downloads and reads the header.
@@ -209,6 +220,55 @@ preloaded pages are memory-cache hits, and cancels prefetches that leave the
 window. Sizes learned while preloading feed `reportSize`, so Suwayomi
 chapters pair correctly before the reader reaches a wide page.
 
+### Fit, zoom and crop
+
+- **Fit** (`ReaderSettings.fit`): Fit Screen shows the whole spread; Fit
+  Width fills the screen's width and Fit Height its height.
+  `SpreadGeometry.canvas(for:in:_:fit:scale:)` lays the spread out on a
+  canvas at least the size of the screen, with the same seamless,
+  pixel-snapped frames.
+- **Zoom and pan**: `PagedViewport` holds the zoom and the position as a
+  0–1 fraction of what can be panned on each axis, so it survives the
+  canvas changing size. Click zooms to `zoomScale` (1.5×, 2×, 3×) around
+  the screen's center; click again or Menu zooms out; turning resets it.
+  `PagedRemote.action(for:...)` decides what a press does: pan while more
+  of the spread lies that way (forward at the end of a row drops a row and
+  returns to the reading-start side), turn only at the end, and down opens
+  the menu only when nothing is below. A spread reached going forward
+  opens at its top, going backward at its bottom.
+- **Crop borders**: `BorderCropDetector` finds plain white or black
+  margins on a 256 px grayscale thumbnail and returns `CropInsets`
+  (fractions). Results are cached per image URL (`PageCropCache`) and per
+  page in `ReaderSession.crops`, detected for preloaded pages too, and
+  before a page first shows so it doesn't jump. `SpreadCrop` keeps a
+  two-page spread seamless: both pages share the smaller top and bottom
+  crop and the inner edges are never cropped.
+  A split wide page's half (`SpreadCrop.half`) keeps the fold uncropped
+  and crops its outer side by the page's own margin.
+
+UI tests: `ReaderFitZoomUITests` (`-readerFit width`, `-readerCrop 1`,
+`-readerZoom 3`, and `-readerDemoMargins 1` to draw pages with margins).
+The page indicator's accessibility value reports the viewport.
+
+## Failed pages
+
+A page that still fails after the automatic retries never closes the
+reader or blocks page turns. It shows a card ("Page 3 didn't load", the
+reason from `PageLoadFailure`, a Retry pill drawn as the focused control).
+The reader keeps focus, so left/right still turn pages and Select retries
+the failed pages on screen.
+
+- Paged: `ReaderSession.pageFailures` / `retryVisibleFailedPages()`
+  (Select retries before anything else Select does). Each
+  page view's load task is keyed by `pageRetryTokens[page]`, so a retry
+  reloads only the failed pages. Revisiting a spread retries its failed
+  pages once more on its own.
+- Webtoon: `WebtoonStripController.failedPages`. Failed pages are not
+  reloaded on every scroll; Select retries those on screen. Size
+  prefetches that fail wait 15 s before trying again.
+- A chapter's page list is fetched with `RetryPolicy.pageLists` before the
+  chapter error card (with Retry) shows.
+
 ## Reader demo for UI tests
 
 Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
@@ -218,6 +278,10 @@ up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
 tests can reuse it. The demo injects an `ImagePipeline` whose transport
 draws `demo://` pages, so it runs the real image path.
+`-readerPageFaults "1.2=fail3,2.0=hang1"` makes chosen pages (chapter
+1-based, page 0-based) return HTTP 503 or hang for their first N requests
+(`DemoPageFaults`), and the demo uses a short retry policy (2 attempts,
+`-readerAttemptTimeout`, default 1.5 s).
 
 ## Live servers in the simulator
 
@@ -260,8 +324,11 @@ the image arrives.
 - **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
-  page; select opens the menu; Play/Pause toggles auto-scroll; Menu passes
-  through to `ReaderView`.
+  page; select opens the menu (acted on at release, so holding Select for
+  0.5 s can open it too, even while auto-scroll runs); Play/Pause toggles
+  auto-scroll; Menu passes through to `ReaderView`. The full button map
+  is `ReaderControls` (MangaCore), shown in Settings > Remote and
+  Controller and in docs/CONTROLS.md.
 - **Auto-scroll.** `WebtoonScrollDriver` moves the strip at
   `WebtoonAutoScroll.speed(level:viewport:)` (ten levels, fractions of a
   screen per second), tracking the position below a pixel so slow speeds
@@ -305,15 +372,18 @@ device with a controller.
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
-view and changes show behind it as they're made. Swipe down or Play/Pause
-(paged), a click (vertical), or Y on a controller opens it; Menu or
-Play/Pause closes it. While it's open the reader under it
+view and changes show behind it as they're made. A click or holding Select
+(every reader), swipe down or Play/Pause (paged and book), or Y on a
+controller opens it; Menu or Play/Pause closes it. The first few times
+each mode opens, `ReaderControlsHint` names the route at the top of the
+screen (`ReaderHintTracker`; off in UI tests unless `-readerHints`). While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
-  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction, and
-  in two-page layout first page alone and "Shift by one"; vertical: column
-  width and auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
+  comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction,
+  in two-page layout First Page Alone, then page fit, crop borders and
+  click-to-zoom level; vertical: column width and auto-scroll speed).
+  Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one
@@ -321,6 +391,62 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Picture controls, split pages and the page scrubber
+
+- **Picture controls** (`PictureSettings`, inside `ReaderSettings.picture`):
+  brightness, contrast, color (normal, grayscale, night/invert), sharpen
+  and upscaling. They sit in the Settings pane of the reader menu under
+  "Picture" (rows from `ReaderMenuOptions.pictureItems(for:)`) and in
+  Settings → Default Reader Settings. Brightness, contrast and color are
+  SwiftUI view effects (`pictureAdjustments(_:)`), applied to the paged
+  spread and to the webtoon strip, so they're instant in both readers.
+  Sharpen (`CISharpenLuminance`) and Sharp (Lanczos) upscaling
+  (`CILanczosScaleTransform`, for scans smaller than the screen) re-render
+  page images in `Reader/Picture/PictureProcessor` (Core Image on Metal, off
+  the main thread, cached), so they're paged-reader only.
+- **Split wide pages** (`ReaderSettings.splitWidePages`, single-page paged
+  layout): `SpreadLayout.singles(splitting:direction:)` turns a wide page
+  into `.half(page, .right)` then `.half(page, .left)` for right-to-left
+  (the other way for left-to-right). Both halves are the same page for
+  progress and bookmarks; the indicator says "4 / 6 · Right half". The
+  image decodes at twice the screen width and is clipped to the half. A
+  re-layout keeps the half on screen (`spreadIndex(keeping:page:)`), and
+  the chapter only completes on the last page's second half.
+- **Page scrubber** (`Reader/Scrubber/PageScrubberView`, rules in
+  `PageScrubber`): Pages in the menu header opens a thumbnail strip along
+  the bottom with a progress bar, in either reader. Thumbnails run in
+  screen order, so right-to-left series put page 1 on the right; left and
+  right move a page, up/down jump 10 pages back/forward, click opens the
+  page (`ReaderSession.jump(toPage:)`), Menu closes. It's shown through the
+  menu's presentation flag (`ReaderSession.overlay == .scrubber`), so the
+  reader is disabled and takes focus back the same way as for the menu.
+- All of it is in `ReaderSettings`, so it saves per series and as the
+  profile default, and syncs through the existing `readerDefaults` and
+  `readerOverride` SyncMapper domains. `ReaderSettings` and
+  `PictureSettings` decode missing or unknown fields to defaults, so
+  settings from older or newer builds always load.
+- UI tests: `ReaderPictureScrubberUITests` (`-readerSplitWide YES` turns on
+  splitting in the demo reader).
+
+## Sorting names
+
+`NaturalSort` (MangaCore/Sorting) is the one place names are ordered:
+series titles, chapter names, page and file names. Digit runs compare by
+value ("Ch 2" < "Ch 10", "10.5" between 10 and 11, any length, full-width
+and other Unicode digits), kanji numerals are read as numbers ("第二話" <
+"第十話"), text uses the locale's collation ignoring case, accents and
+width, and spaces/punctuation/brackets only separate runs. The
+`.fileName` option also skips digit-free tags like `[Group]` or
+`(Digital)` and the extension. Ties fall back to the exact characters, so
+the order never depends on input order. Use `naturallySorted(by:)`; don't
+sort names with `<` or `localizedStandardCompare`.
+
+`ChapterOrdering.readingOrder` orders a server's chapters: by the server's
+position when it has one (flipped if most neighbouring chapter numbers go
+down, so one odd number can't flip a series), else by number, else by
+natural name, with natural-name ties. Suwayomi uses it; Kavita keeps its
+own sort numbers and breaks ties by natural name.
 
 ## Reading progress sync
 
@@ -334,6 +460,10 @@ Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
   through `ProgressSync.reconcile` (latest `lastReadAt` wins per chapter)
   and pushes the local winners. `AppModel.syncPendingProgress` runs it for
   every series with a queue before Home loads.
+- A failed push also schedules `AppModel.schedulePendingRetry`, which runs
+  `syncPendingProgress` again after `RetryBackoff` (5 s doubling to every
+  5 min, with jitter) until the queue is empty. Coming back to the
+  foreground retries at once (`retryPendingProgressNow`).
 - `SeriesDetail.continueChapter` follows Kavita's continue point: the most
   recently read unfinished chapter, else the first unread after the last
   read one.
@@ -354,8 +484,8 @@ hold the accessors.
 - **Sort & View** (`Library/LibraryOptionsView`, one per library or
   category, keyed by `LibraryKey`): `LibrarySort` (title A–Z/Z–A, recently
   added, updated, read), the library's `LibraryReadingStyle`, `GridOrder`,
-  and the profile-wide `GridDensity` (poster size for library grids and
-  Favorites; shelves keep 230 pt).
+  and the profile-wide `GridDensity` (poster size for library grids,
+  Favorites and the Home and Search shelves; Medium is 230 pt).
 - **Sorting.** `MangaServer.series(in:page:pageSize:sort:)` (the default
   implementation ignores `sort`). Kavita sends FilterV2 `sortOptions`
   (SortName 1, CreatedDate 2, LastChapterAdded 4, ReadProgress 7). Suwayomi
@@ -364,6 +494,26 @@ hold the accessors.
   `lastReadChapter`, sorts on the client, and keeps page 1's answer for
   five minutes so later pages don't download the category again. If the
   server rejects those fields it falls back to the basic ones.
+- **Filters.** `LibraryFilter` (Browse/LibraryFilter.swift): publication
+  status (`PublicationStatus`: ongoing, completed, hiatus, cancelled; a set,
+  any of them), read progress (`ReadProgressFilter`: any, not started, in
+  progress, not finished, finished) and genres (names, any of them). Parts
+  combine with And. Each backend says what it can filter with
+  `MangaServer.libraryFilterSupport`; Sort & View offers only those and
+  `series(in:page:pageSize:sort:filter:)` ignores the rest. Kavita sends
+  FilterV2 statements (PublicationStatus 2 Contains, ReadProgress 20 as a
+  percentage, Genres 18 Contains genre ids from `api/Metadata/genres`).
+  Komga sends `seriesStatus` / `readStatus` / `genre` search conditions.
+  Suwayomi filters its in-memory category (it also asks for `status genre`)
+  and counts read progress in chapters. Free Library filters genres from
+  its catalog. OPDS has nothing to filter on. Status mappings are in the
+  `PublicationStatus` doc comment.
+- **Library Defaults** (`Settings/LibraryDefaultsView`, from Settings,
+  Customize Home and Sort & View): `BrowsePreferences.libraryDefaults`
+  (`LibraryDefaults`: sort, grid order, status and read-progress filter).
+  `LibraryOptions` fields stay nil until a library sets its own;
+  `BrowsePreferences.resolvedOptions(for:)` fills them from the defaults.
+  Genres are per library only (each library has its own list).
 - **A–Z jump.** `AlphabetIndex` maps titles to `#`/A–Z (accents and
   full-width letters folded, CJK under `#`) and finds the first title at or
   past a letter; `.needsMore` means the grid loads the next page and tries
@@ -381,8 +531,26 @@ hold the accessors.
   Suwayomi grids get unread chapters, a progress bar and "N chapters"; a
   check when finished. Unread chapters in series detail show their page count.
 - **Home.** `HomeLayout` orders `HomeRowKind`s and hides some (Settings →
-  Customize Home, or the button at the bottom of Home). Server feeds get one
-  row per server ("Recently Updated · Server" with several servers).
+  Customize Home, or the button at the bottom of Home). Server feeds
+  (Continue Reading, Recently Updated, Newly Added) are merged into one row
+  each across servers by default (`HomeLayout.serverRows == .merged`):
+  `HomeMerge` interleaves each server's list without reordering it, newest
+  `SeriesSummary.feedDate` first (last read / added / new chapter, set by
+  the Kavita, Suwayomi, Komga and Free Library feeds), else by rank on its
+  server. "Row per Server" brings back "Recently Updated · Server" rows.
+  `HomeLoader.each` streams each server's section as it arrives, so Home
+  shows fast servers without waiting for the slowest. Rows come from
+  `model.client(for:)`, so library selection and content filters apply.
+  Posters in rows that mix servers name their server
+  (`HomeLayout.serverLabel`: on the caption's line, a tag on the cover, or
+  off; the poster's VoiceOver label always says it). UI-test flags:
+  `-homePerServer`, `-posterServerLabel onCover|off`. Shelf ids: merged
+  `shelf.<feed>`, per server `shelf.<server>.<feed>`.
+- **Series location.** Series detail shows "server · library" under the meta
+  line (`SeriesPlacement`): Kavita's `libraryName`, Komga's library, every
+  Suwayomi category (Default when none) plus its source, the Free Library
+  collection; otherwise (OPDS, demo) the summary's library/category ids
+  looked up in `categories()` (`MangaServer.placement(for:detail:)`).
   Long-press a Continue Reading poster to remove it; it comes back once the
   profile reads it again (`dismissedContinueReading` vs local progress).
 - **Caught Up.** Series detail calls `AppModel.noteSeriesDetail`: a series
@@ -511,11 +679,18 @@ UI tests: `-uiTesting -demoServers -demoFavorites` seeds four favorites with
 distinct sort values and two bookmarks (`AppModel+DemoBookmarks.swift`), used
 by `FavoritesSortUITests` and `BookmarksUITests`.
 
-## Mark as unread
+## Mark as read and unread
 
-Long-pressing a chapter row offers "Mark as Unread" and "Mark Series as
-Unread"; the series "More" button and a poster's long-press offer "Mark
-Series as Unread". `AppModel.markUnread` / `markSeriesUnread` always update
+Each chapter row has a "…" button on its right (reached by moving right,
+so no long press is needed) and the same items on a long press: "Mark as
+Read", "Mark as Unread", "Mark Previous as Read" and "Mark Series as
+Unread". The series "More" button offers "Mark Series as Read" and "Mark
+Series as Unread", and a poster's long-press "Mark Series as Unread".
+`AppModel.markRead` uses `MangaServer.markRead(chapters:libraryID:)`:
+Kavita's `mark-multiple-read`, Suwayomi's `updateChapters(isRead: true)`,
+and for the rest the default, which saves each chapter's progress as
+completed. Locally it adds to `readChapterIDs` and leaves the resume
+position alone. `AppModel.markUnread` / `markSeriesUnread` always update
 the profile's local progress and call the server only when the profile
 syncs there. Locally, `SeriesProgress.unreadChapterIDs` hides the server's
 read state for those chapters until they are opened again, and

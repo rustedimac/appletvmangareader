@@ -20,8 +20,15 @@ sharpness, memory).
 
 - [ ] With no servers, Home says "No servers yet".
 - [ ] Settings → Add Server → Kavita: paste the OPDS URL with the iPhone
-      keyboard (Continuity Keyboard). The address and API key fill in, and the
-      key field shows dots.
+      keyboard (Continuity Keyboard). The field keeps what you pasted while
+      you type; on Return, Test Connection or Save it splits into the address
+      and the API key (dots).
+- [ ] Type just the address (e.g. `http://kavita.local:5000`) and the key
+      separately. Test Connection passes. A wrong host says "Couldn't reach",
+      a wrong key says "rejected the API key".
+- [ ] In the simulator (no paste), launch a Debug build with
+      `-serverEditorPrefill "kavita|http://<host>/api/opds/<key>"` to try the
+      pasted-URL path. Use a fake key in anything you commit.
 - [ ] Test Connection shows a green check.
 - [ ] Add Suwayomi with its address only. Test Connection passes.
 - [ ] Both servers appear on Home within a few seconds.
@@ -58,8 +65,8 @@ Use a Kavita manga with a two-page color spread (many chapters end on one).
 - [ ] Pairs read right page first, then left.
 - [ ] A spread split across two files lines up with no gap or line at the spine.
 - [ ] A wide (landscape) page shows alone.
-- [ ] If pairs come out wrong, Play/Pause → "Pages paired wrong? Shift by one"
-      fixes them and stays on the same page.
+- [ ] If pairs come out wrong, Play/Pause → First Page Alone (flip it) fixes
+      them for that series and stays on the same page.
 - [ ] Past the last page, a card names the next chapter; one more press opens it.
 - [ ] Turning pages is instant once the reader has preloaded. **(device)**
 - [ ] Text is sharp on a 4K TV, not soft or blocky. **(device)**
@@ -80,8 +87,12 @@ Use a Suwayomi webtoon (KR category).
 
 ## Reader menu
 
-- [ ] Swipe down or Play/Pause opens the drawer on the right; the page stays
-      visible behind it.
+- [ ] A click, holding Select, swipe down or Play/Pause opens the drawer on
+      the right in the page reader; the page stays visible behind it.
+- [ ] Vertical reader: a click or holding Select opens the drawer, and
+      Play/Pause starts and stops auto-scroll. Holding Select opens the
+      drawer even while auto-scroll runs.
+- [ ] The first few opens of each mode show a hint at the top naming these.
 - [ ] Every setting applies immediately.
 - [ ] Settings are remembered per series (leave and reopen).
 - [ ] Set as Default makes new series open that way.

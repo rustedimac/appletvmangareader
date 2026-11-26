@@ -23,7 +23,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     let gridCache = SuwayomiGridCache()
 
     /// Suwayomi's built-in category for manga not put in any other.
-    static let defaultCategoryID = "0"
+    public static let defaultCategoryID = "0"
 
     public init(config: ServerConfig, username: String?, password: String?,
                 loginMode: SuwayomiLoginMode? = nil, categoryScope: Set<String>? = nil, transport: HTTPTransport) {
@@ -222,12 +222,16 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             case .all: filter = ""
             case .filter(let f): filter = ", filter: \(f)"
             }
-            struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+            struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
             let r: Response = try await graphQL(
-                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(Self.listFields) inLibraryAt } } }",
                 variables: ["first": .int(limit)]
             )
-            return Array(r.mangas.nodes.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(r.mangas.nodes.map { m -> SeriesSummary in
+                var series = summary(m)
+                series.feedDate = Self.date(m.inLibraryAt)
+                return series
+            }.scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
             return try await chapterFeed(orderBy: "FETCHED_AT", limit: limit, requireRead: false)
         case .continueReading:
@@ -241,7 +245,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         struct Response: Decodable {
             struct ChapterNode: Decodable {
                 var lastReadAt: FlexibleNumber?
-                var manga: SuwayomiMangaDTO
+                var fetchedAt: FlexibleNumber?
+                var manga: SuwayomiGridManga
             }
             var chapters: Nodes<ChapterNode>
         }
@@ -256,16 +261,17 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             filter += ", mangaId: {in: $ids}"
         }
         let r: Response = try await graphQL(
-            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt manga { \(SuwayomiMangaDTO.fields) } } } }",
+            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt fetchedAt manga { \(Self.listFields) } } } }",
             variables: variables
         )
         var seen = Set<Int>()
         var result: [SeriesSummary] = []
         for node in r.chapters.nodes {
             if requireRead && (node.lastReadAt?.value ?? 0) <= 0 { continue }
-            let series = summary(node.manga)
+            var series = summary(node.manga)
+            series.feedDate = Self.date(requireRead ? node.lastReadAt : node.fetchedAt)
             guard ProfileServerSettings(selectedCategoryIDs: categoryScope).includes(series),
-                  seen.insert(node.manga.id).inserted else { continue }
+                  seen.insert(node.manga.manga.id).inserted else { continue }
             result.append(series)
             if result.count >= limit { break }
         }
@@ -282,12 +288,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         case .all: filter = title
         case .filter(let f): filter = "{and: [\(title), \(f)]}"
         }
-        struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+        struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
         let r: Response = try await graphQL(
-            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(Self.listFields) } } }",
             variables: ["q": .string(trimmed)]
         )
-        return r.mangas.nodes.map(summary).scoped(to: categoryScope)
+        return r.mangas.nodes.map { summary($0) }.scoped(to: categoryScope)
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
@@ -303,13 +309,15 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                 var thumbnailUrl: String?
                 var unreadCount: Int?
                 var categories: Nodes<SuwayomiMangaDTO.CategoryRef>?
+                var source: Source?
                 var chapters: Nodes<SuwayomiChapterDTO>
             }
+            struct Source: Decodable { var displayName: String?; var name: String? }
             var manga: Manga
         }
         guard let id = Int(seriesID) else { throw MangaError.notFound }
         let r: Response = try await graphQL(
-            "query($id: Int!) { manga(id: $id) { id title description author artist genre status thumbnailUrl unreadCount categories { nodes { id } } chapters { nodes { \(SuwayomiChapterDTO.fields) } } } }",
+            "query($id: Int!) { manga(id: $id) { id title description author artist genre status thumbnailUrl unreadCount categories { nodes { id name } } source { displayName name } chapters { nodes { \(SuwayomiChapterDTO.fields) } } } }",
             variables: ["id": .int(id)]
         )
         let m = r.manga
@@ -317,7 +325,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         let authors = [m.author, m.artist].compactMap { $0 }.filter { !$0.isEmpty }
         var uniqueAuthors: [String] = []
         for a in authors where !uniqueAuthors.contains(a) { uniqueAuthors.append(a) }
-        return SeriesDetail(
+        var detail = SeriesDetail(
             summary: SeriesSummary(ref: ref, title: m.title, coverURL: resolve(m.thumbnailUrl), unreadCount: m.unreadCount,
                                    categoryIDs: Self.categoryIDs(m.categories)),
             synopsis: m.description,
@@ -326,6 +334,9 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             status: m.status.map { $0.capitalized },
             chapters: Self.chapters(from: m.chapters.nodes, seriesRef: ref)
         )
+        let placement = Self.placement(categories: m.categories, source: m.source?.displayName ?? m.source?.name)
+        detail.placement = placement.isEmpty ? nil : placement
+        return detail
     }
 
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {
@@ -378,6 +389,22 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         try await updateChaptersUnread(ids)
     }
 
+    public func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        guard !chapters.isEmpty else { return }
+        let ids = try chapters.map { chapter -> JSONValue in
+            guard let id = Int(chapter.id) else { throw MangaError.notFound }
+            return .int(id)
+        }
+        struct Response: Decodable {
+            struct Payload: Decodable { var clientMutationId: String? }
+            var updateChapters: Payload
+        }
+        let _: Response = try await graphQL(
+            "mutation($ids: [Int!]!) { updateChapters(input: {ids: $ids, patch: {isRead: true}}) { clientMutationId } }",
+            variables: ["ids": .array(ids)]
+        )
+    }
+
     func updateChaptersUnread(_ ids: [JSONValue]) async throws {
         struct Response: Decodable {
             struct Payload: Decodable { var clientMutationId: String? }
@@ -413,6 +440,37 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
                       categoryIDs: Self.categoryIDs(m.categories))
     }
 
+    /// Category names (Default when the manga is in none) and the source.
+    /// Nil `categories` means the server didn't send them.
+    static func placement(categories: Nodes<SuwayomiMangaDTO.CategoryRef>?, source: String?) -> SeriesPlacement {
+        let names: [String]
+        if let nodes = categories?.nodes {
+            names = nodes.isEmpty ? ["Default"] : nodes.compactMap(\.name)
+        } else {
+            names = []
+        }
+        // Suwayomi's local folder source isn't worth naming.
+        let from = source.flatMap { $0.caseInsensitiveCompare("Local source") == .orderedSame ? nil : $0 }
+        return SeriesPlacement(categories: names, source: from)
+    }
+
+    /// Suwayomi sends epoch seconds (some fields in milliseconds); 0 is "never".
+    static func date(_ value: FlexibleNumber?) -> Date? {
+        guard let v = value?.value, v > 0 else { return nil }
+        return Date(timeIntervalSince1970: v > 100_000_000_000 ? v / 1000 : v)
+    }
+
+    /// Home rows and search ask for the chapter count too, for poster
+    /// captions. `chapters { totalCount }` is in every Suwayomi GraphQL
+    /// schema, unlike the grid's sort fields.
+    static let listFields = SuwayomiMangaDTO.fields + " chapters { totalCount }"
+
+    func summary(_ m: SuwayomiGridManga) -> SeriesSummary {
+        var s = summary(m.manga)
+        s.chapterCount = m.chapterCount
+        return s
+    }
+
     /// A manga in no category is in Default.
     static func categoryIDs(_ nodes: Nodes<SuwayomiMangaDTO.CategoryRef>?) -> [String]? {
         guard let nodes else { return nil }
@@ -423,10 +481,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     /// Orders chapters oldest to newest. Suwayomi's `sourceOrder` follows
     /// the source's list; we check the chapter numbers to pick the direction.
     static func chapters(from nodes: [SuwayomiChapterDTO], seriesRef: SeriesRef) -> [Chapter] {
-        var sorted = nodes.sorted { ($0.sourceOrder ?? 0) < ($1.sourceOrder ?? 0) }
-        let numbered = sorted.compactMap { $0.chapterNumber }.filter { $0 >= 0 }
-        if let first = numbered.first, let last = numbered.last, first > last {
-            sorted.reverse()
+        let sorted = ChapterOrdering.readingOrder(nodes) {
+            ChapterOrdering.Item(sourceOrder: $0.sourceOrder, number: $0.chapterNumber, name: $0.name ?? "", id: $0.id)
         }
         return sorted.enumerated().map { index, c in
             let pageCount = max(0, c.pageCount ?? 0)
@@ -448,7 +504,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
 
 struct SuwayomiMangaDTO: Decodable {
     static let fields = "id title thumbnailUrl unreadCount inLibrary categories { nodes { id } }"
-    struct CategoryRef: Decodable { var id: Int }
+    struct CategoryRef: Decodable { var id: Int; var name: String? }
     var id: Int
     var title: String
     var thumbnailUrl: String?

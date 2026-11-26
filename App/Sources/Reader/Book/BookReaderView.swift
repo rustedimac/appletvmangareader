@@ -6,8 +6,8 @@ import MangaCore
 /// opens this instead of the image readers when the chapter's format is
 /// text.
 ///
-/// Siri Remote: left/right (click or swipe) turns the page. Swipe down or
-/// Play/Pause opens the settings drawer. Menu closes the drawer, or saves
+/// Siri Remote: left/right (click or swipe) turns the page. A click (or
+/// holding Select), swipe down or Play/Pause opens the settings drawer. Menu closes the drawer, or saves
 /// progress and closes the book.
 struct BookReaderView: View {
     let series: SeriesSummary
@@ -78,6 +78,10 @@ private struct BookReaderContent: View {
                 .focused($focused)
                 .onMoveCommand(perform: handleMove)
                 .onPlayPauseCommand { session.isMenuPresented = true }
+                // A click, or holding Select, opens the menu, as in the
+                // image readers (`ReaderControls.bookRemote`).
+                .onLongPressGesture(minimumDuration: 0.5) { session.isMenuPresented = true }
+                .onTapGesture { session.isMenuPresented = true }
                 .onAppear { focused = true }
                 .onChange(of: session.isMenuPresented) { _, presented in
                     if !presented { focused = true }

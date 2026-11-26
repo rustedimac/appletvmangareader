@@ -218,7 +218,7 @@ final class ContentFilteredServerTests: XCTestCase {
 
     func testLibraryPagesSkipFullyHiddenPages() async throws {
         // Everything is hidden, so every page comes back empty.
-        let filter = ContentFilter(hiddenGenres: ["Adventure"])
+        let filter = ContentFilter(hiddenGenres: ["Demo"])
         let base = CountingServer(seriesCount: 4)
         let server = ContentFilteredServer(base: base, filter: filter)
         let page = try await server.series(in: MangaCategory(id: "all", name: "All"), page: 1, pageSize: 2)

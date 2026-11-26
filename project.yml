@@ -37,7 +37,9 @@ targets:
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UIRequiredDeviceCapabilities: [arm64]
-        UIUserInterfaceStyle: Automatic
+        # Always dark: the app is designed dark, and following the system let
+        # screens flip to light mid-edit (Add Server, 2026-11-25).
+        UIUserInterfaceStyle: Dark
         # iCloud sync turns on when this is an iCloud container id. Empty by
         # default so builds without a paid Apple Developer membership work;
         # see docs/ICLOUD.md.

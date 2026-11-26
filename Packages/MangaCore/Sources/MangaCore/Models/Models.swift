@@ -163,14 +163,23 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     /// for poster progress badges.
     public var pageCount: Int?
     public var pagesRead: Int?
-    /// Number of chapters, when known (Suwayomi library grids).
+    /// Number of chapters (or volumes or books, see `countUnit`), when
+    /// the listing includes it (Suwayomi, Komga, Free Library). Kavita
+    /// listings don't; the app fetches it per poster as it appears.
     public var chapterCount: Int?
+    /// What `chapterCount` counts. Nil means chapters.
+    public var countUnit: SeriesCountUnit?
+    /// When the series got its place in a Home feed: last read (Continue
+    /// Reading), added (Newly Added) or last new chapter (Recently
+    /// Updated). Set by feeds when the server says, so rows from several
+    /// servers can be merged in one order (`HomeMerge`).
+    public var feedDate: Date? = nil
 
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
                 categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil,
-                format: ContentFormat? = nil) {
+                countUnit: SeriesCountUnit? = nil, format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
@@ -180,6 +189,7 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
         self.pageCount = pageCount
         self.pagesRead = pagesRead
         self.chapterCount = chapterCount
+        self.countUnit = countUnit
         self.format = format
     }
 
@@ -237,6 +247,9 @@ public struct SeriesDetail: Codable, Hashable, Sendable {
     /// When the server last added a chapter, if it tracks that (Kavita's
     /// `lastChapterAdded`). See `latestChapterDate`.
     public var latestChapterAt: Date? = nil
+    /// Which libraries/categories of its server the series is in, when the
+    /// client knows their names. See `SeriesPlacement`.
+    public var placement: SeriesPlacement? = nil
 
     public init(summary: SeriesSummary, synopsis: String?, authors: [String], genres: [String],
                 status: String?, chapters: [Chapter]) {

@@ -62,6 +62,22 @@ public final class ContentFilteredServer: MangaServer, @unchecked Sendable {
         }
     }
 
+    public var libraryFilterSupport: LibraryFilterSupport { base.libraryFilterSupport }
+
+    public func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                       filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
+        let base = self.base
+        return try await filteredPage(from: page) {
+            try await base.series(in: category, page: $0, pageSize: pageSize, sort: sort, filter: filter)
+        }
+    }
+
+    /// The library's genres, without the ones this filter hides.
+    public func filterGenres(in category: MangaCategory) async throws -> [String] {
+        let filter = self.filter
+        return try await base.filterGenres(in: category).filter { !filter.isGenreHidden($0) }
+    }
+
     /// One page with hidden series left out. An empty page would end
     /// paging, so this keeps going until something shows. The pager skips
     /// repeats if it asks for these pages again.
@@ -96,6 +112,15 @@ public final class ContentFilteredServer: MangaServer, @unchecked Sendable {
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
         if try await hiddenIDs().contains(seriesID) { throw MangaError.notFound }
         return try await base.seriesDetail(seriesID)
+    }
+
+    public func chapterCount(seriesID: String) async throws -> SeriesCount {
+        if try await hiddenIDs().contains(seriesID) { throw MangaError.notFound }
+        return try await base.chapterCount(seriesID: seriesID)
+    }
+
+    public func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        try await base.markRead(chapters: chapters, libraryID: libraryID)
     }
 
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {

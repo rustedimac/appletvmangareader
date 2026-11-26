@@ -49,6 +49,7 @@ struct KomgaSeriesDTO: Decodable {
     var booksInProgressCount: Int?
     var metadata: Metadata?
     var booksMetadata: BooksMetadata?
+    var created: Date?
     var lastModified: Date?
     var deleted: Bool?
     var oneshot: Bool?

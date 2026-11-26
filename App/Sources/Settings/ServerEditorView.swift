@@ -4,6 +4,9 @@ import MangaCore
 /// Add or edit a server, and the active profile's login, sync setting and
 /// which libraries/categories to import from it. The checklist appears once
 /// a connection test succeeds (and right away when editing).
+///
+/// The only screen with a Save button: Save tests the address and login and
+/// stores the credential (docs/DESIGN_GUIDE.md, "No Save buttons").
 struct ServerEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -30,6 +33,7 @@ struct ServerEditorView: View {
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("serverEditor.kind")
+                    .settingsSegmentedRow()
                 }
             }
 
@@ -44,15 +48,15 @@ struct ServerEditorView: View {
                     .textContentType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    // Tidy the address only when typing is done, never per keystroke.
                     .onSubmit { draft.absorbOPDS() }
                     .accessibilityIdentifier("serverEditor.address")
                     .settingsTextFieldRow()
             } header: {
                 SettingsHeader("\(draft.kind.displayName) Server")
             } footer: {
-                if draft.kind == .kavita {
-                    Text("Paste the OPDS URL from Kavita → User Settings → 3rd Party Clients. It fills in the API key for you.")
-                }
+                Text(ServerDraft.addressHelp(for: draft.kind))
+                    .accessibilityIdentifier("serverEditor.addressHelp")
             }
 
             Section {
@@ -77,6 +81,7 @@ struct ServerEditorView: View {
                     } else {
                         SecureField("API key", text: $draft.apiKey)
                             .textInputAutocapitalization(.never)
+                            .onSubmit { draft.absorbOPDS() }
                             .autocorrectionDisabled()
                             .accessibilityIdentifier("serverEditor.apiKey")
                             .settingsTextFieldRow()
@@ -184,11 +189,13 @@ struct ServerEditorView: View {
         .settingsPage(editing?.name ?? "Add Server", systemImage: "server.rack")
         .onAppear(perform: load)
         .onChange(of: draft.address) { _, _ in
-            // A pasted OPDS URL (Continuity Keyboard) splits right away.
-            if draft.kind == .kavita, KavitaOPDS.parse(draft.address) != nil { draft.absorbOPDS() }
+            // Never rewrite the field here: this runs on every keystroke, and
+            // splitting an OPDS URL mid-typing ate "/api/opds/" (2026-11-25).
+            // `resolvedURL`/`resolvedAPIKey` read a full OPDS URL as it is.
             connectionChanged()
         }
         .onChange(of: draft.kind) { _, _ in connectionChanged() }
+        .onChange(of: categories) { _, new in applyCategoriesLive(new) }
         .onChange(of: draft.apiKey) { _, _ in connectionChanged() }
         .onChange(of: draft.username) { _, _ in connectionChanged() }
         .onChange(of: draft.password) { _, _ in connectionChanged() }
@@ -254,7 +261,7 @@ struct ServerEditorView: View {
 
     private var addressPrompt: String {
         switch draft.kind {
-        case .kavita: return "OPDS URL or address"
+        case .kavita: return "Address, e.g. kavita.local:5000"
         case .komga: return "Address, e.g. komga.local:25600"
         case .suwayomi: return "Address, e.g. suwayomi.local:4567"
         case .opds: return "Catalog URL or address, e.g. books.local:8083/opds"
@@ -270,20 +277,46 @@ struct ServerEditorView: View {
     private func load() {
         guard !loaded else { return }
         loaded = true
+        if editing == nil, let prefill = UITestingSeed.serverEditorPrefill {
+            // Stands in for a paste, which the simulator can't do.
+            draft.kind = prefill.kind
+            draft.address = prefill.address
+            draft.apiKey = prefill.apiKey
+            if prefill.kind == .kavita, !prefill.apiKey.isEmpty { draft.kavitaMethod = .apiKey }
+        }
         if let editing {
             draft = ServerDraft(editing: editing, credential: model.credential(for: editing),
                                 syncProgress: model.syncsProgress(to: editing.id))
+            savedConnectionKey = connectionKey
             if draft.isValid { loadCategories() }
         }
+    }
+
+    /// The address and login the edited server was saved with.
+    @State private var savedConnectionKey: String?
+
+    /// For a server that's already saved, ticks apply as they change, the
+    /// same as on the Library tab's picker, so leaving without Save keeps
+    /// them. Only while the address and login are the saved ones: a checklist
+    /// loaded for a different address waits for Save, which validates it.
+    private func applyCategoriesLive(_ load: CategoryLoad) {
+        guard let editing, savedConnectionKey != nil, categoriesKey == savedConnectionKey,
+              let selection = load.selection, selection.canSave,
+              selection.storedValue != model.selectedCategories(for: editing) else { return }
+        model.setSelectedCategories(selection.storedValue, for: editing)
     }
 
     /// A different address or login may see different libraries: hide the
     /// checklist until the next successful test. Ticks the user already
     /// made are kept if the same ids come back.
     private func connectionChanged() {
-        test = .idle
         saveError = nil
-        resolvedCredential = nil
+        // Tidying the fields (absorbOPDS) before a test changes the text but
+        // not where it connects, so it keeps the running test.
+        if connectionKey != testedKey {
+            test = .idle
+            resolvedCredential = nil
+        }
         guard categoriesKey != connectionKey else { return }
         categoryTask?.cancel()
         if let selection = categories.selection { pendingSelection = .some(selection.storedValue) }
@@ -294,6 +327,8 @@ struct ServerEditorView: View {
     /// The login a successful test signed in with (for a Kavita password,
     /// the auth key it got), reused by the checklist and Save.
     @State private var resolvedCredential: ServerCredential?
+    /// The server and login the last Test Connection ran against.
+    @State private var testedKey: String?
     @State private var categoryTask: Task<Void, Never>?
     /// The server and login the checklist was loaded for.
     @State private var categoriesKey: String?
@@ -335,6 +370,8 @@ struct ServerEditorView: View {
     }
 
     private func runTest() {
+        draft.absorbOPDS()
+        testedKey = connectionKey
         if let message = draft.validationMessage {
             test = .failure(message)
             return
@@ -354,12 +391,14 @@ struct ServerEditorView: View {
                 test = .success(message)
                 loadCategories()
             } catch {
-                test = .failure(error.localizedDescription)
+                test = .failure(ConnectionErrorMessage.describe(error, kind: config.kind, url: config.baseURL,
+                                                                password: draft.needsKavitaSignIn))
             }
         }
     }
 
     private func save() {
+        draft.absorbOPDS()
         guard let config = draft.config(id: editing?.id ?? UUID()) else { return }
         let draft = self.draft
         // Without a loaded checklist, keep what was saved (all, for a new server).
@@ -383,12 +422,13 @@ struct ServerEditorView: View {
                 if credential != draft.existing, await model.suwayomiUser(config, credential: credential) != nil {
                     sync = true
                 }
-                model.saveServer(config, credential: credential)
+                try model.saveServer(config, credential: credential)
                 model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && sync,
                                                               selectedCategoryIDs: selected), for: config)
                 dismiss()
             } catch {
-                saveError = error.localizedDescription
+                saveError = ConnectionErrorMessage.describe(error, kind: config.kind, url: config.baseURL,
+                                                            password: draft.needsKavitaSignIn)
             }
         }
     }

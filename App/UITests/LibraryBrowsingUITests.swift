@@ -127,6 +127,23 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertTrue(element.exists, "\(element) never appeared. Focus: \(focusedDescription())")
     }
 
+    private var focusedPoster: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true")).firstMatch
+    }
+
+    /// Presses `direction` until focus stops moving (the end of a row).
+    private func pressUntilFocusStops(_ direction: XCUIRemote.Button, maxPresses: Int = 60) {
+        var last = ""
+        for _ in 0..<maxPresses {
+            remote.press(direction)
+            Thread.sleep(forTimeInterval: 0.4)
+            let current = focused
+            let now = "\(current.identifier)|\(current.frame)"
+            if now == last { return }
+            last = now
+        }
+    }
+
     /// Settings → Customize Home.
     private func openCustomizeHome() {
         selectTab("Settings")
@@ -174,6 +191,52 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertFalse(app.buttons["library.jump.A"].exists, "no A–Z bar unless sorted by title")
     }
 
+    /// Status and read-progress filters narrow the grid, the Sort & View
+    /// button shows how many are on, an empty result offers Show
+    /// Everything, and Library Defaults applies to libraries without their
+    /// own filters. Demo statuses: every fifth series is on hiatus (unless
+    /// a multiple of 7), see `SampleLibraryServer.status(for:)`.
+    func testStatusFilterAndLibraryDefaults() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryFilter.status.hiatus")
+        let options = app.buttons["library.options"]
+        wait(options, "value == '1 filter'")
+        XCTAssertTrue(app.buttons["poster.5"].waitForExistence(timeout: 10), "on hiatus")
+        XCTAssertFalse(app.buttons["poster.1"].exists, "completed series are filtered out")
+        XCTAssertFalse(app.buttons["poster.2"].exists, "ongoing series are filtered out")
+
+        // Hiatus series 5 is unread, so "Finished" leaves nothing.
+        pickOption("libraryFilter.read.read")
+        wait(options, "value == '2 filters'")
+        let clear = app.buttons["library.clearFilters"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 10))
+        moveFocus(to: clear)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["poster.1"].waitForExistence(timeout: 10), "Show Everything clears this library's filters")
+        wait(options, "value == ''")
+
+        // Back to the default, then set the default to Ongoing in Library Defaults.
+        pickOption("libraryOptions.filter.default")
+        moveFocus(to: options)
+        remote.press(.select)
+        let defaultsLink = app.buttons["libraryOptions.defaults"]
+        XCTAssertTrue(defaultsLink.waitForExistence(timeout: 10))
+        moveFocus(to: defaultsLink)
+        remote.press(.select)
+        let ongoing = app.buttons["libraryFilter.status.ongoing"]
+        XCTAssertTrue(ongoing.waitForExistence(timeout: 10))
+        moveFocus(to: ongoing)
+        remote.press(.select)
+        wait(ongoing, "value == 'selected'")
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["libraryOptions.filter.default"].waitForExistence(timeout: 10))
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["poster.2"].waitForExistence(timeout: 10), "the default filter shows ongoing series")
+        XCTAssertFalse(app.buttons["poster.1"].exists)
+        wait(options, "value == '1 filter'")
+    }
+
     func testRightToLeftGridAndSmallerPosters() {
         launch()
         openKavitaLibrary()
@@ -189,6 +252,51 @@ final class LibraryBrowsingUITests: XCTestCase {
         pickOption("libraryOptions.density.compact")
         XCTAssertTrue(first.waitForExistence(timeout: 10))
         XCTAssertLessThan(first.frame.width, standardWidth * 0.9, "small posters")
+    }
+
+    // MARK: Poster caption (one test per mode)
+
+    /// Demo series 1 has 4 chapters of 20 pages, none read.
+    private var caption: XCUIElement { app.staticTexts["poster.caption.1"] }
+    private var titleProgress: XCUIElement { app.descendants(matching: .any)["poster.titleProgress.1"] }
+
+    func testPosterCaptionShowsChaptersByDefault() {
+        launch()
+        openKavitaLibrary()
+        XCTAssertTrue(caption.waitForExistence(timeout: 10))
+        XCTAssertEqual(caption.label, "4 chapters")
+        XCTAssertFalse(titleProgress.exists)
+    }
+
+    func testPosterCaptionPages() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.pages")
+        XCTAssertTrue(caption.waitForExistence(timeout: 10))
+        wait(caption, "label == '80 pages'")
+    }
+
+    func testPosterCaptionProgressBar() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titleProgress.waitForExistence(timeout: 10), "progress bar under the title")
+        XCTAssertEqual(titleProgress.value as? String, "0 percent")
+        XCTAssertFalse(caption.exists, "no count text with the progress bar")
+    }
+
+    func testPosterCaptionOff() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.off")
+        XCTAssertTrue(app.buttons["poster.1"].waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertFalse(caption.exists)
+        XCTAssertFalse(titleProgress.exists)
+        // The setting is the profile's, so Home follows it too.
+        selectTab("Home")
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.caption.'")).count, 0)
     }
 
     func testLibraryReadingDirectionOpensSeriesThatWay() {
@@ -215,8 +323,8 @@ final class LibraryBrowsingUITests: XCTestCase {
 
     func testHideAndReorderHomeRows() {
         launch()
-        let updated = app.staticTexts["shelf.Demo Kavita.recentlyUpdated"]
-        let added = app.staticTexts["shelf.Demo Kavita.newlyAdded"]
+        let updated = app.staticTexts["shelf.recentlyUpdated"]
+        let added = app.staticTexts["shelf.newlyAdded"]
         XCTAssertTrue(updated.waitForExistence(timeout: 15), "Recently Updated is the first row with content")
 
         openCustomizeHome()
@@ -264,7 +372,7 @@ final class LibraryBrowsingUITests: XCTestCase {
         remote.press(.menu)
 
         selectTab("Home")
-        let row = app.staticTexts["shelf.Demo Kavita.continueReading"]
+        let row = app.staticTexts["shelf.continueReading"]
         XCTAssertTrue(row.waitForExistence(timeout: 15), "Continue Reading never showed")
         // Continue Reading is the first row, so the first poster down from
         // the tab bar is the series just read.
@@ -287,7 +395,7 @@ final class LibraryBrowsingUITests: XCTestCase {
 
     func testCaughtUpShowsFinishedSeries() {
         launch(["-demoFinished", "1"])
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         // Opening the finished series notices it's caught up.
         openKavitaLibrary()
         let poster = app.buttons["poster.1"]
@@ -301,6 +409,29 @@ final class LibraryBrowsingUITests: XCTestCase {
         selectTab("Home")
         // Caught Up is the last row by default.
         scrollDown(until: app.staticTexts["shelf.caughtUp"])
+    }
+
+    func testDownFromAnyPosterInLastRowReachesCustomizeHome() {
+        launch()
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
+        let customize = app.buttons["home.customize"]
+        scrollDown(until: customize, maxPresses: 20)
+        moveFocus(to: customize)
+
+        // Up lands in the last row. Its first poster sits far left of the
+        // centered button, its last one far right: Down must work from both.
+        for edge in [XCUIRemote.Button.left, .right] {
+            remote.press(.up)
+            wait(focusedPoster, "exists == true")
+            pressUntilFocusStops(edge)
+            let poster = focusedPoster
+            XCTAssertTrue(poster.exists, "focus left the row. Focus: \(focusedDescription())")
+            let frame = poster.frame
+            XCTAssertTrue(frame.maxX < customize.frame.minX || frame.minX > customize.frame.maxX,
+                          "\(edge == .left ? "first" : "last") poster \(frame) should not sit above the button \(customize.frame)")
+            remote.press(.down)
+            wait(customize, "hasFocus == true")
+        }
     }
 
     // MARK: Search

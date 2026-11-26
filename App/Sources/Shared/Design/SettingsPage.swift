@@ -17,6 +17,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
     private let title: String
     private let hero: Hero
     private let content: Content
+    @State private var navigator = SettingsNavigator()
 
     init(_ title: String, @ViewBuilder hero: () -> Hero, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -64,6 +65,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 .accessibilityIdentifier("settingsPage.form")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .settingsNavigation(navigator)
     }
 }
 
@@ -155,8 +157,30 @@ extension View {
     /// A text field row in a settings form. The row's own platter is
     /// removed so the field's capsule is the only outline, filling the row
     /// with its text lined up with the section header.
+    ///
+    /// The font matches Apple's own tvOS text fields (Settings sign-in:
+    /// 38 pt regular, the headline size). Measured on the simulator at 4K:
+    /// with it, placeholder, typed text and password dots match Settings in
+    /// every state; `.body` drew them about 0.76x Apple's size, and no font
+    /// let typed text grow 1.7x past its own placeholder.
     func settingsTextFieldRow() -> some View {
+        font(SettingsFieldFont.text)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+    }
+
+    /// A segmented picker row in a settings form. Like
+    /// `settingsTextFieldRow()`, it removes the row platter: otherwise tvOS
+    /// draws the row's rounded platter behind the picker's own track, a third
+    /// layer whose corners don't match the track or the selected segment.
+    /// The track then spans the row, lined up with the text fields below.
+    func settingsSegmentedRow() -> some View {
         listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
     }
+}
+
+/// The text style of every settings text field and secure field.
+enum SettingsFieldFont {
+    static let text: Font = .headline.weight(.regular)
 }

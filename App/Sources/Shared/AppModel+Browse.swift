@@ -12,11 +12,33 @@ extension AppModel {
 
     var homeLayout: HomeLayout { browsePreferences.home }
     var gridDensity: GridDensity { browsePreferences.gridDensity }
+    var posterCaption: PosterCaption { browsePreferences.posterCaption }
+    /// Merged Home rows (default) or one row per server.
+    var homeServerRows: HomeServerRows { homeLayout.serverRows }
+    /// Where posters name their server in rows that mix servers.
+    var posterServerLabel: PosterServerLabel { homeLayout.serverLabel }
 
     // MARK: Libraries
 
     func libraryOptions(_ server: ServerConfig, _ category: MangaCategory) -> LibraryOptions {
         browsePreferences.options(for: LibraryKey(serverID: server.id, categoryID: category.id))
+    }
+
+    /// The library's options with its unset sort, grid order and filter
+    /// taken from Library Defaults. Use this for the grid.
+    func resolvedLibraryOptions(_ server: ServerConfig, _ category: MangaCategory) -> LibraryOptions {
+        browsePreferences.resolvedOptions(for: LibraryKey(serverID: server.id, categoryID: category.id))
+    }
+
+    var libraryDefaults: LibraryDefaults { browsePreferences.libraryDefaults }
+
+    func updateLibraryDefaults(_ body: (inout LibraryDefaults) -> Void) {
+        updateBrowse { prefs in
+            var defaults = prefs.libraryDefaults
+            body(&defaults)
+            defaults.filter = defaults.filter.forDefault
+            prefs.libraryDefaults = defaults
+        }
     }
 
     func setLibraryOptions(_ options: LibraryOptions, _ server: ServerConfig, _ category: MangaCategory) {
@@ -56,6 +78,8 @@ extension AppModel {
     /// Called whenever series detail loads, with the summary the user
     /// navigated with. Saves only when the Caught Up row changes.
     func noteSeriesDetail(_ detail: SeriesDetail, summary: SeriesSummary) {
+        seriesCounts.record(SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format ?? summary.format),
+                            for: summary.ref)
         var prefs = browsePreferences
         let before = prefs.caughtUp
         prefs.noteCaughtUp(detail, summary: summary, now: Date())

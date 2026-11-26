@@ -168,9 +168,11 @@ public final class KeychainSharedServerStore: SharedServerStore, @unchecked Send
 /// A profile's own logins, falling back to the shared login for servers
 /// another Apple TV user added. Writing a login also offers it as the
 /// shared one when the server has none yet.
-public final class SharedFallbackSecretStore: SecretStore, @unchecked Sendable {
+public final class SharedFallbackSecretStore: SecretStore, KeychainStatusReporting, @unchecked Sendable {
     public let local: SecretStore
     public let shared: SharedServerStore
+
+    public var lastStatus: Int32? { (local as? KeychainStatusReporting)?.lastStatus }
 
     public init(local: SecretStore, shared: SharedServerStore) {
         self.local = local
