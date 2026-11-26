@@ -20,8 +20,15 @@ sharpness, memory).
 
 - [ ] With no servers, Home says "No servers yet".
 - [ ] Settings → Add Server → Kavita: paste the OPDS URL with the iPhone
-      keyboard (Continuity Keyboard). The address and API key fill in, and the
-      key field shows dots.
+      keyboard (Continuity Keyboard). The field keeps what you pasted while
+      you type; on Return, Test Connection or Save it splits into the address
+      and the API key (dots).
+- [ ] Type just the address (e.g. `http://kavita.local:5000`) and the key
+      separately. Test Connection passes. A wrong host says "Couldn't reach",
+      a wrong key says "rejected the API key".
+- [ ] In the simulator (no paste), launch a Debug build with
+      `-serverEditorPrefill "kavita|http://<host>/api/opds/<key>"` to try the
+      pasted-URL path. Use a fake key in anything you commit.
 - [ ] Test Connection shows a green check.
 - [ ] Add Suwayomi with its address only. Test Connection passes.
 - [ ] Both servers appear on Home within a few seconds.

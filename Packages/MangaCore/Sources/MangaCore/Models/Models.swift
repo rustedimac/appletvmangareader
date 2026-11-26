@@ -163,14 +163,18 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     /// for poster progress badges.
     public var pageCount: Int?
     public var pagesRead: Int?
-    /// Number of chapters, when known (Suwayomi library grids).
+    /// Number of chapters (or volumes or books, see `countUnit`), when
+    /// the listing includes it (Suwayomi, Komga, Free Library). Kavita
+    /// listings don't; the app fetches it per poster as it appears.
     public var chapterCount: Int?
+    /// What `chapterCount` counts. Nil means chapters.
+    public var countUnit: SeriesCountUnit?
 
     public var id: SeriesRef { ref }
 
     public init(ref: SeriesRef, title: String, coverURL: URL?, unreadCount: Int? = nil, libraryID: String? = nil,
                 categoryIDs: [String]? = nil, pageCount: Int? = nil, pagesRead: Int? = nil, chapterCount: Int? = nil,
-                format: ContentFormat? = nil) {
+                countUnit: SeriesCountUnit? = nil, format: ContentFormat? = nil) {
         self.ref = ref
         self.title = title
         self.coverURL = coverURL
@@ -180,6 +184,7 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
         self.pageCount = pageCount
         self.pagesRead = pagesRead
         self.chapterCount = chapterCount
+        self.countUnit = countUnit
         self.format = format
     }
 

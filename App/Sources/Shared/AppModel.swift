@@ -311,6 +311,8 @@ final class AppModel {
     /// Poster badge counts changed by "Mark as Unread" since the feeds
     /// loaded, so posters update without reloading every row.
     private(set) var unreadCountOverrides: [SeriesRef: Int] = [:]
+    /// Chapter counts for poster captions (see `SeriesCountStore`).
+    let seriesCounts = SeriesCountStore()
 
     func unreadCount(for series: SeriesSummary) -> Int? {
         unreadCountOverrides[series.ref] ?? series.unreadCount
