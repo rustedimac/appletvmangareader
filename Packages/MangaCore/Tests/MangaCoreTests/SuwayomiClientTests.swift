@@ -92,9 +92,10 @@ final class SuwayomiClientTests: XCTestCase {
     }
 
     func testNewlyAddedQuery() async throws {
-        mock.onGraphQL("IN_LIBRARY_AT", body: #"{"data":{"mangas":{"nodes":[{"id":9,"title":"New One"}]}}}"#)
+        mock.onGraphQL("IN_LIBRARY_AT", body: #"{"data":{"mangas":{"nodes":[{"id":9,"title":"New One","chapters":{"totalCount":42}},{"id":10,"title":"Older"}]}}}"#)
         let items = try await client.feed(.newlyAdded, limit: 5)
-        XCTAssertEqual(items.map(\.title), ["New One"])
+        XCTAssertEqual(items.map(\.title), ["New One", "Older"])
+        XCTAssertEqual(items.map(\.chapterCount), [42, nil], "home rows carry the chapter count")
     }
 
     func testSeriesDetailChapterOrder() async throws {

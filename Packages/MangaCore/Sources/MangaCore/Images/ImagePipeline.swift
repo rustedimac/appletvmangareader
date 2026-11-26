@@ -17,6 +17,9 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     private let memory = NSCache<NSString, CachedImage>()
     private let coalescer = FetchCoalescer()
     private let limiter: DownloadLimiter
+    /// Per-attempt timeout and automatic retries for downloads.
+    let retryPolicy: RetryPolicy
+    private let retrySleep: @Sendable (TimeInterval) async throws -> Void
     private let lock = NSLock()
     private var pixelSizes: [String: PageSize] = [:]
     private var prefetchTasks: [String: Task<Void, Never>] = [:]
@@ -27,12 +30,19 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
     ///   - diskDirectory: where encoded images are cached; `nil` disables the disk cache.
     ///   - diskLimit: bytes kept on disk before the oldest files are removed.
     ///   - maxConcurrentDownloads: parallel downloads across all servers.
+    ///   - retryPolicy: time limit per download attempt and automatic
+    ///     retries for timeouts, dropped connections and HTTP 5xx.
+    ///   - sleep: waits between retries (tests pass one that returns at once).
     public init(transport: HTTPTransport = URLSessionTransport(session: ImagePipeline.makeSession()),
                 memoryLimit: Int = 256 * 1024 * 1024,
                 diskDirectory: URL? = ImagePipeline.defaultDiskDirectory,
                 diskLimit: Int = 512 * 1024 * 1024,
-                maxConcurrentDownloads: Int = 6) {
+                maxConcurrentDownloads: Int = 6,
+                retryPolicy: RetryPolicy = .images,
+                sleep: @escaping @Sendable (TimeInterval) async throws -> Void = RetryPolicy.taskSleep) {
         self.transport = transport
+        self.retryPolicy = retryPolicy
+        self.retrySleep = sleep
         self.disk = diskDirectory.map { DiskImageCache(directory: $0, limit: diskLimit) }
         self.limiter = DownloadLimiter(limit: maxConcurrentDownloads)
         memory.totalCostLimit = memoryLimit
@@ -151,16 +161,24 @@ public final class ImagePipeline: ImageLoading, @unchecked Sendable {
         if high { await limiter.promote(key) }
         return try await coalescer.data(for: key) { [self] in
             if let cached = disk?.data(for: key) { return cached }
-            await limiter.acquire(key: key, high: high)
-            let result: Result<Data, Error>
-            do {
-                try Task.checkCancellation()
-                result = .success(try await fetch(url, server: server))
-            } catch {
-                result = .failure(error)
+            // Each attempt holds a download slot only while it runs, and the
+            // time limit starts once it has one, so waiting behind other
+            // downloads never counts as a timeout.
+            let data = try await retryPolicy.run(timingEachAttempt: false, sleep: self.retrySleep) { [self] _ in
+                await limiter.acquire(key: key, high: high)
+                let result: Result<Data, Error>
+                do {
+                    try Task.checkCancellation()
+                    let policy = retryPolicy
+                    result = .success(try await RetryPolicy.withTimeout(policy.attemptTimeout) { [self] in
+                        try await fetch(url, server: server)
+                    })
+                } catch {
+                    result = .failure(error)
+                }
+                await limiter.release()
+                return try result.get()
             }
-            await limiter.release()
-            let data = try result.get()
             // Only keep bytes ImageIO can read, so a login page or error
             // body never gets cached as an image.
             if let size = ImageDecoder.pixelSize(of: data) {

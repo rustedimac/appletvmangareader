@@ -19,6 +19,7 @@ struct RootView: View {
                 if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
             }
             .task {
+                TabBarScrollReset.install()
                 model.startTopShelf()
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }

@@ -89,13 +89,63 @@ final class LibrarySortTests: XCTestCase {
 
 final class PosterBadgesTests: XCTestCase {
     func testKavitaShowsPageProgress() {
-        let b = PosterBadges(series: series("1", "A", unread: 150, pages: 200, read: 50))
+        let b = PosterBadges(series: series("1", "A", unread: 150, pages: 200, read: 50), caption: .pages)
         XCTAssertEqual(b.corner, .none, "unread pages are not a badge")
         XCTAssertEqual(b.progress, 0.25)
         XCTAssertEqual(b.caption, "200 pages")
         XCTAssertEqual(PosterBadges(series: series("1", "A", pages: 1200, read: 1200)).corner, .finished)
-        XCTAssertEqual(PosterBadges(series: series("1", "A", pages: 1200, read: 0)).caption, "1,200 pages")
+        XCTAssertEqual(PosterBadges(series: series("1", "A", pages: 1200, read: 0), caption: .pages).caption, "1,200 pages")
         XCTAssertNil(PosterBadges(series: series("1", "A", pages: 10, read: 0)).progress)
+    }
+
+    func testChaptersIsTheDefaultCaption() {
+        XCTAssertEqual(PosterCaption.default, .chapters)
+        // Kavita lists pages only: no caption until the count arrives.
+        let kavita = series("1", "A", unread: 150, pages: 1383, read: 50)
+        XCTAssertNil(PosterBadges(series: kavita).caption)
+        XCTAssertTrue(PosterCaption.chapters.needsChapterCount(kavita))
+        let counted = kavita.withCount(SeriesCount(count: 42))
+        XCTAssertEqual(PosterBadges(series: counted).caption, "42 chapters")
+        XCTAssertEqual(PosterBadges(series: counted).progress, PosterBadges(series: kavita).progress, "badges unchanged")
+        XCTAssertFalse(PosterCaption.chapters.needsChapterCount(counted))
+        XCTAssertEqual(PosterBadges(series: kavita.withCount(SeriesCount(count: 1))).caption, "1 chapter")
+        XCTAssertEqual(PosterBadges(series: kavita.withCount(SeriesCount(count: 12, unit: .volume))).caption, "12 volumes")
+        XCTAssertEqual(PosterBadges(series: kavita.withCount(SeriesCount(count: 1, unit: .book))).caption, "1 book")
+        XCTAssertEqual(series("1", "A", chapters: 3).withCount(SeriesCount(count: 9)).chapterCount, 3, "listing wins")
+    }
+
+    func testPagesFallBackToChapters() {
+        XCTAssertEqual(PosterBadges(series: series("1", "A", unread: 3, chapters: 12), caption: .pages).caption, "12 chapters")
+        XCTAssertFalse(PosterCaption.pages.needsChapterCount(series("1", "A", pages: 10, read: 0)))
+        XCTAssertTrue(PosterCaption.pages.needsChapterCount(series("1", "A", unread: 2)))
+    }
+
+    func testProgressAndOffCaptions() {
+        let b = PosterBadges(series: series("1", "A", unread: 3, chapters: 12), caption: .progress)
+        XCTAssertNil(b.caption)
+        XCTAssertEqual(b.titleProgress, 0.75)
+        XCTAssertEqual(b.corner, .unread(3), "corner badge stays")
+        XCTAssertEqual(PosterBadges(series: series("1", "A", unread: 4, chapters: 4), caption: .progress).titleProgress, 0,
+                       "unread series show an empty bar")
+        XCTAssertEqual(PosterBadges(series: series("1", "A", pages: 10, read: 10), caption: .progress).titleProgress, 1)
+        XCTAssertNil(PosterBadges(series: series("1", "A", unread: 4), caption: .progress).titleProgress, "nothing to measure")
+        XCTAssertFalse(PosterCaption.progress.needsChapterCount(series("1", "A")))
+        let off = PosterBadges(series: series("1", "A", unread: 3, chapters: 12), caption: .off)
+        XCTAssertNil(off.caption)
+        XCTAssertNil(off.titleProgress)
+        XCTAssertEqual(off.corner, .unread(3))
+        XCTAssertFalse(PosterCaption.off.needsChapterCount(series("1", "A")))
+    }
+
+    func testCountUnits() {
+        let ref = SeriesRef(serverID: serverID, seriesID: "1")
+        func chapter(_ format: ContentFormat?) -> Chapter {
+            Chapter(id: UUID().uuidString, seriesRef: ref, title: "", number: 1, pageCount: 1, format: format)
+        }
+        XCTAssertEqual(SeriesCount(chapters: [chapter(nil), chapter(.images)]), SeriesCount(count: 2, unit: .chapter))
+        XCTAssertEqual(SeriesCount(chapters: [chapter(.epub), chapter(.pdf)]), SeriesCount(count: 2, unit: .book))
+        XCTAssertEqual(SeriesCount(chapters: [chapter(nil)], seriesFormat: .epub).unit, .book)
+        XCTAssertEqual(SeriesCount(chapters: []).count, 0)
     }
 
     func testSuwayomiShowsUnreadChapters() {
@@ -157,6 +207,13 @@ final class BrowsePreferencesTests: XCTestCase {
     func testDefaultsEncodeToNothingAndOldStateDecodes() throws {
         let data = try JSONEncoder().encode(BrowsePreferences())
         XCTAssertEqual(String(decoding: data, as: UTF8.self), "{}")
+        var prefs = BrowsePreferences()
+        prefs.posterCaption = .progress
+        let encoded = try JSONEncoder().encode(prefs)
+        XCTAssertEqual(String(decoding: encoded, as: UTF8.self), #"{"posterCaption":"progress"}"#)
+        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: encoded).posterCaption, .progress)
+        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: Data(#"{"posterCaption":"sparkles"}"#.utf8)).posterCaption,
+                       .chapters, "unknown values fall back")
         let old = #"{"serverSettings":{},"favorites":[],"progress":{},"defaultReaderSettings":{"mode":"paged","direction":"rightToLeft","layout":"double","firstPageAlone":true,"shiftPairing":false,"background":"black","webtoonWidth":0.6,"webtoonScrollStep":0.75},"readerOverrides":{}}"#
         let decoded = try JSONDecoder().decode(ProfileData.self, from: Data(old.utf8))
         XCTAssertNil(decoded.browse)

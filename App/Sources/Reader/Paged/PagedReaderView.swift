@@ -70,6 +70,8 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
+        // Select on a failed page retries it in place.
+        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
         .onTapGesture { toggleZoom() }
         // Menu zooms out first; when not zoomed it falls through to
@@ -203,7 +205,9 @@ struct PagedReaderView: View {
     private func preload() {
         let target = targetPixels(container)
         guard session.loadState == .loaded, container != .zero else { return }
-        let indices = session.navigator.pagesToPreload(radius: 2)
+        // Pages on screen are loaded by their own views at full priority.
+        let visible = Set(session.visiblePages)
+        let indices = session.navigator.pagesToPreload(radius: 2).filter { !visible.contains($0) }
         let urls = indices.compactMap { session.page($0)?.url }
         let byURL = Dictionary(indices.compactMap { i in session.page(i).map { ($0.url, i) } },
                                uniquingKeysWith: { a, _ in a })
@@ -312,7 +316,15 @@ private struct PageImageView: View {
     let size: CGSize
 
     @State private var loaded: LoadedImage?
-    @State private var failed = false
+
+    private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
+
+    /// Label, value ("loaded", "cropped", "failed", "loading") and hint for VoiceOver and UI tests.
+    private var accessibilityText: (label: String, value: String, hint: String) {
+        if loaded != nil { return ("Page \(index + 1)", crop.isZero ? "loaded" : "cropped", "") }
+        if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
+        return ("Page \(index + 1)", "loading", "")
+    }
 
     var body: some View {
         // The image is an overlay, so its larger (uncropped) size never
@@ -321,13 +333,15 @@ private struct PageImageView: View {
             .fill(.clear)
             .frame(width: size.width, height: size.height)
             .accessibilityElement()
-            .accessibilityLabel("Page \(index + 1)")
-            .accessibilityValue(crop.isZero ? "uncropped" : "cropped")
+            .accessibilityLabel(accessibilityText.label)
+            .accessibilityValue(accessibilityText.value)
+            .accessibilityHint(accessibilityText.hint)
             .accessibilityIdentifier("reader.page.\(index)")
             .overlay(alignment: .topLeading) { content.accessibilityHidden(true) }
             .clipped()
             .task(id: LoadKey(url: session.page(index)?.url, target: images.targetSize,
-                              crop: session.settings.cropBorders)) { await load() }
+                              crop: session.settings.cropBorders,
+                              retry: session.pageRetryTokens[index] ?? 0)) { await load() }
     }
 
     @ViewBuilder
@@ -340,13 +354,9 @@ private struct PageImageView: View {
                 .antialiased(true)
                 .frame(width: full.width, height: full.height)
                 .offset(x: -crop.left * full.width, y: -crop.top * full.height)
-        } else if failed {
-            VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle")
-                Text("Page \(index + 1) didn't load").font(.caption)
-            }
-            .foregroundStyle(.secondary)
-            .frame(width: size.width, height: size.height)
+        } else if let failure {
+            PageFailureCard(page: index + 1, message: failure)
+                .frame(width: size.width, height: size.height)
         } else {
             ProgressView()
                 .frame(width: size.width, height: size.height)
@@ -357,6 +367,7 @@ private struct PageImageView: View {
         var url: URL?
         var target: CGSize
         var crop: Bool
+        var retry: Int
     }
 
     private func load() async {
@@ -365,9 +376,10 @@ private struct PageImageView: View {
             session.reportSize(hit.pixelSize, forPage: index)
             await detectCrop(url, hit)
             loaded = hit
+            session.reportPageLoaded(index)
             return
         }
-        failed = false
+        guard loaded == nil else { return }
         do {
             let page = try await images.load(url)
             session.reportSize(page.pixelSize, forPage: index)
@@ -375,9 +387,11 @@ private struct PageImageView: View {
             // already cropped instead of jumping.
             await detectCrop(url, page)
             loaded = page
+            session.reportPageLoaded(index)
         } catch is CancellationError {
         } catch {
-            failed = true
+            guard !Task.isCancelled else { return }
+            session.reportPageFailure(PageLoadFailure.message(for: error), forPage: index)
         }
     }
 
@@ -385,6 +399,44 @@ private struct PageImageView: View {
         guard session.settings.cropBorders, session.crop(ofPage: index) == nil else { return }
         let crop = await PageCropCache.shared.crop(for: url, image: page.cgImage)
         session.reportCrop(crop, forPage: index)
+    }
+}
+
+/// Shown in place of a page that didn't load after automatic retries. The
+/// reader keeps focus (left/right still turn pages), so the Retry pill is
+/// drawn as the focused control and Select presses it.
+struct PageFailureCard: View {
+    let page: Int
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Page \(page) didn't load")
+                .font(.headline)
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+            Text("Retry")
+                .font(.headline)
+                .foregroundStyle(.black)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 10)
+                .background(.white, in: RoundedRectangle(cornerRadius: 12))
+            Text("Press Select to retry")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.white)
+        .minimumScaleFactor(0.6)
+        .padding(32)
+        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: 24))
+        .padding(16)
+        .frame(maxWidth: 640)
     }
 }
 

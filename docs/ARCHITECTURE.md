@@ -156,6 +156,13 @@ Images are decoded at that size, never upscaled, and capped at 16,384 px.
 - Requests for the same URL share one download, which is cancelled only when
   every waiter is gone. At most 6 downloads run at once, and on-screen `load`s
   go ahead of prefetches.
+- Downloads are resilient (`RetryPolicy.images`): each attempt has a
+  20 s limit, counted from when it gets a download slot so queueing never
+  times out, and timeouts, dropped connections, 408/429 and 5xx are retried
+  twice more after 0.75 s and 1.5 s. 401/403/404, bad image bytes and
+  cancellation fail at once. Nothing about a failure is cached, so a later
+  `load` (a Retry button) starts fresh. `PageLoadFailure.message(for:)`
+  turns the error into a short line for the reader.
 - `prefetch(_:server:targetSize:onPixelSize:)` reports each image's original
   size, which is how readers learn Suwayomi page sizes. Without a
   `targetSize` it only downloads and reads the header.
@@ -200,6 +207,25 @@ UI tests: `ReaderFitZoomUITests` (`-readerFit width`, `-readerCrop 1`,
 `-readerZoom 3`, and `-readerDemoMargins 1` to draw pages with margins).
 The page indicator's accessibility value reports the viewport.
 
+## Failed pages
+
+A page that still fails after the automatic retries never closes the
+reader or blocks page turns. It shows a card ("Page 3 didn't load", the
+reason from `PageLoadFailure`, a Retry pill drawn as the focused control).
+The reader keeps focus, so left/right still turn pages and Select retries
+the failed pages on screen.
+
+- Paged: `ReaderSession.pageFailures` / `retryVisibleFailedPages()`
+  (Select retries before anything else Select does). Each
+  page view's load task is keyed by `pageRetryTokens[page]`, so a retry
+  reloads only the failed pages. Revisiting a spread retries its failed
+  pages once more on its own.
+- Webtoon: `WebtoonStripController.failedPages`. Failed pages are not
+  reloaded on every scroll; Select retries those on screen. Size
+  prefetches that fail wait 15 s before trying again.
+- A chapter's page list is fetched with `RetryPolicy.pageLists` before the
+  chapter error card (with Retry) shows.
+
 ## Reader demo for UI tests
 
 Launch with `-uiTesting -readerDemo` to open `ReaderView` on a local fake
@@ -209,6 +235,10 @@ up front, one with sizes learned on load, pages drawn on device. Options:
 `-readerStartChapter 2`, `-readerStartPage 3`. The webtoon reader and menu
 tests can reuse it. The demo injects an `ImagePipeline` whose transport
 draws `demo://` pages, so it runs the real image path.
+`-readerPageFaults "1.2=fail3,2.0=hang1"` makes chosen pages (chapter
+1-based, page 0-based) return HTTP 503 or hang for their first N requests
+(`DemoPageFaults`), and the demo uses a short retry policy (2 attempts,
+`-readerAttemptTimeout`, default 1.5 s).
 
 ## Live servers in the simulator
 
@@ -313,6 +343,25 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 Control identifiers are `reader.menu.<row>.<option>` (for example
 `reader.menu.layout.single`), used by `ReaderMenuUITests`.
+
+## Sorting names
+
+`NaturalSort` (MangaCore/Sorting) is the one place names are ordered:
+series titles, chapter names, page and file names. Digit runs compare by
+value ("Ch 2" < "Ch 10", "10.5" between 10 and 11, any length, full-width
+and other Unicode digits), kanji numerals are read as numbers ("第二話" <
+"第十話"), text uses the locale's collation ignoring case, accents and
+width, and spaces/punctuation/brackets only separate runs. The
+`.fileName` option also skips digit-free tags like `[Group]` or
+`(Digital)` and the extension. Ties fall back to the exact characters, so
+the order never depends on input order. Use `naturallySorted(by:)`; don't
+sort names with `<` or `localizedStandardCompare`.
+
+`ChapterOrdering.readingOrder` orders a server's chapters: by the server's
+position when it has one (flipped if most neighbouring chapter numbers go
+down, so one odd number can't flip a series), else by number, else by
+natural name, with natural-name ties. Suwayomi uses it; Kavita keeps its
+own sort numbers and breaks ties by natural name.
 
 ## Reading progress sync
 

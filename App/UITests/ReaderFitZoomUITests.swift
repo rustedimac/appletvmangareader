@@ -189,7 +189,7 @@ final class ReaderFitZoomUITests: XCTestCase {
         launch(["-readerDemoMargins", "1"])
         let cover = element("reader.page.0")
         XCTAssertTrue(cover.waitForExistence(timeout: 5))
-        wait(cover, "value == 'uncropped'")
+        wait(cover, "value == 'loaded'")
         let uncroppedWidth = cover.frame.width
         openMenu()
         choose("cropBorders.on")
@@ -220,6 +220,6 @@ final class ReaderFitZoomUITests: XCTestCase {
         choose("cropBorders.off")
         wait(menuItem("cropBorders.off"), "isSelected == true", timeout: 5)
         closeMenu()
-        wait(element("reader.page.0"), "value == 'uncropped'")
+        wait(element("reader.page.0"), "value == 'loaded'")
     }
 }

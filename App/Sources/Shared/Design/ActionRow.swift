@@ -29,6 +29,14 @@ extension View {
             .frame(minWidth: Size.buttonMinWidth - 2 * Space.l, maxWidth: Size.buttonMaxWidth - 2 * Space.l)
     }
 
+    /// Centers a lone control (a button under a row of posters, say) and
+    /// makes the whole width around it a focus section. tvOS moves focus to
+    /// the nearest item in the direction pressed, so without this a centered
+    /// button is only reachable from the items directly above or below it.
+    func centeredFocusRow() -> some View {
+        frame(maxWidth: .infinity).focusSection()
+    }
+
     /// A section label on a custom (non-Form) page.
     func sectionLabelStyle() -> some View {
         font(.headline).foregroundStyle(.secondary)

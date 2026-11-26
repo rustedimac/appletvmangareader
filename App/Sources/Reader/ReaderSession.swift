@@ -63,6 +63,11 @@ final class ReaderSession {
     var isAutoScrolling = false
     /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
     private(set) var autoScrollLevel: Int
+    /// Paged reader: pages of this chapter whose image didn't load after
+    /// the automatic retries, with a short reason. Turning pages still works.
+    private(set) var pageFailures: [Int: String] = [:]
+    /// Bumped per page by `retryVisibleFailedPages`; page views reload on a change.
+    private(set) var pageRetryTokens: [Int: Int] = [:]
     /// A short message shown over the page, such as "Bookmarked".
     var notice: ReaderNotice?
     /// Asks the webtoon strip to scroll to a page (opening a bookmark).
@@ -109,6 +114,35 @@ final class ReaderSession {
     var currentPage: Int { navigator.currentPage }
     var currentSpread: Spread? { navigator.currentSpread }
     var visiblePages: [Int] { navigator.visiblePages }
+
+    // MARK: Page failures
+
+    func reportPageFailure(_ message: String, forPage page: Int) {
+        pageFailures[page] = message
+    }
+
+    func reportPageLoaded(_ page: Int) {
+        if pageFailures[page] != nil { pageFailures[page] = nil }
+    }
+
+    /// Failed pages on screen right now.
+    var visibleFailedPages: [Int] {
+        guard edge == nil else { return [] }
+        return visiblePages.filter { pageFailures[$0] != nil }
+    }
+
+    /// Reloads the failed pages on screen (Select on a failed page).
+    /// Returns false if none had failed, so Select can do its usual job.
+    @discardableResult
+    func retryVisibleFailedPages() -> Bool {
+        let failed = visibleFailedPages
+        guard !failed.isEmpty else { return false }
+        for page in failed {
+            pageFailures[page] = nil
+            pageRetryTokens[page, default: 0] += 1
+        }
+        return true
+    }
     /// Non-nil while a chapter transition card is showing.
     var edge: ChapterEdge? { navigator.edge }
     var pageCount: Int { pages.count }
@@ -156,12 +190,16 @@ final class ReaderSession {
         pages = []
         sizes = [:]
         crops = [:]
+        pageFailures = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
         lastLocal = nil
         let task = Task { [server] in
             do {
-                let loaded = try await server.pages(for: chapter)
+                // A slow or briefly unreachable server gets a few tries
+                // before the chapter shows its error card (which has Retry).
+                let policy = ReaderDemo.isEnabled ? ReaderDemo.retryPolicy : RetryPolicy.pageLists
+                let loaded = try await policy.run { _ in try await server.pages(for: chapter) }
                 try Task.checkCancellation()
                 self.apply(pages: loaded, chapter: chapter, startPage: startPage)
             } catch is CancellationError {
@@ -203,6 +241,7 @@ final class ReaderSession {
         pages = ordered
         sizes = known
         crops = [:]
+        pageFailures = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
         lastSaved = nil
