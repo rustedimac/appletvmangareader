@@ -330,7 +330,12 @@ final class AppModel {
     func markRead(_ chapters: [Chapter], in ref: SeriesRef, libraryID: String?) async throws {
         guard !chapters.isEmpty else { return }
         let profile = activeProfile.id
-        update { $0.markRead(ref, chapterIDs: Set(chapters.map(\.id)), profile: profile) }
+        let ids = Set(chapters.map(\.id))
+        update {
+            $0.markRead(ref, chapterIDs: ids, profile: profile)
+            // A queued partial-page push would undo the read mark.
+            $0.clearPending(ref, chapterIDs: ids, through: .distantFuture, profile: profile)
+        }
         if syncsProgress(to: ref.serverID), let client = client(for: ref) {
             try await client.markRead(chapters: chapters, libraryID: libraryID)
         }
