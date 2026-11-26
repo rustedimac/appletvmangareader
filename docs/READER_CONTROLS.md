@@ -408,3 +408,35 @@ release. It stops at the chapter edge (no automatic chapter change).
 Removed: Down and Play/Pause opening the options, click stopping
 auto-scroll, hold Select opening the options in vertical. Bookmarking in
 vertical: options header button, or Y on a controller.
+
+---
+
+## 10. Chosen scheme (John, 2026-11-26): Play/Pause plays, hold Play/Pause for options
+
+| Input | Paged | Vertical | Book |
+| --- | --- | --- | --- |
+| Press Play/Pause | Start/stop page-turn timer | Start/stop auto-scroll | Nothing for now |
+| **Hold Play/Pause (0.5 s)** | **Reader options** (stops the timer) | **Reader options** (stops auto-scroll) | **Reader options** |
+| Click | Retry a failed page, else zoom in/out | Retry a failed page, else nothing (webtoon zoom later) | Nothing |
+| Tap | HUD | HUD | HUD |
+| Left/right | Turn page; hold = fast flip | Previous/next page | Turn page |
+| Up | Bookmark (pans first when zoomed) | Scroll; hold speeds up | Nothing |
+| Down | Page scrubber (pans first when zoomed) | Scroll; hold speeds up | Nothing |
+| Back | Close one layer (section 5) | Same | Same |
+
+Removed: Down, a click and holding Select opening the options; a click
+stopping auto-scroll. Bookmark in vertical: options header or controller Y.
+
+Implementation notes:
+
+- SwiftUI's `onPlayPauseCommand` has no hold, so all three readers catch
+  Play/Pause as raw presses (`pressesBegan`/`pressesEnded`, as the vertical
+  reader already does) and decide on release: under 0.5 s = play, a hold
+  fires the options at 0.5 s without waiting for release.
+- Because the options sit behind a hold, discoverability matters more: the
+  first-use hint becomes "Hold Play/Pause for options", the reader HUD shows
+  the same line the first few times, and the tutorial and legend (section 8)
+  start with it.
+- Game controller: X = play, ☰ (or Y, D5) = options, A = click.
+- PR #45 (click/hold Select = options) and the paged parts of #17 need
+  adjusting to this; the implementing PR goes on top of them.
