@@ -352,10 +352,12 @@ final class LibraryBrowsingUITests: XCTestCase {
                           && $0.frame.minY < firstCover.maxY + firstCover.height / 2 }
         }
         // Leave out the focused poster: its caption drops on purpose.
-        let focusedX = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true"))
-            .firstMatch.frame.midX
+        // (Focus may be on the Sort & View button instead: no poster then.)
+        let focusedPoster = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.' AND hasFocus == true"))
+            .firstMatch
+        let focusedX: CGFloat? = focusedPoster.exists ? focusedPoster.frame.midX : nil
         func resting(_ items: [XCUIElement]) -> [XCUIElement] {
-            items.filter { abs($0.frame.midX - focusedX) > firstCover.width / 2 }
+            items.filter { el in focusedX.map { abs(el.frame.midX - $0) > firstCover.width / 2 } ?? true }
         }
         let titles = resting(row(app.staticTexts, "poster.title."))
         let bars = resting(row(app.descendants(matching: .any), "poster.titleProgress."))
