@@ -10,7 +10,10 @@ final class ServersUITests: XCTestCase {
         XCTAssertTrue(app.element("settings.addServer").waitForExistence(timeout: 10))
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.element("serverEditor.address").waitForExistence(timeout: 5))
-        XCTAssertTrue(app.element("serverEditor.apiKey").exists)
+        // Kavita signs in with a username and password by default.
+        XCTAssertTrue(app.element("serverEditor.kavitaMethod").exists)
+        XCTAssertTrue(app.element("serverEditor.username").exists)
+        XCTAssertTrue(app.element("serverEditor.password").exists)
         // Nothing typed yet, so it can't be saved or tested.
         XCTAssertFalse(app.element("serverEditor.save").isEnabled)
         XCTAssertFalse(app.element("serverEditor.test").isEnabled)
