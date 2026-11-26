@@ -22,6 +22,7 @@ struct LibraryView: View {
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: $0) }
             .seriesNavigation()
         }
+        .resetsNavigationWhenLeft()
     }
 }
 

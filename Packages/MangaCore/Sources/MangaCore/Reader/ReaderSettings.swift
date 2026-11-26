@@ -67,6 +67,11 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
     /// Points scrolled per remote press in webtoon mode, as a fraction of
     /// screen height.
     public var webtoonScrollStep: Double
+    /// Single-page paged layout: show a wide page (a scanned two-page
+    /// spread) as two screens, one half at a time, in reading order.
+    public var splitWidePages: Bool
+    /// Brightness, contrast, color mode, sharpening and upscaling.
+    public var picture: PictureSettings
 
     public init(mode: ReadingMode = .paged,
                 direction: ReadingDirection = .rightToLeft,
@@ -75,7 +80,9 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
                 shiftPairing: Bool = false,
                 background: ReaderBackground = .black,
                 webtoonWidth: Double = 0.6,
-                webtoonScrollStep: Double = 0.75) {
+                webtoonScrollStep: Double = 0.75,
+                splitWidePages: Bool = false,
+                picture: PictureSettings = .default) {
         self.mode = mode
         self.direction = direction
         self.layout = layout
@@ -84,6 +91,34 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         self.background = background
         self.webtoonWidth = webtoonWidth
         self.webtoonScrollStep = webtoonScrollStep
+        self.splitWidePages = splitWidePages
+        self.picture = picture
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case mode, direction, layout, firstPageAlone, shiftPairing, background
+        case webtoonWidth, webtoonScrollStep, splitWidePages, picture
+    }
+
+    /// Missing or unknown values fall back to the defaults, so settings
+    /// saved (or synced) by an older build without the newer fields still
+    /// load instead of being thrown away.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = ReaderSettings()
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+            ((try? c.decodeIfPresent(T.self, forKey: key)) ?? nil) ?? fallback
+        }
+        mode = value(.mode, d.mode)
+        direction = value(.direction, d.direction)
+        layout = value(.layout, d.layout)
+        firstPageAlone = value(.firstPageAlone, d.firstPageAlone)
+        shiftPairing = value(.shiftPairing, d.shiftPairing)
+        background = value(.background, d.background)
+        webtoonWidth = value(.webtoonWidth, d.webtoonWidth)
+        webtoonScrollStep = value(.webtoonScrollStep, d.webtoonScrollStep)
+        splitWidePages = value(.splitWidePages, d.splitWidePages)
+        picture = value(.picture, d.picture)
     }
 
     public static let `default` = ReaderSettings()
@@ -98,6 +133,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         switch (mode, layout) {
         case (.paged, .double):
             return SpreadLayout(sizes: sizes, firstPageAlone: firstPageAlone, shift: shiftPairing)
+        case (.paged, .single) where splitWidePages:
+            return .singles(splitting: sizes, direction: direction)
         default:
             return .singles(pageCount: sizes.count)
         }

@@ -379,4 +379,17 @@ final class FreeLibraryTests: XCTestCase {
         XCTAssertEqual(ServerKind.freeLibrary.categoryNoun, "Collections")
         XCTAssertNil(ServerDraft(kind: .freeLibrary).credential)
     }
+
+    // MARK: Series detail placement and merged Home rows
+
+    func testDetailNamesTheCollectionAndNewlyAddedHasDates() async throws {
+        let c = client(catalog: sampleCatalog)
+        let nemo = try await c.seriesDetail("nemo")
+        XCTAssertEqual(nemo.placement, SeriesPlacement(categories: ["Classic Comics"]))
+        let added = try await c.feed(.newlyAdded, limit: 10)
+        XCTAssertEqual(added.first?.ref.seriesID, "alice")
+        XCTAssertEqual(added.first?.feedDate, FreeLibraryClient.addedDate("2026-11-25"))
+        XCTAssertNotNil(FreeLibraryClient.addedDate("2026-11-25"))
+        XCTAssertNil(FreeLibraryClient.addedDate("soon"))
+    }
 }

@@ -41,6 +41,16 @@ public final class FreeLibraryClient: MangaServer {
                       chapterCount: s.chapters.flatMap { $0.isEmpty ? nil : $0.count })
     }
 
+    /// The catalog's `added` (yyyy-MM-dd) as noon UTC that day, so Newly
+    /// Added merges with other servers by date.
+    static func addedDate(_ added: String) -> Date? {
+        let parts = added.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12))
+    }
+
     func coverURL(_ s: FreeLibraryCatalog.Series) -> URL? {
         switch s.source {
         case .internetArchive:
@@ -104,7 +114,11 @@ public final class FreeLibraryClient: MangaServer {
             let sorted = series.enumerated().sorted {
                 $0.element.added != $1.element.added ? $0.element.added > $1.element.added : $0.offset < $1.offset
             }.map(\.element)
-            return Array(sorted.map(summary).prefix(limit))
+            return Array(sorted.prefix(limit).map { entry -> SeriesSummary in
+                var series = summary(entry)
+                series.feedDate = Self.addedDate(entry.added)
+                return series
+            })
         }
     }
 
@@ -118,7 +132,8 @@ public final class FreeLibraryClient: MangaServer {
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
-        guard let s = await catalog().series.first(where: { $0.id == seriesID }) else { throw MangaError.notFound }
+        let catalog = await catalog()
+        guard let s = catalog.series.first(where: { $0.id == seriesID }) else { throw MangaError.notFound }
         let chapters: [Chapter]
         switch s.source {
         case .internetArchive:
@@ -129,9 +144,13 @@ public final class FreeLibraryClient: MangaServer {
         case .pepperCarrot:
             chapters = try await pepperCarrotEpisodes().map { $0.chapter(seriesRef: ref(s.id)) }
         }
-        return SeriesDetail(summary: summary(s), synopsis: Self.synopsis(for: s), authors: s.creators,
-                            genres: s.genres ?? [], status: "\(s.license.displayName) · \(s.published)",
-                            chapters: chapters)
+        var detail = SeriesDetail(summary: summary(s), synopsis: Self.synopsis(for: s), authors: s.creators,
+                                  genres: s.genres ?? [], status: "\(s.license.displayName) · \(s.published)",
+                                  chapters: chapters)
+        if let collection = catalog.collections.first(where: { $0.id == s.collection }) {
+            detail.placement = SeriesPlacement(categories: [collection.name])
+        }
+        return detail
     }
 
     /// The catalog's description followed by the credit and license, which
