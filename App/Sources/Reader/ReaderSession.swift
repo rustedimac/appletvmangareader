@@ -2,6 +2,14 @@ import Foundation
 import Observation
 import MangaCore
 
+/// The panel over the page while the reader menu is open.
+enum ReaderOverlay: Equatable {
+    /// Settings, chapters and bookmarks (`ReaderMenu`).
+    case menu
+    /// Page thumbnails (`PageScrubberView`).
+    case scrubber
+}
+
 /// What the webtoon strip does for game controller input.
 @MainActor
 protocol WebtoonInputTarget: AnyObject {
@@ -49,13 +57,22 @@ final class ReaderSession {
     /// Known pixel sizes by page index. Kavita gives them up front; Suwayomi
     /// fills them in as images download.
     private(set) var sizes: [Int: PageSize] = [:]
+    /// Detected page margins by page index (paged reader, Crop Borders).
+    private(set) var crops: [Int: CropInsets] = [:]
     private(set) var settings: ReaderSettings
     private(set) var navigator: ReaderNavigator
     private(set) var loadState: LoadState = .loading
-    /// The in-reader menu (workstream G) is showing.
+    /// The in-reader menu (workstream G) is showing, or the page scrubber
+    /// (`overlay` says which). Either one takes focus from the page.
     var isMenuPresented = false {
-        didSet { if isMenuPresented, isAutoScrolling { isAutoScrolling = false } }
+        didSet {
+            if isMenuPresented, isAutoScrolling { isAutoScrolling = false }
+            if !isMenuPresented { overlay = .menu }
+        }
     }
+    /// What shows while `isMenuPresented` is true. Resets to the menu when
+    /// it closes, so every way of opening the menu opens the menu.
+    private(set) var overlay: ReaderOverlay = .menu
     /// Webtoon auto-scroll is running. The strip sets this; it stops when
     /// the menu opens or a chapter loads.
     var isAutoScrolling = false
@@ -187,6 +204,7 @@ final class ReaderSession {
         loadState = .loading
         pages = []
         sizes = [:]
+        crops = [:]
         pageFailures = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
@@ -237,6 +255,7 @@ final class ReaderSession {
         let ordered = loaded.sorted { $0.index < $1.index }
         pages = ordered
         sizes = known
+        crops = [:]
         pageFailures = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
@@ -312,11 +331,39 @@ final class ReaderSession {
         progressChanged()
     }
 
+    /// Opens the page scrubber in place of the menu.
+    func openScrubber() {
+        guard loadState == .loaded, pageCount > 0 else { return }
+        overlay = .scrubber
+        isMenuPresented = true
+    }
+
+    /// Opens a page of this chapter from the scrubber, in either reader,
+    /// and closes the scrubber.
+    func jump(toPage page: Int) {
+        guard loadState == .loaded, pageCount > 0 else { return }
+        let page = min(max(0, page), pageCount - 1)
+        isMenuPresented = false
+        go(toPage: page)
+        if settings.mode == .webtoon {
+            pageJump = PageJump(chapterID: chapter.id, page: page)
+        }
+    }
+
     /// Records a page's pixel size once its image is known.
     func reportSize(_ size: PageSize, forPage page: Int) {
         guard pages.indices.contains(page), sizes[page] != size else { return }
         sizes[page] = size
         navigator.setSize(size, forPage: page)
+    }
+
+    func crop(ofPage index: Int) -> CropInsets? { crops[index] }
+
+    /// Records a page's detected margins. Only changes layout while Crop
+    /// Borders is on.
+    func reportCrop(_ crop: CropInsets, forPage page: Int) {
+        guard pages.indices.contains(page), crops[page] != crop else { return }
+        crops[page] = crop
     }
 
     // MARK: Settings

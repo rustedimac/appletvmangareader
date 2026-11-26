@@ -98,6 +98,27 @@ final class AppModel {
     /// Drops cached server clients, e.g. after sync changed servers or logins.
     func resetClients() {
         clientCache.removeAll()
+        credentialRevision += 1
+    }
+
+    /// Bumped whenever logins change. They live in the keychain, outside
+    /// `state`, so screens can't observe them any other way.
+    private(set) var credentialRevision = 0
+
+    /// Changes whenever what the browse screens load from servers could:
+    /// the active profile, a server added, removed or edited, the
+    /// libraries/categories it imports, its progress sync setting, or a
+    /// login. Home, Library, Search, Favorites and Bookmarks reload on it
+    /// (`.task(id: model.contentKey)`), so changes in Settings show up
+    /// right away instead of after a relaunch.
+    var contentKey: String {
+        ([activeProfile.id.uuidString, String(credentialRevision)] + servers.map(contentKey(for:)))
+            .joined(separator: ",")
+    }
+
+    /// `contentKey` for one server's screens (Library).
+    func contentKey(for server: ServerConfig) -> String {
+        "\(server.id)|\(server.hashValue)|\(scopeKey(for: server))|\(syncsProgress(to: server.id))|\(credentialRevision)"
     }
 
     var activeProfile: Profile { state.activeProfile ?? Profile(name: "Me") }
@@ -105,7 +126,7 @@ final class AppModel {
 
     func switchProfile(_ id: UUID) {
         update { $0.setActiveProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     @discardableResult
@@ -125,7 +146,7 @@ final class AppModel {
         guard state.profiles.count > 1 else { return }
         for server in state.servers { secrets.setCredential(nil, profile: id, server: server.id) }
         update { $0.removeProfile(id) }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Servers
@@ -176,7 +197,7 @@ final class AppModel {
         if let credential, secrets is SharedFallbackSecretStore {
             secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
         }
-        clientCache.removeAll()
+        resetClients()
     }
 
     /// Checks a server and login without saving them.
@@ -256,7 +277,7 @@ final class AppModel {
         } else {
             update { $0.removeServer(server.id) }
         }
-        clientCache.removeAll()
+        resetClients()
     }
 
     // MARK: Favorites
@@ -290,7 +311,8 @@ final class AppModel {
     /// The page to open `chapter` at when none was asked for.
     func resumePage(for chapter: Chapter, sessionPage: Int?) -> Int {
         ResumePosition.startPage(for: chapter, sessionPage: sessionPage,
-                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id))
+                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id),
+                                 serverReadAt: chapter.lastReadAt)
     }
 
     /// Records progress locally, and on the server if this profile syncs
@@ -314,9 +336,58 @@ final class AppModel {
         do {
             try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: completed)
             update { $0.clearPending(ref, chapterIDs: [chapter.id], through: now, profile: profile) }
+            pushSucceeded()
         } catch {
-            // Stays queued.
+            // Stays queued; retried with backoff.
+            schedulePendingRetry()
         }
+    }
+
+    // MARK: Retrying queued pushes
+
+    /// Consecutive failed attempts to push queued progress.
+    @ObservationIgnored private var pushFailures = 0
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
+    @ObservationIgnored var retryBackoff = RetryBackoff()
+
+    private var syncingServerIDs: [UUID] { servers.map(\.id).filter { syncsProgress(to: $0) } }
+
+    var hasPendingProgress: Bool {
+        state.hasPending(servers: syncingServerIDs, profile: activeProfile.id)
+    }
+
+    private func pushSucceeded() {
+        if !hasPendingProgress {
+            pushFailures = 0
+            retryTask?.cancel()
+            retryTask = nil
+        }
+    }
+
+    /// After a failed push, tries the queue again in 5 s, then 10 s, 20 s,
+    /// ... up to every 5 minutes, until the server takes it. One retry is
+    /// scheduled at a time; nothing runs once the queue is empty.
+    func schedulePendingRetry() {
+        guard retryTask == nil, hasPendingProgress else { return }
+        pushFailures += 1
+        let seconds = retryBackoff.delay(afterFailures: pushFailures)
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            self.retryTask = nil
+            // Reschedules itself (with a longer wait) if anything is left.
+            await self.syncPendingProgress()
+        }
+    }
+
+    /// Back in the foreground (or the network is back): push now instead
+    /// of waiting out the backoff.
+    func retryPendingProgressNow() async {
+        retryTask?.cancel()
+        retryTask = nil
+        pushFailures = 0
+        guard hasPendingProgress else { return }
+        await syncPendingProgress()
     }
 
     /// Poster badge counts changed by "Mark as Unread" since the feeds
@@ -342,6 +413,24 @@ final class AppModel {
         }
         if syncsProgress(to: ref.serverID), let client = client(for: ref) {
             try await client.markUnread(chapters: chapters)
+        }
+        await refreshUnreadCount(ref)
+    }
+
+    /// Marks chapters of one series read for this profile, and on the
+    /// server when this profile syncs there. Where Continue resumes stays
+    /// the same; it skips read chapters on its own.
+    func markRead(_ chapters: [Chapter], in ref: SeriesRef, libraryID: String?) async throws {
+        guard !chapters.isEmpty else { return }
+        let profile = activeProfile.id
+        let ids = Set(chapters.map(\.id))
+        update {
+            $0.markRead(ref, chapterIDs: ids, profile: profile)
+            // A queued partial-page push would undo the read mark.
+            $0.clearPending(ref, chapterIDs: ids, through: .distantFuture, profile: profile)
+        }
+        if syncsProgress(to: ref.serverID), let client = client(for: ref) {
+            try await client.markRead(chapters: chapters, libraryID: libraryID)
         }
         await refreshUnreadCount(ref)
     }
@@ -394,7 +483,8 @@ final class AppModel {
                                               page: p.page, completed: p.completed)
                 update { $0.clearPending(ref, chapterIDs: [p.chapterID], through: p.at, profile: profile) }
             } catch {
-                break // Still offline; try again later.
+                schedulePendingRetry()
+                break // Still offline; retried with backoff.
             }
         }
         return resolution.detail
@@ -410,6 +500,7 @@ final class AppModel {
                 if (try? await seriesDetail(ref)) == nil { break } // Server unreachable.
             }
         }
+        if hasPendingProgress { schedulePendingRetry() } else { pushSucceeded() }
     }
 
     /// This profile's own Continue Reading for a server it doesn't sync to.
@@ -434,7 +525,7 @@ final class AppModel {
 
     /// The active profile's reader settings for series without an override.
     var defaultReaderSettings: ReaderSettings {
-        state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default
+        (state.profileData[activeProfile.id.uuidString]?.defaultReaderSettings ?? .default).normalizedPairing
     }
 
     func setDefaultReaderSettings(_ settings: ReaderSettings) {

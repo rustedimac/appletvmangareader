@@ -24,6 +24,20 @@ public protocol MangaServer: Sendable {
     /// their own order (the default implementation).
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary>
 
+    /// Which library filters this server can apply. Sort & View offers
+    /// only these. Default: none.
+    var libraryFilterSupport: LibraryFilterSupport { get }
+
+    /// Series in a category in `sort` order, narrowed by `filter`. Parts
+    /// of `filter` outside `libraryFilterSupport` are ignored. The default
+    /// ignores the filter, which is right for servers that support none.
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                filter: LibraryFilter) async throws -> Paged<SeriesSummary>
+
+    /// The genres used in a category, for the genre filter. Empty when the
+    /// server doesn't support it.
+    func filterGenres(in category: MangaCategory) async throws -> [String]
+
     /// A home-screen row.
     func feed(_ feed: HomeFeed, limit: Int) async throws -> [SeriesSummary]
 
@@ -51,12 +65,23 @@ public protocol MangaServer: Sendable {
     /// Marks every chapter of a series as unread.
     func markSeriesUnread(_ seriesID: String) async throws
 
+    /// Marks chapters of one series as read. Does nothing for an empty
+    /// list. The default saves each chapter's progress as completed.
+    func markRead(chapters: [Chapter], libraryID: String?) async throws
+
     /// Adds any auth headers the server needs to fetch an image URL it
     /// returned (covers and pages).
     func authorize(_ request: URLRequest) -> URLRequest
 }
 
 public extension MangaServer {
+    func markRead(chapters: [Chapter], libraryID: String?) async throws {
+        for chapter in chapters {
+            try await saveProgress(chapter: chapter, libraryID: libraryID,
+                                   page: max(0, chapter.pageCount - 1), completed: true)
+        }
+    }
+
     func chapterCount(seriesID: String) async throws -> SeriesCount {
         let detail = try await seriesDetail(seriesID)
         return SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format)
@@ -65,6 +90,15 @@ public extension MangaServer {
     func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort) async throws -> Paged<SeriesSummary> {
         try await series(in: category, page: page, pageSize: pageSize)
     }
+
+    var libraryFilterSupport: LibraryFilterSupport { [] }
+
+    func series(in category: MangaCategory, page: Int, pageSize: Int, sort: LibrarySort,
+                filter: LibraryFilter) async throws -> Paged<SeriesSummary> {
+        try await series(in: category, page: page, pageSize: pageSize, sort: sort)
+    }
+
+    func filterGenres(in category: MangaCategory) async throws -> [String] { [] }
 
     func imageRequest(_ url: URL) -> URLRequest {
         // Images follow the address API requests settled on (see

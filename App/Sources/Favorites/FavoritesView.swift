@@ -25,8 +25,9 @@ struct FavoritesView: View {
                 }
             }
             .seriesNavigation()
-            .task { await model.refreshStaleFavorites() }
+            .task(id: model.contentKey) { await model.refreshStaleFavorites() }
         }
+        .resetsNavigationWhenLeft()
     }
 }
 

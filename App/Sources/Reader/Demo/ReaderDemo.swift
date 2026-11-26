@@ -10,6 +10,9 @@ import MangaCore
 /// - `-readerDirection leftToRight|rightToLeft`
 /// - `-readerLayout single|double`
 /// - `-readerMode paged|webtoon` and `-readerWebtoonWidth <0.3...1.0>`
+/// - `-readerFit screen|width|height`, `-readerCrop 1`, `-readerZoom <scale>`
+/// - `-readerDemoMargins 1`: pages are drawn with white margins (for crop tests)
+/// - `-readerSplitWide YES` splits wide pages (single-page layout)
 /// - `-readerStartChapter <n>` (1-based) and `-readerStartPage <n>` (0-based)
 /// - `-readerPageFaults "1.2=fail3,2.0=hang1"`: make pages fail (see
 ///   `DemoPageFaults`), with `-readerAttemptTimeout <seconds>` (default 1.5)
@@ -67,6 +70,14 @@ enum ReaderDemo {
                 }
                 if let w = Double(defaults.string(forKey: "readerWebtoonWidth") ?? "") {
                     settings.webtoonWidth = w
+                }
+                if let f = defaults.string(forKey: "readerFit").flatMap(PageFit.init(rawValue:)) {
+                    settings.fit = f
+                }
+                if defaults.string(forKey: "readerCrop") == "1" { settings.cropBorders = true }
+                if let z = Double(defaults.string(forKey: "readerZoom") ?? "") { settings.zoomScale = z }
+                if defaults.bool(forKey: "readerSplitWide") {
+                    settings.splitWidePages = true
                 }
                 model.setReaderSettings(settings, for: DemoMangaServer.series.ref)
                 ready = true
@@ -158,10 +169,21 @@ enum DemoPageRenderer {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        // With -readerDemoMargins the art sits inside white margins: 10% at
+        // the sides, 8% at the top and bottom, like a scanned page.
+        let margins = UserDefaults.standard.string(forKey: "readerDemoMargins") == "1"
+        let art = margins
+            ? CGRect(x: size.width * 0.1, y: size.height * 0.08, width: size.width * 0.8, height: size.height * 0.84)
+            : CGRect(origin: .zero, size: size)
         return renderer.pngData { ctx in
             let hue = CGFloat((page * 37 + chapter * 101) % 360) / 360
-            UIColor(hue: hue, saturation: 0.35, brightness: 0.9, alpha: 1).setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
+            if margins {
+                UIColor.white.setFill()
+                ctx.fill(CGRect(origin: .zero, size: size))
+            }
+            // Darker art on white margins, so the art never reads as paper.
+            UIColor(hue: hue, saturation: 0.35, brightness: margins ? 0.6 : 0.9, alpha: 1).setFill()
+            ctx.fill(art)
             let text = "\(chapter)·\(page + 1)" as NSString
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.boldSystemFont(ofSize: size.height / 6),

@@ -48,6 +48,20 @@ struct SettingsView: View {
                         Label("Customize Home", systemImage: "rectangle.grid.1x2")
                     }
                     .accessibilityIdentifier("settings.customizeHome")
+
+                    NavigationLink {
+                        LibraryDefaultsView()
+                    } label: {
+                        Label("Library Defaults", systemImage: "square.grid.3x3")
+                    }
+                    .accessibilityIdentifier("settings.libraryDefaults")
+
+                    NavigationLink {
+                        ControlsHelpView()
+                    } label: {
+                        Label("Remote and Controller", systemImage: "appletvremote.gen4")
+                    }
+                    .accessibilityIdentifier("settings.controls")
                 }
 
                 Section {
@@ -100,6 +114,7 @@ struct SettingsView: View {
             }
             .settingsPage("Settings", systemImage: "gearshape")
         }
+        .resetsNavigationWhenLeft()
     }
 
     /// In-app profiles are the fallback when there are no Apple TV users.

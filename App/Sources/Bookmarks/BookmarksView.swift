@@ -36,7 +36,9 @@ struct BookmarksView: View {
             }
             .seriesNavigation()
         }
-        .task { await model.syncAllBookmarks() }
+        .resetsNavigationWhenLeft(path: $path)
+        // Again after a server is added or a login changes.
+        .task(id: model.contentKey) { await model.syncAllBookmarks() }
         .fullScreenCover(item: $reader) { ReaderHost(route: $0) }
     }
 

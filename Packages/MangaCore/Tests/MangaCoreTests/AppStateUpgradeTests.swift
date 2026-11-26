@@ -32,11 +32,19 @@ enum AppStateFixtures {
         of: #""chapterID":"70","page":4,"readChapterIDs":[],"updatedAt":785000200}"#,
         with: #""chapterID":"70","page":4,"readChapterIDs":[],"unreadChapterIDs":["69"],"updatedAt":785000200},"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|8":{"chapterID":"","ignoresServerProgress":true,"page":0,"readChapterIDs":[],"updatedAt":785000300}"#)
 
+    /// Adds read progress sync (#15): `series` (for the local Continue
+    /// Reading row) and `pending` (changes the server hasn't confirmed) on
+    /// progress, written only when set.
+    static let v1ReadSync = v1MarkUnread.replacingOccurrences(
+        of: #""chapterID":"70","page":4,"readChapterIDs":[],"unreadChapterIDs":["69"],"updatedAt":785000200}"#,
+        with: #""chapterID":"70","page":4,"pending":[{"at":785000200,"chapterID":"70","completed":false,"page":4}],"readChapterIDs":[],"series":{"categoryIDs":["0","2"],"ref":{"serverID":"5A1D2C3B-BBBB-4E5F-8A9B-00000000000B","seriesID":"7"},"title":"Paper Comet"},"unreadChapterIDs":["69"],"updatedAt":785000200}"#)
+
     /// Every shape a shipped or merged build has written, oldest first.
     static let all: [(name: String, json: String)] = [
         ("v1 foundation (#1-#10)", v1Foundation),
         ("v1 library selection (#12)", v1LibrarySelection),
         ("v1 mark unread (#11)", v1MarkUnread),
+        ("v1 read sync (#15)", v1ReadSync),
     ]
 }
 
@@ -96,7 +104,10 @@ final class AppStateUpgradeTests: XCTestCase {
             XCTAssertEqual(override.mode, .webtoon, name)
             XCTAssertEqual(override.direction, .leftToRight, name)
             XCTAssertEqual(override.webtoonWidth, 0.8, name)
-            XCTAssertTrue(override.shiftPairing, name)
+            // Saved as First Page Alone off + Shift by one: read back as one
+            // First Page Alone value with the same layout.
+            XCTAssertTrue(override.firstPageAlone, name)
+            XCTAssertFalse(override.shiftPairing, name)
         }
     }
 
@@ -125,6 +136,24 @@ final class AppStateUpgradeTests: XCTestCase {
         // Older shapes default to nothing marked.
         let old = makeStore(with: F.v1Foundation).0.load()
         XCTAssertEqual(old.progress(SeriesRef(serverID: suwayomi, seriesID: "7"), profile: kid)?.unreadChapterIDs, [])
+    }
+
+    func testReadSyncFieldsSurvive() throws {
+        XCTAssertNotEqual(F.v1ReadSync, F.v1MarkUnread)
+        let comet = SeriesRef(serverID: suwayomi, seriesID: "7")
+        let (store, _) = makeStore(with: F.v1ReadSync)
+        let s = store.load()
+        XCTAssertEqual(store.lastLoad, .decoded)
+        let p = try XCTUnwrap(s.progress(comet, profile: kid))
+        XCTAssertEqual(p.pending, [PendingProgress(chapterID: "70", page: 4, completed: false,
+                                                   at: Date(timeIntervalSinceReferenceDate: 785000200))])
+        XCTAssertEqual(p.series?.title, "Paper Comet")
+        XCTAssertEqual(p.unreadChapterIDs, ["69"])
+        // State saved before #15 has nothing queued and no saved series.
+        let old = makeStore(with: F.v1MarkUnread).0.load()
+        let o = try XCTUnwrap(old.progress(comet, profile: kid))
+        XCTAssertTrue(o.pending.isEmpty)
+        XCTAssertNil(o.series)
     }
 
     func testEveryFixtureSurvivesSaveAndReload() {
