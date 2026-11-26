@@ -280,7 +280,8 @@ final class AppModel {
     /// The page to open `chapter` at when none was asked for.
     func resumePage(for chapter: Chapter, sessionPage: Int?) -> Int {
         ResumePosition.startPage(for: chapter, sessionPage: sessionPage,
-                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id))
+                                 local: state.progress(chapter.seriesRef, profile: activeProfile.id),
+                                 serverReadAt: chapter.lastReadAt)
     }
 
     /// Records progress locally, and on the server if this profile syncs
