@@ -74,7 +74,9 @@ struct Lossy<Value: Decodable>: Decodable {
     var value: Value?
 
     init(from decoder: Decoder) throws {
-        value = try? Value(from: decoder)
+        // Through a single-value container, not `Value(from:)`, so the
+        // decoder's own handling applies (a URL saved as a string, say).
+        value = try? decoder.singleValueContainer().decode(Value.self)
     }
 }
 

@@ -238,14 +238,21 @@ final class SavedDataUpgradeTests: XCTestCase {
     /// If this can't be read, the next launch writes an empty directory
     /// over it, dropping every other user's servers and logins.
     func testSharedServerDirectory() throws {
-        try checkFormat("shared-servers-v1", as: SharedServerDirectory.self,
+        // The newest snapshot (adds a server's `alternateURLs`, #34) must
+        // cover every field; the older one must still load the same.
+        try checkFormat("shared-servers-v1-2026-11-26-addresses", as: SharedServerDirectory.self,
                         required: ["servers[].id", "servers[].kind", "servers[].baseURL"],
                         unknownLosses: ["servers[].kind"])
-        let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v1"))
-        XCTAssertEqual(dir.servers.map(\.kind), [.kavita, .suwayomi, .komga])
-        XCTAssertEqual(dir.removedServerIDs.count, 1)
-        XCTAssertEqual(dir.credential(for: UUID(uuidString: F.kavitaID)!)?.apiKey, "fixture-kavita-key")
-        XCTAssertEqual(dir.credential(for: UUID(uuidString: F.suwayomiID)!)?.suwayomiLogin, .token)
+        for name in ["shared-servers-v1", "shared-servers-v1-2026-11-26-addresses"] {
+            let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load(name))
+            XCTAssertEqual(dir.servers.map(\.kind), [.kavita, .suwayomi, .komga], name)
+            XCTAssertEqual(dir.removedServerIDs.count, 1, name)
+            XCTAssertEqual(dir.credential(for: UUID(uuidString: F.kavitaID)!)?.apiKey, "fixture-kavita-key", name)
+            XCTAssertEqual(dir.credential(for: UUID(uuidString: F.suwayomiID)!)?.suwayomiLogin, .token, name)
+        }
+        let newest = try JSONDecoder().decode(SharedServerDirectory.self,
+                                              from: SavedJSON.load("shared-servers-v1-2026-11-26-addresses"))
+        XCTAssertEqual(newest.servers.first?.alternateURLs, [URL(string: "https://kavita.example.test")!])
     }
 
     func testSharedServerDirectoryKeepsGoodServersNextToABadOne() throws {
