@@ -434,10 +434,8 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
     /// Orders chapters oldest to newest. Suwayomi's `sourceOrder` follows
     /// the source's list; we check the chapter numbers to pick the direction.
     static func chapters(from nodes: [SuwayomiChapterDTO], seriesRef: SeriesRef) -> [Chapter] {
-        var sorted = nodes.sorted { ($0.sourceOrder ?? 0) < ($1.sourceOrder ?? 0) }
-        let numbered = sorted.compactMap { $0.chapterNumber }.filter { $0 >= 0 }
-        if let first = numbered.first, let last = numbered.last, first > last {
-            sorted.reverse()
+        let sorted = ChapterOrdering.readingOrder(nodes) {
+            ChapterOrdering.Item(sourceOrder: $0.sourceOrder, number: $0.chapterNumber, name: $0.name ?? "", id: $0.id)
         }
         return sorted.enumerated().map { index, c in
             let pageCount = max(0, c.pageCount ?? 0)
