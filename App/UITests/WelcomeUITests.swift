@@ -74,7 +74,9 @@ final class WelcomeUITests: XCTestCase {
 
     func testNeverShownWhenServersExist() {
         let app = launch(["-uiTestingSeed", "servers"])
-        XCTAssertTrue(app.element("home.customize").waitForExistence(timeout: 15), "Home didn't show")
+        // The seeded servers don't exist, so Home only shows error rows;
+        // the tab bar is the reliable sign the tabs are up.
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 15), "the tabs didn't show")
         XCTAssertFalse(app.element("welcome.start").exists)
     }
 
