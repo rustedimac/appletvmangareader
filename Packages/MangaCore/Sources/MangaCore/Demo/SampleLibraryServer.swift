@@ -23,6 +23,9 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     /// Library ids to show; nil shows both.
     public let categoryScope: Set<String>?
+    /// Thrown by every call when set, to show a server's error state
+    /// (`.missingCredential` for "isn't signed in").
+    public let failure: MangaError?
     private let store: ProgressStore
 
     /// Reading progress, shared by every scoped copy of one demo server.
@@ -34,11 +37,12 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public init(config: ServerConfig, seriesCount: Int = 90, latency: Duration = .milliseconds(150),
-                categoryScope: Set<String>? = nil) {
+                categoryScope: Set<String>? = nil, failure: MangaError? = nil) {
         self.config = config
         self.seriesCount = seriesCount
         self.latency = latency
         self.categoryScope = categoryScope
+        self.failure = failure
         self.store = ProgressStore()
     }
 
@@ -46,6 +50,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         config = other.config
         seriesCount = other.seriesCount
         latency = other.latency
+        failure = other.failure
         self.categoryScope = categoryScope
         store = other.store
     }
@@ -94,6 +99,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     private func wait() async throws {
         if latency > .zero { try await Task.sleep(for: latency) }
+        if let failure { throw failure }
     }
 
     private func number(_ seriesID: String) throws -> Int {

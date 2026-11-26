@@ -33,6 +33,12 @@ at 2×).
 | `Layout.safeSide` | 80 | HIG: 80 pt from the sides |
 | Tab bar | 68 tall, top edge 46 from the screen top | HIG (fixed by the system) |
 
+Tab bar items are titles only (`.tabItem { Text("Home") }`), as in Apple's own
+tvOS apps. A symbol beside each title makes the six tabs wider than the bar,
+which then scrolls sideways and cuts off Settings.
+`TabBarVisibilityUITests.testAllTabsFitInTheBar` checks that every tab fits;
+adding a seventh tab needs that test to pass too.
+
 SwiftUI already applies these insets. **Don't add your own 80 pt padding on top
 of the safe area** (that doubles it to 160). Only use `Layout.safeSide` for
 views that call `.ignoresSafeArea()`, such as the reader and the reader menu
