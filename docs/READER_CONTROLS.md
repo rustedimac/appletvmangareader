@@ -450,3 +450,23 @@ Implementation notes:
   the settings rows, after scrolling down): "Controls" with a row per input
   for the current mode and state, built from `ReaderControls`. No separate
   Controls button in the options header.
+
+### Auto-scroll and page-turn speed: named steps, no numbers (John, 2026-11-26)
+
+Speed stays adjustable but is never shown or picked as a number. Five
+named steps replace "Speed 3 of 10" in the options, the badge and the HUD:
+
+| Step | Vertical auto-scroll (screens/s, from today's table) | Paged page-turn timer |
+| --- | --- | --- |
+| Very slow | 0.033 (level 1) | 30 s per page |
+| Slow | 0.07 (level 3, today's default) | 20 s |
+| Medium (default) | 0.12 (level 5) | 12 s |
+| Fast | 0.2 (level 7) | 8 s |
+| Very fast | 0.34 (level 9) | 5 s |
+
+- Options row: the five names side by side, like the other option rows.
+- While running, swipe/click up or down (vertical) and the controller's right
+  stick move one step; the badge shows the name ("Auto-scroll · Fast").
+- Saved per profile as before; a saved numeric level maps to the nearest
+  step, so nobody's setting resets. Default stays at today's speed (Slow)
+  if Medium proves too fast in testing.
