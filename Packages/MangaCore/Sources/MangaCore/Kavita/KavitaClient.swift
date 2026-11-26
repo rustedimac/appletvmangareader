@@ -162,7 +162,7 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                   query: ["pageNumber": "1", "pageSize": String(fetch), "libraryId": String(single)],
                                   body: EmptyBody())
             }
-            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(items.map { summary($0, feedDate: $0.latestReadDate) }.scoped(to: categoryScope).prefix(limit))
         case .newlyAdded:
             var filter = KavitaFilterV2()
             if let libraries { filter.statements = [KavitaFilterV2.libraries(libraries)] }
@@ -171,15 +171,17 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                   query: ["pageNumber": "1", "pageSize": String(limit)],
                                   body: filter)
             }
-            return Array(items.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(items.map { summary($0, feedDate: $0.created) }.scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
             // Kavita returns a fixed-size list with no library filter.
             let items: [KavitaRecentlyUpdatedDTO] = try await withAuth {
                 try await $0.post("api/Series/recently-updated-series", body: EmptyBody())
             }
             let all = items.map {
-                SeriesSummary(ref: ref($0.seriesId), title: $0.seriesName ?? "Untitled",
-                              coverURL: coverURL(seriesID: $0.seriesId), libraryID: $0.libraryId.map(String.init))
+                var s = SeriesSummary(ref: ref($0.seriesId), title: $0.seriesName ?? "Untitled",
+                                      coverURL: coverURL(seriesID: $0.seriesId), libraryID: $0.libraryId.map(String.init))
+                s.feedDate = Self.realDate($0.created)
+                return s
             }
             return Array(all.scoped(to: categoryScope).prefix(limit))
         }
@@ -216,7 +218,10 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                                         seriesFormat: ContentFormat(kavitaFormat: series.format))
             )
             // Kavita sends 0001-01-01 for "never".
-            detail.latestChapterAt = series.lastChapterAdded.flatMap { $0.timeIntervalSince1970 > 0 ? $0 : nil }
+            detail.latestChapterAt = Self.realDate(series.lastChapterAdded)
+            if let library = series.libraryName, !library.isEmpty {
+                detail.placement = SeriesPlacement(categories: [library])
+            }
             return detail
         }
     }
@@ -322,6 +327,13 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                              format: ContentFormat(kavitaFormat: dto.format))
     }
 
+    /// `summary(_:)` with the date that orders a Home feed.
+    func summary(_ dto: KavitaSeriesDTO, feedDate: Date?) -> SeriesSummary {
+        var s = summary(dto)
+        s.feedDate = Self.realDate(feedDate)
+        return s
+    }
+
     func coverURL(seriesID: Int) -> URL? {
         try? anonymous.url("api/Image/series-cover", query: ["seriesId": String(seriesID), "apiKey": apiKey])
     }
@@ -342,12 +354,24 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             if n >= specialVolumeNumber { return (2, 0) }
             return (0, n)
         }
-        let sorted = volumes.sorted { volumeRank($0) < volumeRank($1) }
+        // Numbers decide; ties (specials and loose volumes often share one)
+        // fall back to the names in natural order, then the ids.
+        let sorted = volumes.sorted { a, b in
+            let (ra, rb) = (volumeRank(a), volumeRank(b))
+            if ra != rb { return ra < rb }
+            let byName = NaturalSort.compare(a.name ?? "", b.name ?? "")
+            return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+        }
         var result: [Chapter] = []
         var sequence = 0.0
         for volume in sorted {
             let rank = volumeRank(volume)
-            let chapters = (volume.chapters ?? []).sorted { ($0.sortOrder ?? $0.minNumber ?? 0) < ($1.sortOrder ?? $1.minNumber ?? 0) }
+            let chapters = (volume.chapters ?? []).sorted { a, b in
+                let (oa, ob) = (a.sortOrder ?? a.minNumber ?? 0, b.sortOrder ?? b.minNumber ?? 0)
+                if oa != ob { return oa < ob }
+                let byName = NaturalSort.compare(chapterSortName(a), chapterSortName(b))
+                return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+            }
             for dto in chapters {
                 let pages = dto.pages ?? 0
                 let read = dto.pagesRead ?? 0
@@ -369,6 +393,12 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             }
         }
         return result
+    }
+
+    /// What a chapter is called on disk or in its metadata, for ordering
+    /// chapters Kavita gives the same sort number (e.g. specials).
+    static func chapterSortName(_ dto: KavitaChapterDTO) -> String {
+        [dto.range, dto.title, dto.titleName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
     }
 
     /// Kavita sends `0001-01-01T00:00:00` for "never".

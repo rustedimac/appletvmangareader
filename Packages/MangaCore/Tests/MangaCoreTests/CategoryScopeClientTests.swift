@@ -197,7 +197,7 @@ final class SuwayomiCategoryScopeTests: XCTestCase {
         """)
         let d = try await client(nil).seriesDetail("4")
         XCTAssertEqual(d.summary.categoryIDs, ["1", "2"])
-        XCTAssertTrue(query("manga(id").contains("categories { nodes { id } }"))
+        XCTAssertTrue(query("manga(id").contains("categories { nodes { id name } }"))
     }
 }
 

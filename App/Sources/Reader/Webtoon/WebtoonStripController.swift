@@ -36,6 +36,11 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
     private var breakViews: [String: WebtoonBreakView] = [:]
     private var endView: WebtoonEndView?
 
+    /// Pages whose image didn't load after automatic retries, with the
+    /// reason. They stay failed (no reload on every scroll) until the user
+    /// presses Select while one is on screen.
+    private var failedPages: [WebtoonItemKind: String] = [:]
+
     private var fetchingChapters: Set<String> = []
     private var failedFetch: [String: Date] = [:]
     private var userHasScrolled = false
@@ -62,7 +67,8 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
 
     init(session: ReaderSession) {
         self.session = session
-        self.loader = WebtoonImageLoader(server: session.server)
+        self.loader = WebtoonImageLoader(server: session.server,
+                                         retryPolicy: ReaderDemo.isEnabled ? ReaderDemo.retryPolicy : .images)
         self.settings = session.settings
         super.init()
         let sv = scrollView
@@ -160,6 +166,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         pageViews.removeAll()
         breakViews.values.forEach { $0.removeFromSuperview() }
         breakViews.removeAll()
+        failedPages.removeAll()
         endView?.removeFromSuperview()
         endView = nil
         strip = WebtoonStrip()
@@ -260,7 +267,11 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
                 view.prepare(kind: item.kind, url: url, label: "Page \(page + 1)",
                              identifier: "reader.webtoon.page.\(segmentID).\(page)")
                 if view.frame != frame { view.frame = frame }
-                loadImage(into: view, segment: segmentID, page: page)
+                if let message = failedPages[item.kind] {
+                    if !view.isShowingFailure { view.showFailure(message, pageNumber: page + 1) }
+                } else {
+                    loadImage(into: view, segment: segmentID, page: page)
+                }
             case .chapterBreak(let before):
                 wantedBreaks.insert(before)
                 let view = breakViews[before] ?? {
@@ -340,9 +351,15 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
                     self.loadImage(into: view, segment: segment, page: page)
                 }
                 self.learnSize(image.pixelSize, segment: segment, page: page)
-            } catch {
+            } catch is CancellationError {
                 guard let view, view.kind == kind else { return }
                 view.loadTask = nil
+            } catch {
+                guard !Task.isCancelled, let self, let view, view.kind == kind, let kind else { return }
+                view.loadTask = nil
+                let message = PageLoadFailure.message(for: error)
+                self.failedPages[kind] = message
+                view.showFailure(message, pageNumber: page + 1)
             }
         }
     }
@@ -492,7 +509,8 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
             if driver.autoLevel != nil {
                 // A click pauses auto-scroll; the next one opens the menu.
                 setAutoScroll(false)
-            } else {
+            } else if !retryFailedPagesOnScreen() {
+                // A failed page on screen takes the click: retry it in place.
                 openMenu()
             }
             return true
@@ -509,6 +527,25 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         setAutoScroll(false)
         driver.stop()
         onMenu?()
+    }
+
+    /// Reloads failed pages that are at least partly on screen. Returns
+    /// false if there were none.
+    @discardableResult
+    func retryFailedPagesOnScreen() -> Bool {
+        let visible = scrollView.bounds
+        let targets = pageViews.filter { kind, view in
+            failedPages[kind] != nil && view.frame.intersection(visible).height > 1
+        }
+        guard !targets.isEmpty else { return false }
+        for (kind, view) in targets {
+            failedPages[kind] = nil
+            view.showPlaceholder()
+            if case .page(let segment, let page) = kind {
+                loadImage(into: view, segment: segment, page: page)
+            }
+        }
+        return true
     }
 
     // MARK: Auto-scroll

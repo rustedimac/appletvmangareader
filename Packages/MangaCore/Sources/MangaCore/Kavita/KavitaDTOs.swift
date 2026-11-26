@@ -54,6 +54,8 @@ struct KavitaSeriesDTO: Decodable {
     var libraryName: String?
     var created: Date?
     var lastChapterAdded: Date?
+    /// When this user last read the series (On Deck's order).
+    var latestReadDate: Date?
     /// `MangaFormat`: Image 0, Archive 1, Unknown 2, Epub 3, Pdf 4.
     var format: Int?
 }

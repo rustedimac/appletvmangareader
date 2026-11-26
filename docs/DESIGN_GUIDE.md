@@ -152,7 +152,7 @@ the server editor and category picker) uses the tvOS Settings layout:
 - Use `Form` (not `List`) so every settings page has the same row and
   section rhythm.
 - Every section has a header, and headers use `SettingsHeader` (or
-  `Section(settingsHeader:)`): `.callout` semibold, primary at 75 % opacity, title case,
+  `Section(settingsHeader:)`): `.callout` semibold, primary at 80 % opacity, title case,
   24 pt above and 16 pt below. Don't use `Section("Title")`: on tvOS its
   size and case differ between `List` and `Form`.
 - Row icons go through `Label`; `SettingsPage` applies `.settingsRow`, which
@@ -218,6 +218,11 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   the choices are known (HIG: minimize text entry on tvOS).
 - Show the right keyboard (`.keyboardType(.URL)`), and turn off
   autocorrection for names, addresses and keys.
+- Passwords and keys use a plain SwiftUI `SecureField`, with no font or
+  scale modifier. Its dots already match Apple's own Settings app (measured
+  at 4K: 33–34 px dots, about 0.6× the cap height of field text). `.font(.body)`
+  shrinks them and a UIKit `isSecureTextEntry` wrapper greys them out.
+  `tools/check_secure_fields.py` (CI) enforces this.
 
 ### Rows
 
@@ -275,6 +280,13 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   first item, so titles and the tab bar come back into view. Don't put
   `.scrollClipDisabled()` on a vertical scroll view that sits under a
   navigation title.
+- Focusing the tab bar scrolls the visible screen back to its top, so the bar
+  is never left half off screen (`TabBarScrollReset`, installed once in
+  `RootView`). It finds the UIKit scroll view behind any SwiftUI
+  `ScrollView`, `List` or `Form`, so new screens need nothing extra. Don't
+  wrap a tab's content in a scroll view that offsets itself (custom
+  `.offset` scrolling or a `ScrollViewReader` that pins content), since
+  it can't reset those.
 
 ## 9. Checklist for a new or changed screen
 

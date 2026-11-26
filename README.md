@@ -70,6 +70,11 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
   username and password if the server asks for one (basic auth or UI login).
   Suwayomi keeps one progress per server, so one profile syncs there and the
   others keep progress on the Apple TV, unless the server has user accounts.
+- **Komga**: the server address plus an API key, or your email and password.
+- **OPDS**: the catalog's address (for example a Komga, Kavita or Calibre
+  OPDS feed). Progress stays on the Apple TV.
+- **Free Library**: built in, no setup. See
+  [docs/SERVERS.md](docs/SERVERS.md) for what each type supports.
 
 See [docs/PROGRESS_SYNC.md](docs/PROGRESS_SYNC.md) for how syncing works.
 
