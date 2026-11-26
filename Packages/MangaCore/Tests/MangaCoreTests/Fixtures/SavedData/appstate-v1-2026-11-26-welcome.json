@@ -390,6 +390,9 @@
   "rememberedProfileID" : "0E5B8C3A-2222-4A7B-9C3D-000000000002",
   "servers" : [
     {
+      "alternateURLs" : [
+        "https://manga.example.com/kavita"
+      ],
       "baseURL" : "http://kavita.local:5000",
       "id" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
       "kind" : "kavita",

@@ -388,8 +388,10 @@ extension ServerConfig {
         kind = try c.decode(ServerKind.self, forKey: .kind)
         baseURL = try c.decode(URL.self, forKey: .baseURL)
         name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
-        // Older builds and backups have no alternate addresses.
-        alternateURLs = c.tolerantArray(.alternateURLs)
+        // Older builds and backups have no alternate addresses. Not
+        // `tolerantArray`: JSONDecoder reads a URL from a string only when
+        // asked for `URL` directly, not through `Lossy<URL>`.
+        alternateURLs = c.tolerant(.alternateURLs, default: [])
     }
 }
 

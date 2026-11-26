@@ -31,7 +31,10 @@ enum SavedFormats {
         "appstate-v1-2026-11-26-percent",
         // Adds `unreadChapters` to series summaries (#74).
         "appstate-v1-2026-11-26-unread-chapters",
-        // Adds `welcomeCompleted` to profile data (first-run welcome, #43).
+        // Adds a server's `alternateURLs` (#34).
+        "appstate-v1-2026-11-26-addresses",
+        // Adds `welcomeCompleted` to profile data (first-run welcome, #43),
+        // on top of every field above.
         "appstate-v1-2026-11-26-welcome",
     ]
     static var newestAppState: String { appStateFixtures.last! }
@@ -237,11 +240,18 @@ final class SavedDataUpgradeTests: XCTestCase {
     /// If this can't be read, the next launch writes an empty directory
     /// over it, dropping every other user's servers and logins.
     func testSharedServerDirectory() throws {
-        try checkFormat("shared-servers-v1", as: SharedServerDirectory.self,
-                        required: ["servers[].id", "servers[].kind", "servers[].baseURL"],
-                        unknownLosses: ["servers[].kind"])
+        // v2 adds a server's `alternateURLs` (#34). Only the newest has to
+        // cover every field.
+        for name in ["shared-servers-v1", "shared-servers-v2"] {
+            try checkFormat(name, as: SharedServerDirectory.self,
+                            required: ["servers[].id", "servers[].kind", "servers[].baseURL"],
+                            unknownLosses: ["servers[].kind"], coversEveryField: name == "shared-servers-v2")
+            let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load(name))
+            XCTAssertEqual(dir.servers.map(\.kind), [.kavita, .suwayomi, .komga], name)
+        }
+        let v2 = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v2"))
+        XCTAssertEqual(v2.servers.first?.alternateURLs, [URL(string: "https://manga.example.com/kavita")!])
         let dir = try JSONDecoder().decode(SharedServerDirectory.self, from: SavedJSON.load("shared-servers-v1"))
-        XCTAssertEqual(dir.servers.map(\.kind), [.kavita, .suwayomi, .komga])
         XCTAssertEqual(dir.removedServerIDs.count, 1)
         XCTAssertEqual(dir.credential(for: UUID(uuidString: F.kavitaID)!)?.apiKey, "fixture-kavita-key")
         XCTAssertEqual(dir.credential(for: UUID(uuidString: F.suwayomiID)!)?.suwayomiLogin, .token)
@@ -331,6 +341,7 @@ final class SavedDataUpgradeTests: XCTestCase {
     /// loses nothing else.
     private func checkFormat<T: Codable>(_ name: String, as type: T.Type, required: Set<String>,
                                          unknownLosses: Set<String>,
+                                         coversEveryField: Bool = true,
                                          via decode: ((Data) -> T?)? = nil,
                                          file: StaticString = #filePath, line: UInt = #line) throws {
         let decodeValue: (Data) -> T? = decode ?? { try? JSONDecoder().decode(T.self, from: $0) }
@@ -342,8 +353,10 @@ final class SavedDataUpgradeTests: XCTestCase {
         let value = try XCTUnwrap(decodeValue(try SavedJSON.data(original)), "\(name) doesn't load", file: file, line: line)
         let baseline = try reencode(value)
         XCTAssertEqual(SavedJSON.losses(before: original, after: baseline), [], name, file: file, line: line)
-        let unset = FieldPresence.unsetFields(in: value)
-        XCTAssertEqual(unset, [], "\(name) doesn't set \(unset.sorted()): add a newer fixture", file: file, line: line)
+        if coversEveryField {
+            let unset = FieldPresence.unsetFields(in: value)
+            XCTAssertEqual(unset, [], "\(name) doesn't set \(unset.sorted()): add a newer fixture", file: file, line: line)
+        }
 
         for path in SavedJSON.fieldPaths(original).sorted() where !required.contains(path) {
             let dropped = SavedJSON.removing(path, from: original)
