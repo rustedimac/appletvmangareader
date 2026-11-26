@@ -6,6 +6,9 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case layout
     case direction
     case firstPageAlone
+    case fit
+    case cropBorders
+    case zoom
     case splitWidePages
     case background
     case webtoonWidth
@@ -19,6 +22,9 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .layout: return "Page Layout"
         case .direction: return "Direction"
         case .firstPageAlone: return "First Page Alone"
+        case .fit: return "Page Fit"
+        case .cropBorders: return "Crop Borders"
+        case .zoom: return "Click to Zoom"
         case .splitWidePages: return "Split Wide Pages"
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
@@ -60,12 +66,23 @@ public enum ReaderMenuOptions {
         case .paged:
             var items: [ReaderMenuItem] = [.mode, .layout, .direction]
             if settings.layout == .double { items.append(.firstPageAlone) }
+            items += [.fit, .cropBorders, .zoom]
             if settings.layout == .single { items.append(.splitWidePages) }
             items.append(.background)
             return items
         case .webtoon:
             return [.mode, .webtoonWidth, .autoScroll, .background]
         }
+    }
+
+    /// Magnifications offered for click-to-zoom in the paged reader.
+    public static let zoomScales: [Double] = [1.5, 2, 3]
+
+    /// "2×", "1.5×".
+    public static func zoomLabel(_ scale: Double) -> String {
+        let rounded = (scale * 10).rounded() / 10
+        let text = rounded == rounded.rounded() ? String(Int(rounded)) : String(rounded)
+        return "\(text)×"
     }
 
     /// Rows of the Picture tab. Sharpening and upscaling re-render page

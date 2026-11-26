@@ -27,8 +27,8 @@ final class ProfilesUITests: XCTestCase {
         select(app.element("settings.manageProfiles"))
         select(app.element("profiles.add"))
         // The name is prefilled, so no typing is needed.
-        let save = app.element("profileEditor.save")
-        select(save)
+        // A new profile is created with "Add Profile" (the only button besides Delete).
+        select(app.element("profileEditor.add"))
         XCTAssertTrue(app.element("profiles.row.Profile 2").waitForExistence(timeout: 5))
 
         XCUIRemote.shared.press(.menu)

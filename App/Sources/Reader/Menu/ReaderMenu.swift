@@ -206,6 +206,18 @@ struct ReaderMenu: View {
                         selected: settings.direction) { set(\.direction, $0) }
             case .firstPageAlone:
                 firstPageAloneControl
+            case .fit:
+                choices(item, PageFit.allCases.map { ($0, $0.rawValue, $0.title) },
+                        selected: settings.fit) { set(\.fit, $0) }
+            case .cropBorders:
+                choices(item, [(true, "on", "On"), (false, "off", "Off")],
+                        selected: settings.cropBorders) { set(\.cropBorders, $0) }
+            case .zoom:
+                choices(item, ReaderMenuOptions.zoomScales.map { z in
+                            (z, ReaderMenuOptions.zoomLabel(z).replacingOccurrences(of: "×", with: "x"),
+                             ReaderMenuOptions.zoomLabel(z))
+                        },
+                        selected: settings.zoomScale) { set(\.zoomScale, $0) }
             case .splitWidePages:
                 VStack(alignment: .leading, spacing: 10) {
                     choices(item, [(true, "on", "On"), (false, "off", "Off")],
