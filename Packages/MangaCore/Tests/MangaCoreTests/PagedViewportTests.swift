@@ -139,29 +139,34 @@ final class PagedViewportTests: XCTestCase {
         guard case .pan = action(.down, top, canvas: canvas) else { return XCTFail() }
     }
 
-    func testZoomedPageReadsLikeRowsOfPanels() {
+    func testZoomedPagePansSidewaysThenTurnsAtTheEdge() {
         // 2× on a screen-sized canvas, right to left, starting top right.
         var v = PagedViewport.start(.rightToLeft).zoomed(to: 2, canvas: screen, screen: screen)
         v.x = 1; v.y = 0
         guard case .pan(let a) = action(.left, v) else { return XCTFail() }
         XCTAssertLessThan(a.x, 1)
         XCTAssertEqual(a.y, 0)
-        var atRowEnd = a
-        atRowEnd.x = 0
-        // At the left end of the top row, forward drops a row and goes back right.
-        guard case .pan(let b) = action(.left, atRowEnd) else { return XCTFail() }
-        XCTAssertEqual(b.x, 1)
-        XCTAssertGreaterThan(b.y, 0)
-        // Backward from the start of a lower row goes to the end of the row above.
-        var rowStart = b
-        rowStart.x = 1
-        guard case .pan(let c) = action(.right, rowStart) else { return XCTFail() }
-        XCTAssertEqual(c.x, 0)
-        XCTAssertLessThan(c.y, b.y)
-        // Bottom-left corner: forward turns the page.
-        XCTAssertEqual(action(.left, PagedViewport(zoom: 2, x: 0, y: 1)), .turn(.left))
-        // Zoomed, down at the bottom never opens the menu.
+        // At the left edge of the top half, forward turns the page; it
+        // doesn't drop down a row.
+        XCTAssertEqual(action(.left, PagedViewport(zoom: 2, x: 0, y: 0)), .turn(.left))
+        XCTAssertEqual(action(.left, PagedViewport(zoom: 2, x: 0, y: 0.4)), .turn(.left))
+        // Backward at the right edge turns back, wherever it is vertically.
+        XCTAssertEqual(action(.right, PagedViewport(zoom: 2, x: 1, y: 0.6)), .turn(.right))
+        // Away from the edge it still pans.
+        guard case .pan(let back) = action(.right, PagedViewport(zoom: 2, x: 0, y: 0)) else { return XCTFail() }
+        XCTAssertGreaterThan(back.x, 0)
+        XCTAssertEqual(back.y, 0)
+        // Up and down pan; zoomed, down at the bottom never opens the menu.
+        guard case .pan(let down) = action(.down, PagedViewport(zoom: 2, x: 0, y: 0)) else { return XCTFail() }
+        XCTAssertGreaterThan(down.y, 0)
         XCTAssertEqual(action(.down, PagedViewport(zoom: 2, x: 0, y: 1)), PagedRemoteAction.none)
+    }
+
+    func testFitHeightTurnsAtTheSideEdge() {
+        // A spread wider than the screen at Fit Height: no vertical travel.
+        let canvas = Extent(width: 3000, height: screen.height)
+        XCTAssertEqual(action(.left, PagedViewport(zoom: 1, x: 0, y: 0), canvas: canvas), .turn(.left))
+        guard case .pan = action(.left, PagedViewport(zoom: 1, x: 1, y: 0), canvas: canvas) else { return XCTFail() }
     }
 
     func testLeftToRightZoomPansRightFirst() {
@@ -170,4 +175,37 @@ final class PagedViewportTests: XCTestCase {
         XCTAssertGreaterThan(a.x, 0)
         XCTAssertEqual(action(.right, PagedViewport(zoom: 2, x: 1, y: 1), .leftToRight), .turn(.right))
     }
+
+    // MARK: Touch-surface drag
+
+    func testDragFollowsTheFingerAndClamps() {
+        let screen = Extent(width: 1000, height: 500)
+        let canvas = Extent(width: 1000, height: 500)
+        let v = PagedViewport(zoom: 2, x: 0.5, y: 0.5)   // travel 1000 x 500
+        // Finger right 250 pt: the view moves left by a quarter of the travel.
+        let right = v.dragged(dx: 250, dy: 0, canvas: canvas, screen: screen)
+        XCTAssertEqual(right.x, 0.25, accuracy: 1e-9)
+        XCTAssertEqual(right.y, 0.5, accuracy: 1e-9)
+        // Finger up 100 pt: the view moves down.
+        let up = v.dragged(dx: 0, dy: -100, canvas: canvas, screen: screen)
+        XCTAssertEqual(up.y, 0.7, accuracy: 1e-9)
+        // Gain scales the move; edges clamp.
+        XCTAssertEqual(v.dragged(dx: 250, dy: 0, gain: 2, canvas: canvas, screen: screen).x, 0, accuracy: 1e-9)
+        XCTAssertEqual(v.dragged(dx: -5000, dy: 5000, canvas: canvas, screen: screen).x, 1)
+        XCTAssertEqual(v.dragged(dx: -5000, dy: 5000, canvas: canvas, screen: screen).y, 0)
+        XCTAssertEqual(v.dragged(dx: 0, dy: 0, canvas: canvas, screen: screen).zoom, 2)
+    }
+
+    func testDragOnlyMovesAxesWithRoom() {
+        // Fit Width: taller than the screen, no sideways travel.
+        let screen = Extent(width: 1000, height: 500)
+        let canvas = Extent(width: 1000, height: 1500)
+        let v = PagedViewport(zoom: 1, x: 0.5, y: 0)
+        XCTAssertTrue(v.canDrag(canvas: canvas, screen: screen))
+        let moved = v.dragged(dx: 300, dy: -500, canvas: canvas, screen: screen)
+        XCTAssertEqual(moved.x, 0.5)
+        XCTAssertEqual(moved.y, 0.5, accuracy: 1e-9)
+        XCTAssertFalse(PagedViewport().canDrag(canvas: screen, screen: screen))
+    }
 }
+

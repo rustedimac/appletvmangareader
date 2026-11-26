@@ -194,11 +194,17 @@ chapters pair correctly before the reader reaches a wide page.
   0–1 fraction of what can be panned on each axis, so it survives the
   canvas changing size. Click zooms to `zoomScale` (1.5×, 2×, 3×) around
   the screen's center; click again or Menu zooms out; turning resets it.
-  `PagedRemote.action(for:...)` decides what a press does: pan while more
-  of the spread lies that way (forward at the end of a row drops a row and
-  returns to the reading-start side), turn only at the end, and down opens
-  the menu only when nothing is below. A spread reached going forward
-  opens at its top, going backward at its bottom.
+  `PagedRemote.action(for:...)` decides what a press does: left/right pan
+  while more of the spread lies that way and turn the page when pressed
+  toward an edge the view is already at (no dropping to the next row);
+  with no sideways room (Fit Width) forward scrolls down before turning;
+  down opens the menu only when nothing is below. A spread reached going
+  forward opens at its top, going backward at its bottom.
+- **Touch-surface drag**: `TouchSurfacePan` puts a UIKit pan recognizer
+  for indirect touches on the window while the spread is bigger than the
+  screen, so a finger on the Siri Remote moves the page freely
+  (`PagedViewport.dragged`). The swipe's own move command, arriving just
+  after, is ignored so it doesn't pan or turn a second time.
 - **Crop borders**: `BorderCropDetector` finds plain white or black
   margins on a 256 px grayscale thumbnail and returns `CropInsets`
   (fractions). Results are cached per image URL (`PageCropCache`) and per
