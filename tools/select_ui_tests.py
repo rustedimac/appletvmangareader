@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print the xcodebuild -only-testing arguments for a PR's UI test run.
 
-Usage: select_ui_tests.py <base-ref>
+Usage: select_ui_tests.py <base-commit>   (CI passes HEAD^1 of the PR merge commit)
 
 PRs run the smoke classes in tools/ui_smoke_tests.txt plus every UI test
 class whose file the PR changes or adds. Prints nothing (meaning: run the
@@ -21,7 +21,7 @@ FULL_SUITE_PATHS = {"App/UITests/UITestHelpers.swift", "project.yml"}
 def main() -> int:
     base = sys.argv[1]
     changed = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...HEAD"],
+        ["git", "diff", "--name-only", base, "HEAD"],
         cwd=ROOT, check=True, capture_output=True, text=True,
     ).stdout.split()
     if FULL_SUITE_PATHS & set(changed):

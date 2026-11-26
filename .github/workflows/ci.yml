@@ -60,13 +60,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # PR runs diff against the base to find changed UI test files.
-          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
+          # A PR checks out GitHub's merge commit; its first parent is the
+          # base, so HEAD^1..HEAD is exactly the PR's change.
+          fetch-depth: 2
       - name: Choose UI tests
         id: tests
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            only=$(python3 tools/select_ui_tests.py "origin/${{ github.base_ref }}")
+            only=$(python3 tools/select_ui_tests.py HEAD^1)
             echo "only=$only" >> "$GITHUB_OUTPUT"
           else
             echo "Full UI suite (${{ github.event_name }})"
