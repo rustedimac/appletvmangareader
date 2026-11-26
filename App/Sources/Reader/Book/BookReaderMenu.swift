@@ -66,13 +66,10 @@ struct BookReaderMenu: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            HStack(spacing: 20) {
-                ForEach(Tab.allCases) { t in
-                    OptionButton(title: t.title, isSelected: tab == t) { tab = t }
-                        .focused($focus, equals: "tab.\(t.rawValue)")
-                        .accessibilityIdentifier("book.menu.tab.\(t.rawValue)")
-                }
-            }
+            SectionTabBar(tabs: Tab.allCases, selection: $tab, title: \.title,
+                          identifier: { "book.menu.tab.\($0.rawValue)" },
+                          focus: $focus, focusKey: { "tab.\($0.rawValue)" },
+                          trackIdentifier: "book.menu.tabs")
             switch tab {
             case .settings: settingsPane
             case .contents: BookContentsPane(session: session)

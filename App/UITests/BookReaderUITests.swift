@@ -150,4 +150,18 @@ final class BookReaderUITests: XCTestCase {
         expectPage("3.1")
         XCTAssertTrue(page.label.contains("queer-looking party"), page.label)
     }
+
+    /// Settings / Contents are tabs like the top bar, not radio options.
+    func testSectionTabsLookLikeTheTopBar() {
+        launch()
+        openMenu()
+        let ids = ["book.menu.tab.settings", "book.menu.tab.contents"]
+        assertSectionTabLayout(app, track: "book.menu.tabs", tabs: ids, titles: ["Settings", "Contents"])
+        XCTAssertTrue(element("book.menu.tab.settings").isSelected)
+        moveFocus(to: "book.menu.tab.contents")
+        remote.press(.select)
+        wait(element("book.menu.tab.contents"), "isSelected == true")
+        XCTAssertFalse(element("book.menu.tab.settings").isSelected)
+    }
 }
+

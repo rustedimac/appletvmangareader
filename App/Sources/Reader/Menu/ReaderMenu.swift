@@ -93,13 +93,10 @@ struct ReaderMenu: View {
                         // directly above them inside the scroll view.
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .focusSection()
-                    HStack(spacing: 20) {
-                        ForEach(Tab.allCases) { t in
-                            OptionButton(title: t.title, isSelected: tab == t) { tab = t }
-                                .focused($focus, equals: "tab.\(t.rawValue)")
-                                .accessibilityIdentifier("reader.menu.tab.\(t.rawValue)")
-                        }
-                    }
+                    SectionTabBar(tabs: Tab.allCases, selection: $tab, title: \.title,
+                                  identifier: { "reader.menu.tab.\($0.rawValue)" },
+                                  focus: $focus, focusKey: { "tab.\($0.rawValue)" },
+                                  trackIdentifier: "reader.menu.tabs")
                     switch tab {
                     case .settings:
                         settingsPane
@@ -565,11 +562,16 @@ struct ReaderMenu: View {
     }
 }
 
+<<<<<<< HEAD
 /// A selectable option: a ring that fills with a check when chosen. Only
 /// for a short sort toggle beside a grid (Favorites); a setting in a menu
 /// or settings page is a `PanelValueRow`, and sections use `SectionTabBar`.
 /// One line, with `RowMetrics.textInset` above and below, so chips side by
 /// side always share one height.
+=======
+/// A selectable option: a ring that fills with a check when chosen. For a
+/// setting's value only; tabs that switch sections use `SectionTabBar`.
+>>>>>>> origin/claude/project-thread-mbr9t1
 struct OptionButton: View {
     let title: String
     let isSelected: Bool
