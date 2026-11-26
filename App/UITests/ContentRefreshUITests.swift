@@ -106,13 +106,14 @@ final class ContentRefreshUITests: XCTestCase {
         let link = app.element("settings.customizeHome")
         XCTAssertTrue(link.waitForExistence(timeout: 10))
         if focus(link, .down, maxPresses: 25) { remote.press(.select) }
-        let large = app.element("browse.density.large")
+        let size = app.element("browse.density")
+        XCTAssertTrue(size.waitForExistence(timeout: 10))
+        // Poster Size is a row that opens its choices on their own page.
+        if focus(size, .down, maxPresses: 25) { remote.press(.select) }
+        let large = app.element("settingsPicker.option.Large")
         XCTAssertTrue(large.waitForExistence(timeout: 10))
-        // The sizes sit side by side and Down enters the row at Small:
-        // down to Small, then right to Large.
-        focus(app.element("browse.density.compact"), .down, maxPresses: 25)
-        if focus(large, .right, maxPresses: 4) { remote.press(.select) }
-        XCTAssertTrue(waitUntil(large, "value == 'selected'"))
+        if focus(large, .down, maxPresses: 4) { remote.press(.select) }
+        XCTAssertTrue(waitUntil(size, "value == 'Large'"))
 
         selectTab("Home")
         let after = poster("89", in: kavita)

@@ -3,6 +3,12 @@ import Observation
 import MangaCore
 
 /// The panel over the page while the reader menu is open.
+/// A reader menu row that opens a list of choices (`ReaderMenu`).
+enum ReaderMenuPicker: Hashable {
+    case setting(ReaderMenuItem)
+    case picture(PictureMenuItem)
+}
+
 enum ReaderOverlay: Equatable {
     /// Settings, chapters and bookmarks (`ReaderMenu`).
     case menu
@@ -67,9 +73,15 @@ final class ReaderSession {
     var isMenuPresented = false {
         didSet {
             if isMenuPresented, isAutoScrolling { isAutoScrolling = false }
-            if !isMenuPresented { overlay = .menu }
+            if !isMenuPresented {
+                overlay = .menu
+                menuPicker = nil
+            }
         }
     }
+    /// The reader menu row whose choices are open in the drawer, if any.
+    /// Menu (Back) closes it before it closes the drawer.
+    var menuPicker: ReaderMenuPicker?
     /// What shows while `isMenuPresented` is true. Resets to the menu when
     /// it closes, so every way of opening the menu opens the menu.
     private(set) var overlay: ReaderOverlay = .menu

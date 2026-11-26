@@ -39,10 +39,12 @@ final class ReaderMenuUITests: XCTestCase {
                        "\(element) never matched \(format)", file: file, line: line)
     }
 
+    private var menu: MenuRowDriver { MenuRowDriver(app: app, prefix: "reader.menu") }
+
     private func openMenu() {
         remote.press(.down)
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        wait(menuItem("mode.paged"), "hasFocus == true")
+        wait(menuItem("mode"), "hasFocus == true")
     }
 
     private func closeMenu() {
@@ -50,38 +52,12 @@ final class ReaderMenuUITests: XCTestCase {
         wait(element("reader.menu"), "exists == false")
     }
 
-    private var focused: XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
-    }
-
-    /// Moves focus to a menu control with the remote, the way a person would:
-    /// up/down to reach its row, then left/right along the row.
     private func moveFocus(to id: String, file: StaticString = #filePath, line: UInt = #line) {
-        let target = menuItem(id)
-        XCTAssertTrue(target.waitForExistence(timeout: 5), "No \(id)", file: file, line: line)
-        for _ in 0..<25 {
-            if target.hasFocus { return }
-            let current = focused
-            guard current.exists else { Thread.sleep(forTimeInterval: 0.3); continue }
-            let a = current.frame
-            let b = target.frame
-            if b.midY > a.maxY {
-                remote.press(.down)
-            } else if b.midY < a.minY {
-                remote.press(.up)
-            } else if b.midX > a.midX {
-                remote.press(.right)
-            } else {
-                remote.press(.left)
-            }
-            Thread.sleep(forTimeInterval: 0.2)
-        }
-        XCTAssertTrue(target.hasFocus, "Couldn't move focus to \(id)", file: file, line: line)
+        menu.moveFocus(to: id, file: file, line: line)
     }
 
     private func choose(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
-        moveFocus(to: id, file: file, line: line)
-        remote.press(.select)
+        menu.press(id, file: file, line: line)
     }
 
     // MARK: Tests
@@ -89,24 +65,42 @@ final class ReaderMenuUITests: XCTestCase {
     func testOpensOnCurrentModeWithPagedRows() {
         launch()
         openMenu()
-        XCTAssertTrue(menuItem("mode.paged").isSelected)
-        XCTAssertFalse(menuItem("mode.webtoon").isSelected)
-        XCTAssertTrue(menuItem("layout.double").isSelected)
-        XCTAssertTrue(menuItem("direction.rightToLeft").isSelected)
-        XCTAssertTrue(menuItem("firstPageAlone.on").isSelected)
+        menu.expectValue("mode", "Paged")
+        menu.expectValue("layout", "Two Pages")
+        menu.expectValue("direction", "Right to Left")
+        menu.expectValue("firstPageAlone", "On")
         XCTAssertTrue(menuItem("firstPageAlone.hint").exists)
         XCTAssertFalse(menuItem("shiftPairing").exists)   // folded into First Page Alone
-        XCTAssertTrue(menuItem("background.black").isSelected)
+        menu.expectValue("background", "Black")
         XCTAssertFalse(menuItem("webtoonWidth.value").exists)
         XCTAssertEqual(menuItem("position").label, "Page 1 of 6")
+        // Rows, not chips: no option of any row is on screen until its row is opened.
+        XCTAssertFalse(menuItem("mode.webtoon").exists)
+        XCTAssertFalse(menuItem("layout.single").exists)
+    }
+
+    /// A row with a chevron opens its choices in place; Menu goes back to
+    /// the rows without changing anything, a second Menu closes the drawer.
+    func testRowOpensChoicesAndMenuGoesBack() {
+        launch()
+        openMenu()
+        choose("direction")
+        wait(menuItem("direction.rightToLeft"), "hasFocus == true")
+        XCTAssertTrue(menuItem("direction.rightToLeft").isSelected)
+        XCTAssertFalse(menuItem("mode").exists)
+        remote.press(.menu)
+        wait(menuItem("direction"), "hasFocus == true")
+        XCTAssertTrue(element("reader.menu").exists)
+        menu.expectValue("direction", "Right to Left")
+        closeMenu()
     }
 
     func testSingleLayoutAppliesLiveAndHidesPairing() {
         launch()
         openMenu()
-        choose("layout.single")
-        wait(menuItem("layout.single"), "isSelected == true")
-        wait(menuItem("firstPageAlone.on"), "exists == false")
+        menu.pick("layout.single")
+        menu.expectValue("layout", "Single Page")
+        wait(menuItem("firstPageAlone"), "exists == false")
         closeMenu()
         remote.press(.left)
         expectIndicator("2 / 6")
@@ -119,8 +113,7 @@ final class ReaderMenuUITests: XCTestCase {
     func testFirstPageAloneRepairsPairsBothWays() {
         launch()
         openMenu()
-        choose("firstPageAlone.off")
-        wait(menuItem("firstPageAlone.off"), "isSelected == true")
+        menu.setToggle("firstPageAlone", on: false)
         // The cover now pairs with page 2 behind the menu.
         wait(menuItem("position"), "label == 'Pages 1–2 of 6'")
         closeMenu()
@@ -128,8 +121,7 @@ final class ReaderMenuUITests: XCTestCase {
         remote.press(.left)
         expectIndicator("3 / 6")       // page 3 can't pair with the wide page 4
         openMenu()
-        choose("firstPageAlone.on")
-        wait(menuItem("firstPageAlone.on"), "isSelected == true")
+        menu.setToggle("firstPageAlone", on: true)
         closeMenu()
         expectIndicator("2–3 / 6")
     }
@@ -137,8 +129,8 @@ final class ReaderMenuUITests: XCTestCase {
     func testDirectionLeftToRight() {
         launch()
         openMenu()
-        choose("direction.leftToRight")
-        wait(menuItem("direction.leftToRight"), "isSelected == true")
+        menu.pick("direction.leftToRight")
+        menu.expectValue("direction", "Left to Right")
         closeMenu()
         remote.press(.right)
         expectIndicator("2–3 / 6")
@@ -149,11 +141,11 @@ final class ReaderMenuUITests: XCTestCase {
     func testVerticalModeSwapsRowsAndStepsWidth() {
         launch()
         openMenu()
-        choose("mode.webtoon")
-        wait(menuItem("mode.webtoon"), "isSelected == true")
+        menu.pick("mode.webtoon")
+        menu.expectValue("mode", "Vertical Scroll")
         XCTAssertTrue(element("reader.webtoon").waitForExistence(timeout: 5))
-        wait(menuItem("layout.double"), "exists == false")
-        XCTAssertFalse(menuItem("firstPageAlone.on").exists)
+        wait(menuItem("layout"), "exists == false")
+        XCTAssertFalse(menuItem("firstPageAlone").exists)
         XCTAssertEqual(menuItem("webtoonWidth.value").label, "60%")
         choose("webtoonWidth.increase")
         wait(menuItem("webtoonWidth.value"), "label == '70%'")
@@ -162,8 +154,8 @@ final class ReaderMenuUITests: XCTestCase {
         choose("webtoonWidth.decrease")
         wait(menuItem("webtoonWidth.value"), "label == '70%'")
         // Back to paged: the paged rows come back with their old values.
-        choose("mode.paged")
-        wait(menuItem("layout.double"), "isSelected == true")
+        menu.pick("mode.paged")
+        menu.expectValue("layout", "Two Pages")
         closeMenu()
         XCTAssertTrue(element("reader.paged").waitForExistence(timeout: 5))
         remote.press(.left)
@@ -173,9 +165,8 @@ final class ReaderMenuUITests: XCTestCase {
     func testBackgroundChoice() {
         launch()
         openMenu()
-        choose("background.white")
-        wait(menuItem("background.white"), "isSelected == true")
-        XCTAssertFalse(menuItem("background.black").isSelected)
+        menu.pick("background.white")
+        menu.expectValue("background", "White")
     }
 
     func testChapterListJumpsToChapter() {
@@ -210,14 +201,14 @@ final class ReaderMenuUITests: XCTestCase {
         launch()
         openMenu()
         XCTAssertTrue(menuItem("isDefault").exists)       // demo starts on the default
-        choose("layout.single")
+        menu.pick("layout.single")
         wait(menuItem("isDefault"), "exists == false")
         choose("makeDefault")
         wait(menuItem("isDefault"), "exists == true")
-        choose("layout.double")
+        menu.pick("layout.double")
         wait(menuItem("isDefault"), "exists == false")
         choose("resetToDefault")
-        wait(menuItem("layout.single"), "isSelected == true")
+        menu.expectValue("layout", "Single Page")
         XCTAssertTrue(menuItem("isDefault").exists)
     }
 
@@ -237,7 +228,7 @@ final class ReaderMenuUITests: XCTestCase {
         openMenu()
         let title = menuItem("title")
         let tab = menuItem("tab.settings")
-        let firstRow = menuItem("mode.paged")
+        let firstRow = menuItem("mode")
         XCTAssertTrue(title.frame.maxY <= tab.frame.minY + 1, "title should start above the tabs")
 
         moveFocus(to: "resetToDefault")
@@ -271,7 +262,7 @@ final class ReaderMenuUITests: XCTestCase {
         moveFocus(to: "tab.settings")
         moveFocus(to: "tab.bookmarks")
         XCTAssertTrue(menuItem("tab.settings").isSelected)
-        XCTAssertTrue(menuItem("mode.paged").exists, "moving focus switched the pane")
+        XCTAssertTrue(menuItem("mode").exists, "moving focus switched the pane")
         // With focus on a tab it still fits on one line (focus grows it).
         assertSectionTabLayout(app, track: "reader.menu.tabs", tabs: ids.map { "reader.menu.\($0)" },
                                titles: ["Settings", "Chapters", "Bookmarks"])
@@ -279,6 +270,6 @@ final class ReaderMenuUITests: XCTestCase {
         remote.press(.select)
         wait(menuItem("tab.bookmarks"), "isSelected == true")
         XCTAssertFalse(menuItem("tab.settings").isSelected)
-        XCTAssertFalse(menuItem("mode.paged").exists)
+        XCTAssertFalse(menuItem("mode").exists)
     }
 }
