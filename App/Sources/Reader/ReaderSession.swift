@@ -352,7 +352,7 @@ final class ReaderSession {
         visitedPages[progress.chapterID] = progress.page
         guard progress != lastLocal else { return }
         lastLocal = progress
-        model.recordLocalProgress(chapter: chapter, page: progress.page, completed: progress.completed)
+        model.recordLocalProgress(chapter: chapter, series: series, page: progress.page, completed: progress.completed)
     }
 
     private func scheduleSave() {
@@ -375,9 +375,9 @@ final class ReaderSession {
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
         lastSaved = progress
         let chapter = self.chapter
-        let libraryID = series.libraryID
+        let series = self.series
         let model = self.model
-        Task { await model.recordProgress(chapter: chapter, libraryID: libraryID,
+        Task { await model.recordProgress(chapter: chapter, series: series,
                                           page: progress.page, completed: progress.completed) }
     }
 

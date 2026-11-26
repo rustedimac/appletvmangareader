@@ -28,7 +28,8 @@ final class MarkUnreadTests: XCTestCase {
         ]
         try await client.markUnread(chapters: chapters)
         let request = mock.lastRequest(containing: "mark-multiple-unread")
-        XCTAssertEqual(request?.value(forHTTPHeaderField: "Authorization"), "Bearer jwt-1")
+        // Kavita calls carry the auth key, not a JWT (see PROGRESS_SYNC.md).
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "x-api-key"), "KEY")
         let body = jsonBody(request)
         XCTAssertEqual(body["seriesId"] as? Int, 5)
         XCTAssertEqual(body["chapterIds"] as? [Int], [77, 78])
