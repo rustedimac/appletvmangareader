@@ -8,6 +8,8 @@ import MangaCore
 /// - `-uiTestingSeed servers`: one profile with a Kavita and a Suwayomi server.
 /// - `-uiTestingSeed multiAddress`: a Kavita server with a home and a remote address.
 /// - `-uiTestingTab settings`: start on the Settings tab.
+/// - `-homePerServer`: Home rows per server instead of merged (the default).
+/// - `-posterServerLabel onCover|off`: where posters name their server.
 /// - `-serverEditorPrefill <kind>|<address>[|<api key>]`: Add Server opens
 ///   with these fields filled in, as if pasted (the tvOS simulator can't
 ///   paste from the Mac). Works in Debug builds even without `-uiTesting`,
@@ -71,13 +73,31 @@ extension AppModel {
     func installLiveServersFromEnvironment() {
         let env = ProcessInfo.processInfo.environment
         if let opds = env["MR_KAVITA_OPDS"], let parsed = KavitaOPDS.parse(opds) {
-            saveServer(ServerConfig(kind: .kavita, name: "Kavita", baseURL: parsed.baseURL),
+            try? saveServer(ServerConfig(kind: .kavita, name: "Kavita", baseURL: parsed.baseURL),
                        credential: ServerCredential(apiKey: parsed.apiKey))
         }
         if let raw = env["MR_SUWAYOMI_URL"], let url = URL(string: raw) {
             let user = env["MR_SUWAYOMI_USER"]
             let credential = user.map { ServerCredential(username: $0, password: env["MR_SUWAYOMI_PASS"]) }
-            saveServer(ServerConfig(kind: .suwayomi, name: "Suwayomi", baseURL: url), credential: credential)
+            try? saveServer(ServerConfig(kind: .suwayomi, name: "Suwayomi", baseURL: url), credential: credential)
+        }
+    }
+}
+
+extension AppModel {
+    /// `-homePerServer` and `-posterServerLabel <value>` (see `UITestingSeed`).
+    func applyUITestingHomeLayout() {
+        let perServer = UITestingSeed.arguments.contains("-homePerServer")
+        let label = UITestingSeed.value(after: "-posterServerLabel").flatMap(PosterServerLabel.init(rawValue:))
+        guard perServer || label != nil else { return }
+        // Every profile, so seeds with a profile picker get it too.
+        update { state in
+            for profile in state.profiles.map(\.id) {
+                state.updateBrowse(profile: profile) { prefs in
+                    if perServer { prefs.home.serverRows = .perServer }
+                    if let label { prefs.home.serverLabel = label }
+                }
+            }
         }
     }
 }

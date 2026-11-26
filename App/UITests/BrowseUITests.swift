@@ -51,7 +51,7 @@ final class BrowseUITests: XCTestCase {
     /// depends on the layout).
     @discardableResult
     private func openFirstHomeSeries() -> String {
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         XCTAssertTrue(press(.down, until: focusedPoster, max: 6), "no poster took focus")
         let id = String(focusedPoster.identifier.dropFirst("poster.".count))
         XCTAssertFalse(id.isEmpty)
@@ -62,11 +62,11 @@ final class BrowseUITests: XCTestCase {
 
     // MARK: Tests
 
-    func testHomeShowsRowsForEachServer() {
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["shelf.Demo Suwayomi.recentlyUpdated"].exists)
-        XCTAssertEqual(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].label, "Recently Updated · Demo Kavita",
-                       "with two servers each row names its server")
+    func testHomeShowsServerRows() {
+        // Both servers' feeds are merged into one row each by default (see
+        // HomeServerRowsUITests for the per-server option).
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.staticTexts["shelf.recentlyUpdated"].label, "Recently Updated")
         XCTAssertFalse(app.staticTexts["shelf.favorites"].exists, "no favorites yet")
     }
 

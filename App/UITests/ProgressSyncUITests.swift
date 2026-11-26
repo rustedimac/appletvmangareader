@@ -89,7 +89,8 @@ final class ProgressSyncUITests: XCTestCase {
     func testProfileThatDoesNotSyncGetsLocalContinueReading() {
         // Two profiles: "Me" added the demo servers and syncs to Demo
         // Suwayomi; "Kid" keeps Suwayomi progress on the Apple TV.
-        launch(["-uiTestingSeed", "profiles"])
+        // Rows per server, so Demo Suwayomi's own Continue Reading row shows.
+        launch(["-uiTestingSeed", "profiles", "-homePerServer"])
         XCTAssertTrue(app.staticTexts["Who's reading?"].waitForExistence(timeout: 10))
         select(app.element("profilePicker.Kid"), .right)
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
@@ -132,7 +133,8 @@ final class ProgressSyncUITests: XCTestCase {
 
     /// Moves down Home's rows until `element` is loaded.
     private func scrollHome(to element: XCUIElement, maxPresses: Int = 10) -> Bool {
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        let firstRow = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'shelf.'")).firstMatch
+        XCTAssertTrue(firstRow.waitForExistence(timeout: 15))
         for _ in 0..<maxPresses {
             if element.waitForExistence(timeout: 1.5) { return true }
             remote.press(.down)

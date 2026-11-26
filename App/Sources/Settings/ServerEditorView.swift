@@ -466,7 +466,7 @@ struct ServerEditorView: View {
                 if credential != draft.existing, await model.suwayomiUser(config, credential: credential) != nil {
                     sync = true
                 }
-                model.saveServer(config, credential: credential)
+                try model.saveServer(config, credential: credential)
                 model.setServerSettings(ProfileServerSettings(syncProgressToServer: draft.kind.canSyncProgress && sync,
                                                               selectedCategoryIDs: selected), for: config)
                 dismiss()
