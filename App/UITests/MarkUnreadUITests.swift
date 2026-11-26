@@ -54,7 +54,7 @@ final class MarkUnreadUITests: XCTestCase {
 
     /// Focuses a poster on Home and returns its series id.
     private func focusHomePoster() -> String {
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         XCTAssertTrue(press(.down, until: focusedPoster, max: 6), "no poster took focus")
         let id = String(focusedPoster.identifier.dropFirst("poster.".count))
         XCTAssertFalse(id.isEmpty)
