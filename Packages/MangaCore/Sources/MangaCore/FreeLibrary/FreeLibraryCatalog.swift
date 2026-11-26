@@ -17,6 +17,9 @@ public struct FreeLibraryCatalog: Codable, Hashable, Sendable {
     public struct CollectionEntry: Codable, Hashable, Sendable {
         public var id: String
         public var name: String
+        /// One line for the first-run picker. Optional, so catalogs
+        /// without it still decode (and older apps ignore it).
+        public var summary: String? = nil
     }
 
     public enum Source: String, Codable, Hashable, Sendable {

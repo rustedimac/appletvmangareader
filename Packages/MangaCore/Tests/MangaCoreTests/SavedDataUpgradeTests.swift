@@ -29,8 +29,13 @@ enum SavedFormats {
         "appstate-v1-2026-11-26",
         // Adds `showsProgressPercent` to browse (#55).
         "appstate-v1-2026-11-26-percent",
+        // Adds `unreadChapters` to series summaries (#74).
+        "appstate-v1-2026-11-26-unread-chapters",
         // Adds a server's `alternateURLs` (#34).
         "appstate-v1-2026-11-26-addresses",
+        // Adds `welcomeCompleted` to profile data (first-run welcome, #43),
+        // on top of every field above.
+        "appstate-v1-2026-11-26-welcome",
     ]
     static var newestAppState: String { appStateFixtures.last! }
 

@@ -1,23 +1,27 @@
 {
   "schema": 1,
-  "version": 1,
+  "version": 2,
   "updated": "2026-11-25",
   "collections": [
     {
       "id": "comics",
-      "name": "Classic Comics"
+      "name": "Classic Comics",
+      "summary": "Newspaper strips from 1904 to 1930: Winsor McCay's dreamlike Rarebit Fiend, Buster Brown, Foxy Grandpa and Bringing Up Father."
     },
     {
       "id": "books",
-      "name": "Illustrated Books"
+      "name": "Illustrated Books",
+      "summary": "Alice, Oz, Peter Pan and other classics in early illustrated printings, with their original plates."
     },
     {
       "id": "pulps",
-      "name": "Pulp Magazines"
+      "name": "Pulp Magazines",
+      "summary": "Every issue of Weird Tales and Amazing Stories through 1930. Mostly prose, with period cover art."
     },
     {
       "id": "webcomics",
-      "name": "Webcomics"
+      "name": "Webcomics",
+      "summary": "Pepper&Carrot, a free fantasy comic about a young witch and her cat, by David Revoy (CC BY 4.0)."
     }
   ],
   "series": [

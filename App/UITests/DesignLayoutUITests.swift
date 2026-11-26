@@ -77,6 +77,16 @@ final class DesignLayoutUITests: XCTestCase {
                              first: app.element("readerDefaults.mode"), last: app.element("readerDefaults.reset"))
     }
 
+    func testWelcome() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-welcome"]
+        app.launch()
+        XCTAssertTrue(app.element("welcome.start").waitForExistence(timeout: 10))
+        audit(app, "welcome")
+        checkTitleBesideForm(app, "welcome",
+                             first: app.element("welcome.collection.comics"), last: app.element("welcome.restore"))
+    }
+
     func testServerEditorTitleNeverOverlapsRows() {
         let app = XCUIApplication.launched(seed: "servers", tab: "settings")
         select(app.element("settings.server.Test Kavita"))

@@ -58,7 +58,7 @@ struct BrowseSettingsView: View {
                     model.updateBrowse { $0.showsProgressPercent.toggle() }
                 }
                 .accessibilityIdentifier("browse.showsPercent")
-                PanelFootnote("Server Name shows which server a series is from where servers mix. Poster Size and Under Each Poster apply everywhere posters appear. Show Percentage Read puts \"40%\" next to every progress bar.")
+                PanelFootnote("Server Name shows which server a series is from where servers mix. Poster Size and Under Each Poster apply everywhere posters appear. Show Percentage Read puts \"40%\" next to every poster progress bar, and \"40% read\" on series pages.")
 
                 Text("Libraries")
                     .sectionLabelStyle()
