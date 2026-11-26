@@ -13,7 +13,7 @@ struct AlphabetJumpBar: View {
                     onPick(letter)
                 } label: {
                     Text(letter)
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.system(size: 23, weight: .semibold)) // design-ok: fixed 28 pt rows so 27 letters fit; 23 pt is the HIG minimum
                         .frame(width: 48, height: 28)
                 }
                 .buttonStyle(LetterButtonStyle())
@@ -40,7 +40,7 @@ private struct LetterButtonStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .foregroundStyle(isFocused ? Color.black : Color.secondary)
-                .background(RoundedRectangle(cornerRadius: 8).fill(isFocused ? Color.white : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(isFocused ? Color.white : Color.clear))
                 .scaleEffect(isFocused ? 1.3 : (configuration.isPressed ? 0.95 : 1))
                 .animation(.easeOut(duration: 0.12), value: isFocused)
         }

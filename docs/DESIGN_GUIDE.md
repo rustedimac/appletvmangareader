@@ -92,6 +92,7 @@ Type and bold text keep working. tvOS sizes for reference:
 | Token | Value | Use for |
 | --- | --- | --- |
 | System | — | Buttons, list/form rows, text fields, pickers, toggles: keep the system shape |
+| `Radius.small` | 8 | Small highlights inside a control: focused jump-bar letter, poster badges |
 | `Radius.poster` | 12 | Cover art (`.buttonStyle(.card)` rounds it too) |
 | `Radius.card` | 20 | Custom tiles and grouped panels |
 | `Radius.panel` | 32 | Large floating panels, e.g. the reader menu drawer if it gets corners |
@@ -237,6 +238,20 @@ another page with a value uses `SettingsValueRow` for the same spacing.
 - Ignores the safe area for its background only; its content is inset
   `Layout.safeTop` from the top and `Layout.safeSide` from the trailing edge.
 - Option chips use `Capsule()` and `Space.m` between chips.
+
+### Setting scopes
+
+- Every setting a series (or a library) can override also has a global
+  default for the profile, on the matching settings screen: reader settings
+  in Default Reader Settings, library sort and grid order in Customize Home.
+- The narrower value only overrides; while it's unset, changing the global
+  default changes that series too.
+- Wherever a narrower value is set, offer "Reset to Default" next to it, and
+  show when the current values already match the default.
+- Use the same row names on both screens (`ReaderMenuItem.title`).
+- Exempt only fixes for one book, such as shifting the page pairing by one.
+  `tools/check_setting_scopes.py` checks every `ReaderSettings` field has a
+  row in Default Reader Settings.
 
 ## 8. Focus
 

@@ -1,11 +1,13 @@
 # Apple TV Manga Reader
 
-A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com) and
-[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) servers. Add as many
-servers as you like, read in a two-page spread reader or a seamless vertical
-(webtoon) scroll, keep favorites (sortable by title, date favorited, latest
-chapter, last read, unread count or server), bookmark pages, and give each
-person their own profile.
+A tvOS manga reader for self-hosted [Kavita](https://www.kavitareader.com),
+[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) and
+[Komga](https://komga.org) servers and OPDS catalogs, plus a built-in Free
+Library of public-domain comics. Add as many servers as you like, read in a
+two-page spread reader or a seamless vertical (webtoon) scroll, open PDFs and
+EPUBs, keep favorites (sortable by title, date favorited, latest chapter, last
+read, unread count or server), bookmark pages, and give each person their own
+profile (each Apple TV user gets one automatically).
 
 ## Building
 
@@ -34,7 +36,9 @@ xcodebuild test -project MangaReader.xcodeproj -scheme MangaReader \
   -destination 'platform=tvOS Simulator,name=Apple TV' CODE_SIGNING_ALLOWED=NO
 ```
 
-CI runs both on every push and pull request (`.github/workflows/ci.yml`).
+CI runs both on every pull request and on every merge to `main`, plus the
+UI lint checks in `tools/` (`.github/workflows/ci.yml`, see
+[docs/CI.md](docs/CI.md)).
 
 ## Free Library
 

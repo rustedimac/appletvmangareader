@@ -22,7 +22,7 @@ struct WiFiBackupView: View {
                         .accessibilityLabel("QR code for \(address)")
                         .accessibilityIdentifier("backup.qr")
                 } else {
-                    RoundedRectangle(cornerRadius: 20).fill(.quaternary).frame(width: 360, height: 360)
+                    RoundedRectangle(cornerRadius: Radius.card).fill(.quaternary).frame(width: 360, height: 360)
                 }
             }
 
