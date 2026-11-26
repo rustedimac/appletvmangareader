@@ -63,8 +63,10 @@ final class ReaderPictureScrubberUITests: XCTestCase {
     private func openMenu() {
         remote.press(.down)
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        wait(menuItem("mode.paged"), "hasFocus == true")
+        wait(menuItem("mode"), "hasFocus == true")
     }
+
+    private var menu: MenuRowDriver { MenuRowDriver(app: app, prefix: "reader.menu") }
 
     /// Up/down to the control's row, then left/right along it.
     private func moveFocus(to id: String, file: StaticString = #filePath, line: UInt = #line) {
@@ -128,8 +130,7 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         launch(["-readerLayout", "single", "-readerStartPage", "3", "-readerDirection", "leftToRight"],
                expect: "4 / 6")
         openMenu()
-        choose("splitWidePages.on")
-        wait(menuItem("splitWidePages.on"), "isSelected == true")
+        menu.setToggle("splitWidePages", on: true)
         remote.press(.menu)
         wait(element("reader.menu"), "exists == false")
         expectIndicator("4 / 6 · Left half")
@@ -148,14 +149,14 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         wait(element("reader.page.0"), "value == 'loaded, adjusted'")
         choose("picture.contrast.increase")
         wait(menuItem("picture.contrast.value"), "label == '110%'")
-        choose("picture.color.inverted")
-        wait(menuItem("picture.color.inverted"), "isSelected == true")
-        choose("picture.upscaling.lanczos")
-        wait(menuItem("picture.upscaling.lanczos"), "isSelected == true")
+        menu.pick("picture.color.inverted")
+        menu.expectValue("picture.color", "Night (Invert)")
+        menu.pick("picture.upscaling.lanczos")
+        menu.expectValue("picture.upscaling", "Sharp (Lanczos)")
         choose("picture.reset")
         wait(menuItem("picture.brightness.value"), "label == '0'")
-        XCTAssertTrue(menuItem("picture.color.normal").isSelected)
-        XCTAssertTrue(menuItem("picture.upscaling.standard").isSelected)
+        menu.expectValue("picture.color", "Normal")
+        menu.expectValue("picture.upscaling", "Standard")
         wait(element("reader.page.0"), "value == 'loaded'")
     }
 
@@ -165,9 +166,9 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         remote.press(.select)
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         XCTAssertTrue(menuItem("picture.brightness.value").waitForExistence(timeout: 5))
-        XCTAssertTrue(menuItem("picture.color.grayscale").exists)
-        XCTAssertFalse(menuItem("picture.sharpen.low").exists)
-        XCTAssertFalse(menuItem("picture.upscaling.lanczos").exists)
+        XCTAssertTrue(menuItem("picture.color").exists)
+        XCTAssertFalse(menuItem("picture.sharpen").exists)
+        XCTAssertFalse(menuItem("picture.upscaling").exists)
     }
 
     // MARK: Page scrubber

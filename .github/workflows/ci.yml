@@ -39,6 +39,8 @@ jobs:
       - run: python3 tools/check_setting_scopes.py
       # Settings apply as they change; only the server form has Save.
       - run: python3 tools/check_save_buttons.py
+      # Settings are rows, not side-by-side chips; labels never wrap.
+      - run: python3 tools/check_option_chips.py
       # Secure fields keep the system dots (see tools/check_secure_fields.py).
       - run: python3 tools/check_secure_fields.py
 

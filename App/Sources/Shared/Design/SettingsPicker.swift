@@ -22,17 +22,22 @@ struct SettingsPicker<Value: Hashable>: View {
     private let options: [Value]
     private let systemImage: String
     private let label: (Value) -> String
+    private let footnote: String?
 
     @Environment(\.settingsNavigator) private var navigator
+    @Environment(\.settingsRowsOutsideForm) private var outsideForm
 
-    /// - Parameter systemImage: the symbol in the hero column of the page
-    ///   that lists the choices.
+    /// - Parameters:
+    ///   - systemImage: the symbol in the hero column of the page that
+    ///     lists the choices.
+    ///   - footnote: shown under the choices.
     init(_ title: String, selection: Binding<Value>, options: [Value], systemImage: String = "list.bullet",
-         label: @escaping (Value) -> String) {
+         footnote: String? = nil, label: @escaping (Value) -> String) {
         self.title = title
         self._selection = selection
         self.options = options
         self.systemImage = systemImage
+        self.footnote = footnote
         self.label = label
     }
 
@@ -43,9 +48,16 @@ struct SettingsPicker<Value: Hashable>: View {
                 return
             }
             navigator.show(SettingsPickerChoices(title: title, selection: $selection, options: options,
-                                                 systemImage: systemImage, label: label))
+                                                 systemImage: systemImage, footnote: footnote, label: label))
         } label: {
-            SettingsValueRow(title: title, value: label(selection))
+            if outsideForm {
+                // A plain button has no row padding of its own.
+                SettingsValueRow(title: title, value: label(selection))
+                    .padding(.vertical, RowMetrics.textInset)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                SettingsValueRow(title: title, value: label(selection))
+            }
         }
         .accessibilityLabel(title)
         .accessibilityValue(label(selection))
@@ -55,10 +67,13 @@ struct SettingsPicker<Value: Hashable>: View {
 /// The inside of a row that shows a value and opens another page: title,
 /// then value and chevron pinned to the trailing edge, `Space.s` apart, the
 /// same whether or not the row has focus. The value never truncates before
-/// the title does.
+/// the title does. Without the chevron (`showsChevron: false`) it's the
+/// inside of a toggle row: the value ("On"/"Off") ends where a chevron
+/// would, like a form `Toggle`.
 struct SettingsValueRow: View {
     let title: String
     let value: String
+    var showsChevron = true
 
     var body: some View {
         HStack(spacing: Space.m) {
@@ -69,7 +84,9 @@ struct SettingsValueRow: View {
                 Text(value)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
-                SettingsChevron()
+                if showsChevron {
+                    SettingsChevron()
+                }
             }
             .layoutPriority(1)
         }
@@ -94,6 +111,7 @@ struct SettingsPickerChoices<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [Value]
     let systemImage: String
+    var footnote: String? = nil
     let label: (Value) -> String
 
     @Environment(\.dismiss) private var dismiss
@@ -121,6 +139,8 @@ struct SettingsPickerChoices<Value: Hashable>: View {
                     .accessibilityAddTraits(option == selection ? .isSelected : [])
                     .accessibilityIdentifier("settingsPicker.option.\(label(option))")
                 }
+            } footer: {
+                if let footnote { Text(footnote) }
             }
         }
         .settingsPage(title, systemImage: systemImage)
@@ -156,11 +176,22 @@ struct SettingsDestination: Identifiable, Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+private struct SettingsRowsOutsideFormKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 private struct SettingsNavigatorKey: EnvironmentKey {
     static let defaultValue: SettingsNavigator? = nil
 }
 
 extension EnvironmentValues {
+    /// Set by `.settingsRowsOutsideForm()`: rows are plain buttons in a
+    /// scroll view, so they add the row padding a form would give them.
+    var settingsRowsOutsideForm: Bool {
+        get { self[SettingsRowsOutsideFormKey.self] }
+        set { self[SettingsRowsOutsideFormKey.self] = newValue }
+    }
+
     var settingsNavigator: SettingsNavigator? {
         get { self[SettingsNavigatorKey.self] }
         set { self[SettingsNavigatorKey.self] = newValue }
@@ -168,6 +199,13 @@ extension EnvironmentValues {
 }
 
 extension View {
+    /// For a settings page built from a `ScrollView` instead of a `Form`
+    /// (Customize Home): `SettingsPicker` rows fill the width and get the
+    /// same text inset as `PanelValueRow`.
+    func settingsRowsOutsideForm() -> some View {
+        environment(\.settingsRowsOutsideForm, true)
+    }
+
     /// Lets `SettingsPicker` rows in this view push their choices.
     func settingsNavigation(_ navigator: SettingsNavigator) -> some View {
         environment(\.settingsNavigator, navigator)

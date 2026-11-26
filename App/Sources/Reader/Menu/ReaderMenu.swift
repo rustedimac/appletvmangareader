@@ -7,16 +7,17 @@ import MangaCore
 ///
 /// Siri Remote: in the paged reader swipe down or Play/Pause opens it, in
 /// the vertical reader a click does (the readers handle that).
-/// Up/down moves between rows, left/right between options, click picks.
-/// Menu closes it (ReaderView handles that) and so does Play/Pause.
+/// Every setting is one row (name left, value right). A click on a row with
+/// a chevron opens its choices in place of the rows; a click on an On/Off
+/// row flips it. Menu closes the choices, then the drawer; Play/Pause
+/// closes the drawer.
 ///
 /// Changes apply live through `session.updateSettings(_:)`, which saves them
 /// for this series. "Set as Default" copies them to the profile default that
 /// series without their own settings use.
 ///
 /// Modeled on Mihon's reading-mode sheet (rows change with the mode) and
-/// Kavita's reader settings drawer, laid out for the focus engine: one row
-/// per setting, options side by side.
+/// Kavita's reader settings drawer, laid out like a tvOS settings form.
 struct ReaderMenu: View {
     let session: ReaderSession
 
@@ -54,11 +55,19 @@ struct ReaderMenu: View {
         .defaultFocus($focus, initialFocus)
         .onAppear { setFocus(initialFocus) }
         .onPlayPauseCommand { session.isMenuPresented = false }
+        // Menu closes an open list of choices first, then the drawer.
+        .onExitCommand {
+            if session.menuPicker != nil {
+                closePicker()
+            } else {
+                session.isMenuPresented = false
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.menu")
     }
 
-    private var initialFocus: String { "mode.\(settings.mode.rawValue)" }
+    private var initialFocus: String { ReaderMenuItem.mode.rawValue }
 
     /// Focus changes made in the same pass a view appears are dropped on
     /// tvOS, so set it on the next turn of the run loop.
@@ -101,6 +110,8 @@ struct ReaderMenu: View {
                 .padding(.trailing, Layout.safeSide)
                 .padding(.vertical, Layout.safeTop)
             }
+            // An open list of choices belongs to the Settings tab.
+            .onChange(of: tab) { _, _ in session.menuPicker = nil }
             .onChange(of: focus) { _, key in
                 // Focus moving up onto the tabs only scrolls them into view;
                 // bring the title back too.
@@ -150,6 +161,8 @@ struct ReaderMenu: View {
         } label: {
             Label(on ? "Remove Bookmark" : "Bookmark This Page", systemImage: on ? "bookmark.fill" : "bookmark")
                 .font(.callout)
+                .lineLimit(1)
+                .padding(.vertical, RowMetrics.textInset)
         }
         .disabled(session.loadState != .loaded || session.edge != nil)
         .focused($focus, equals: "bookmark")
@@ -164,6 +177,8 @@ struct ReaderMenu: View {
         } label: {
             Label("Pages", systemImage: "square.grid.3x1.below.line.grid.1x2")
                 .font(.callout)
+                .lineLimit(1)
+                .padding(.vertical, RowMetrics.textInset)
         }
         .disabled(session.loadState != .loaded || session.pageCount == 0)
         .focused($focus, equals: "browsePages")
@@ -172,96 +187,177 @@ struct ReaderMenu: View {
 
     // MARK: Settings
 
+    /// One row per setting, laid out like a settings form: the setting's
+    /// name on the left and its value on the right. A row with a chevron
+    /// opens its choices in place of the rows (`PanelChoiceList`); an
+    /// On/Off row flips with a click. Steppers (column width, auto-scroll,
+    /// brightness, contrast) keep their − value + buttons.
+    @ViewBuilder
     private var settingsPane: some View {
-        VStack(alignment: .leading, spacing: 36) {
-            ForEach(ReaderMenuOptions.items(for: settings)) { item in
-                row(item)
+        if let picker = session.menuPicker {
+            choiceList(picker)
+                .padding(.top, 20)
+        } else {
+            VStack(alignment: .leading, spacing: Space.s) {
+                ForEach(ReaderMenuOptions.items(for: settings)) { item in
+                    row(item)
+                }
+                Divider().padding(.vertical, Space.s)
+                picturePane
+                Divider().padding(.vertical, Space.s)
+                defaultsSection
             }
-            Divider()
-            picturePane
-            Divider()
-            defaultsSection
+            .padding(.top, 20)
         }
-        .padding(.top, 20)
     }
 
     @ViewBuilder
     private func row(_ item: ReaderMenuItem) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(item.title)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
+        switch item {
+        case .mode, .layout, .direction, .fit, .zoom, .background:
+            pickerRow(.setting(item))
+        case .firstPageAlone:
+            // The one pairing control. It is saved per series, so it also
+            // fixes a book whose spreads come out split (the old "Shift by
+            // one" did the same thing and was folded into it).
+            toggleRow(item, isOn: settings.showsFirstPageAlone) {
+                session.updateSettings(settings.withFirstPageAlone(!settings.showsFirstPageAlone))
+            }
+            PanelFootnote("If the two halves of a spread land on different screens, switch this.")
+                .accessibilityIdentifier("reader.menu.firstPageAlone.hint")
+        case .cropBorders:
+            toggleRow(item, isOn: settings.cropBorders) { set(\.cropBorders, !settings.cropBorders) }
+        case .splitWidePages:
+            toggleRow(item, isOn: settings.splitWidePages) { set(\.splitWidePages, !settings.splitWidePages) }
+            PanelFootnote("Shows a scanned two-page spread one half at a time, in reading order.")
+        case .webtoonWidth:
+            stepperSection(item.title) { widthStepper }
+        case .autoScroll:
+            stepperSection(item.title) { autoScrollControls }
+        }
+    }
+
+    private func toggleRow(_ item: ReaderMenuItem, isOn: Bool, toggle: @escaping () -> Void) -> some View {
+        PanelValueRow(title: item.title, isOn: isOn, toggle: toggle)
+            .focused($focus, equals: item.rawValue)
+            .accessibilityIdentifier("reader.menu.\(item.rawValue)")
+    }
+
+    /// A row that opens its choices.
+    private func pickerRow(_ picker: ReaderMenuPicker) -> some View {
+        let spec = pickerSpec(picker)
+        let value = spec.choices.first { $0.id == spec.selected }?.title ?? ""
+        return PanelValueRow(title: spec.title, value: value) {
+            session.menuPicker = picker
+            setFocus("\(spec.key).\(spec.selected)")
+        }
+        .focused($focus, equals: spec.key)
+        .accessibilityIdentifier("reader.menu.\(spec.key)")
+    }
+
+    /// The open row's choices, in place of the rows.
+    private func choiceList(_ picker: ReaderMenuPicker) -> some View {
+        let spec = pickerSpec(picker)
+        return PanelChoiceList(title: spec.title, choices: spec.choices, selected: spec.selected,
+                               identifierPrefix: "reader.menu.\(spec.key)", focusPrefix: spec.key,
+                               focus: $focus, footnote: spec.footnote) { key in
+            spec.pick(key)
+            closePicker()
+        }
+        .onAppear { setFocus("\(spec.key).\(spec.selected)") }
+    }
+
+    /// Back to the rows, with focus on the row that was open.
+    private func closePicker() {
+        guard let picker = session.menuPicker else { return }
+        session.menuPicker = nil
+        setFocus(pickerSpec(picker).key)
+    }
+
+    private struct PickerSpec {
+        /// Focus key of the row; identifiers are `reader.menu.<key>`.
+        let key: String
+        let title: String
+        let choices: [PanelChoice]
+        let selected: String
+        var footnote: String? = nil
+        let pick: (String) -> Void
+    }
+
+    private func pickerSpec(_ picker: ReaderMenuPicker) -> PickerSpec {
+        switch picker {
+        case .setting(let item):
             switch item {
             case .mode:
-                choices(item, ReadingMode.allCases.map { ($0, $0.rawValue, $0.title) },
-                        selected: settings.mode) { set(\.mode, $0) }
+                return spec(item, ReadingMode.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.mode) { set(\.mode, $0) }
             case .layout:
-                choices(item, PageLayout.allCases.map { ($0, $0.rawValue, $0.title) },
-                        selected: settings.layout) { set(\.layout, $0) }
+                return spec(item, PageLayout.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.layout) { set(\.layout, $0) }
             case .direction:
-                choices(item, ReadingDirection.allCases.map { ($0, $0.rawValue, $0.title) },
-                        selected: settings.direction) { set(\.direction, $0) }
-            case .firstPageAlone:
-                firstPageAloneControl
+                return spec(item, ReadingDirection.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.direction) { set(\.direction, $0) }
             case .fit:
-                choices(item, PageFit.allCases.map { ($0, $0.rawValue, $0.title) },
-                        selected: settings.fit) { set(\.fit, $0) }
-            case .cropBorders:
-                choices(item, [(true, "on", "On"), (false, "off", "Off")],
-                        selected: settings.cropBorders) { set(\.cropBorders, $0) }
+                return spec(item, PageFit.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.fit) { set(\.fit, $0) }
             case .zoom:
-                choices(item, ReaderMenuOptions.zoomScales.map { z in
-                            (z, ReaderMenuOptions.zoomLabel(z).replacingOccurrences(of: "×", with: "x"),
-                             ReaderMenuOptions.zoomLabel(z))
-                        },
-                        selected: settings.zoomScale) { set(\.zoomScale, $0) }
-            case .splitWidePages:
-                VStack(alignment: .leading, spacing: 10) {
-                    choices(item, [(true, "on", "On"), (false, "off", "Off")],
-                            selected: settings.splitWidePages) { set(\.splitWidePages, $0) }
-                    Text("Shows a scanned two-page spread one half at a time, in reading order.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                return spec(item, ReaderMenuOptions.zoomScales.map { z in
+                                (z, ReaderMenuOptions.zoomLabel(z).replacingOccurrences(of: "×", with: "x"),
+                                 ReaderMenuOptions.zoomLabel(z))
+                            },
+                            selected: settings.zoomScale) { set(\.zoomScale, $0) }
             case .background:
-                choices(item, ReaderBackground.allCases.map { ($0, $0.rawValue, $0.title) },
-                        selected: settings.background) { set(\.background, $0) }
-            case .webtoonWidth:
-                widthStepper
-            case .autoScroll:
-                autoScrollControls
+                return spec(item, ReaderBackground.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.background) { set(\.background, $0) }
+            case .firstPageAlone, .cropBorders, .splitWidePages, .webtoonWidth, .autoScroll:
+                // Toggles and steppers never open a list.
+                return PickerSpec(key: item.rawValue, title: item.title, choices: [], selected: "", pick: { _ in })
+            }
+        case .picture(let item):
+            let key = "picture.\(item.rawValue)"
+            switch item {
+            case .color:
+                return spec(key, item.title, PictureColorMode.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: picture.color) { set(\.picture.color, $0) }
+            case .sharpen:
+                return spec(key, item.title, PictureSharpen.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: picture.sharpen) { set(\.picture.sharpen, $0) }
+            case .upscaling:
+                return spec(key, item.title, PictureUpscaling.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: picture.upscaling,
+                            footnote: "Sharp (Lanczos) enlarges low-resolution scans to fill a 4K screen with crisper line art.") {
+                    set(\.picture.upscaling, $0)
+                }
+            case .brightness, .contrast:
+                return PickerSpec(key: key, title: item.title, choices: [], selected: "", pick: { _ in })
             }
         }
     }
 
-    private func choices<V: Hashable>(_ item: ReaderMenuItem, _ options: [(V, String, String)],
-                                      selected: V, select: @escaping (V) -> Void) -> some View {
-        HStack(spacing: 20) {
-            ForEach(options, id: \.1) { option in
-                let (value, key, title) = option
-                OptionButton(title: title, isSelected: value == selected) { select(value) }
-                    .focused($focus, equals: "\(item.rawValue).\(key)")
-                    .accessibilityIdentifier("reader.menu.\(item.rawValue).\(key)")
-            }
-        }
+    private func spec<V: Hashable>(_ item: ReaderMenuItem, _ options: [(V, String, String)], selected: V,
+                                   select: @escaping (V) -> Void) -> PickerSpec {
+        spec(item.rawValue, item.title, options, selected: selected, select: select)
     }
 
-    /// The one pairing control. It is saved per series, so it also fixes a
-    /// book whose spreads come out split (the old "Shift by one" did the
-    /// same thing and was folded into it).
-    private var firstPageAloneControl: some View {
+    private func spec<V: Hashable>(_ key: String, _ title: String, _ options: [(V, String, String)], selected: V,
+                                   footnote: String? = nil, select: @escaping (V) -> Void) -> PickerSpec {
+        PickerSpec(key: key, title: title,
+                   choices: options.map { PanelChoice(id: $0.1, title: $0.2) },
+                   selected: options.first { $0.0 == selected }?.1 ?? "",
+                   footnote: footnote,
+                   pick: { k in if let value = options.first(where: { $0.1 == k })?.0 { select(value) } })
+    }
+
+    /// A stepper keeps its title above it, like the Picture steppers.
+    private func stepperSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            choices(.firstPageAlone, [(true, "on", "On"), (false, "off", "Off")],
-                    selected: settings.showsFirstPageAlone) {
-                session.updateSettings(settings.withFirstPageAlone($0))
-            }
-            Text("If the two halves of a spread land on different screens, switch this.")
-                .font(.caption)
+            Text(title)
+                .font(.callout.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("reader.menu.firstPageAlone.hint")
+                .lineLimit(1)
+            content()
         }
+        .padding(.vertical, Space.xs)
     }
 
     private var widthStepper: some View {
@@ -270,7 +366,7 @@ struct ReaderMenu: View {
             Button {
                 set(\.webtoonWidth, ReaderMenuOptions.steppedWidth(width, by: -1))
             } label: {
-                Image(systemName: "minus").frame(width: 50)
+                Image(systemName: "minus").frame(width: 50).lineHeightLabel()
             }
             .disabled(!ReaderMenuOptions.canStepWidth(width, by: -1))
             .focused($focus, equals: "webtoonWidth.decrease")
@@ -285,7 +381,7 @@ struct ReaderMenu: View {
             Button {
                 set(\.webtoonWidth, ReaderMenuOptions.steppedWidth(width, by: 1))
             } label: {
-                Image(systemName: "plus").frame(width: 50)
+                Image(systemName: "plus").frame(width: 50).lineHeightLabel()
             }
             .disabled(!ReaderMenuOptions.canStepWidth(width, by: 1))
             .focused($focus, equals: "webtoonWidth.increase")
@@ -305,6 +401,8 @@ struct ReaderMenu: View {
                     session.webtoonInput?.toggleAutoScroll()
                 } label: {
                     Label("Start", systemImage: "play.fill")
+                        .lineLimit(1)
+                        .padding(.vertical, RowMetrics.textInset)
                 }
                 .focused($focus, equals: "autoScroll.start")
                 .accessibilityIdentifier("reader.menu.autoScroll.start")
@@ -312,7 +410,7 @@ struct ReaderMenu: View {
                 Button {
                     session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: -1))
                 } label: {
-                    Image(systemName: "tortoise").frame(width: 50)
+                    Image(systemName: "tortoise").frame(width: 50).lineHeightLabel()
                 }
                 .disabled(!WebtoonAutoScroll.canStep(level, by: -1))
                 .focused($focus, equals: "autoScroll.slower")
@@ -327,7 +425,7 @@ struct ReaderMenu: View {
                 Button {
                     session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: 1))
                 } label: {
-                    Image(systemName: "hare").frame(width: 50)
+                    Image(systemName: "hare").frame(width: 50).lineHeightLabel()
                 }
                 .disabled(!WebtoonAutoScroll.canStep(level, by: 1))
                 .focused($focus, equals: "autoScroll.faster")
@@ -350,10 +448,14 @@ struct ReaderMenu: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 20) {
-                Button("Set as Default") { model.setMenuDefaultReaderSettings(settings) }
+                Button { model.setMenuDefaultReaderSettings(settings) } label: {
+                    Text("Set as Default").lineLimit(1).padding(.vertical, RowMetrics.textInset)
+                }
                     .focused($focus, equals: "makeDefault")
                     .accessibilityIdentifier("reader.menu.makeDefault")
-                Button("Reset to Default") { session.updateSettings(profileDefault) }
+                Button { session.updateSettings(profileDefault) } label: {
+                    Text("Reset to Default").lineLimit(1).padding(.vertical, RowMetrics.textInset)
+                }
                     .focused($focus, equals: "resetToDefault")
                     .accessibilityIdentifier("reader.menu.resetToDefault")
             }
@@ -374,7 +476,7 @@ struct ReaderMenu: View {
     /// Brightness, contrast, color, sharpening and upscaling, below the
     /// layout settings in the same pane.
     private var picturePane: some View {
-        VStack(alignment: .leading, spacing: 36) {
+        VStack(alignment: .leading, spacing: Space.s) {
             Text("Picture")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -382,7 +484,9 @@ struct ReaderMenu: View {
             ForEach(ReaderMenuOptions.pictureItems(for: settings)) { item in
                 pictureRow(item)
             }
-            Button("Reset Picture") { set(\.picture, .default) }
+            Button { set(\.picture, .default) } label: {
+                Text("Reset Picture").lineLimit(1).padding(.vertical, RowMetrics.textInset)
+            }
                 .disabled(picture.isDefault)
                 .font(.callout)
                 .focused($focus, equals: "picture.reset")
@@ -397,51 +501,28 @@ struct ReaderMenu: View {
 
     @ViewBuilder
     private func pictureRow(_ item: PictureMenuItem) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(item.title)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
-            switch item {
-            case .brightness:
+        switch item {
+        case .brightness:
+            stepperSection(item.title) {
                 pictureStepper(item, value: picture.brightness, steps: PictureSettings.brightnessSteps,
                                label: PictureSettings.brightnessLabel(picture.brightness),
                                less: ("sun.min", "Darker"), more: ("sun.max", "Brighter")) {
                     set(\.picture.brightness, $0)
                 }
-            case .contrast:
+            }
+        case .contrast:
+            stepperSection(item.title) {
                 pictureStepper(item, value: picture.contrast, steps: PictureSettings.contrastSteps,
                                label: PictureSettings.contrastLabel(picture.contrast),
                                less: ("minus", "Less Contrast"), more: ("plus", "More Contrast")) {
                     set(\.picture.contrast, $0)
                 }
-            case .color:
-                pictureChoices(item, PictureColorMode.allCases.map { ($0, $0.rawValue, $0.title) },
-                               selected: picture.color) { set(\.picture.color, $0) }
-            case .sharpen:
-                pictureChoices(item, PictureSharpen.allCases.map { ($0, $0.rawValue, $0.title) },
-                               selected: picture.sharpen) { set(\.picture.sharpen, $0) }
-            case .upscaling:
-                VStack(alignment: .leading, spacing: 10) {
-                    pictureChoices(item, PictureUpscaling.allCases.map { ($0, $0.rawValue, $0.title) },
-                                   selected: picture.upscaling) { set(\.picture.upscaling, $0) }
-                    Text("Sharp (Lanczos) enlarges low-resolution scans to fill a 4K screen with crisper line art.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
-        }
-    }
-
-    private func pictureChoices<V: Hashable>(_ item: PictureMenuItem, _ options: [(V, String, String)],
-                                             selected: V, select: @escaping (V) -> Void) -> some View {
-        HStack(spacing: 20) {
-            ForEach(options, id: \.1) { option in
-                let (value, key, title) = option
-                OptionButton(title: title, isSelected: value == selected) { select(value) }
-                    .focused($focus, equals: "picture.\(item.rawValue).\(key)")
-                    .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).\(key)")
-            }
+        case .color, .sharpen:
+            pickerRow(.picture(item))
+        case .upscaling:
+            pickerRow(.picture(item))
+            PanelFootnote("Sharp (Lanczos) enlarges low-resolution scans to fill a 4K screen with crisper line art.")
         }
     }
 
@@ -452,7 +533,7 @@ struct ReaderMenu: View {
             Button {
                 set(PictureSettings.stepped(value, in: steps, by: -1))
             } label: {
-                Image(systemName: less.0).frame(width: 50)
+                Image(systemName: less.0).frame(width: 50).lineHeightLabel()
             }
             .disabled(!PictureSettings.canStep(value, in: steps, by: -1))
             .focused($focus, equals: "picture.\(item.rawValue).decrease")
@@ -467,7 +548,7 @@ struct ReaderMenu: View {
             Button {
                 set(PictureSettings.stepped(value, in: steps, by: 1))
             } label: {
-                Image(systemName: more.0).frame(width: 50)
+                Image(systemName: more.0).frame(width: 50).lineHeightLabel()
             }
             .disabled(!PictureSettings.canStep(value, in: steps, by: 1))
             .focused($focus, equals: "picture.\(item.rawValue).increase")
@@ -481,8 +562,11 @@ struct ReaderMenu: View {
     }
 }
 
-/// A selectable option: a ring that fills with a check when chosen. For a
-/// setting's value only; tabs that switch sections use `SectionTabBar`.
+/// A selectable option: a ring that fills with a check when chosen. Only
+/// for a short sort toggle beside a grid (Favorites); a setting in a menu
+/// or settings page is a `PanelValueRow`, and sections use `SectionTabBar`.
+/// One line, with `RowMetrics.textInset` above and below, so chips side by
+/// side always share one height.
 struct OptionButton: View {
     let title: String
     let isSelected: Bool
@@ -493,8 +577,11 @@ struct OptionButton: View {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 Text(title)
+                    .lineLimit(1)
+                    .fixedSize()
             }
             .font(.callout)
+            .padding(.vertical, RowMetrics.textInset)
         }
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
