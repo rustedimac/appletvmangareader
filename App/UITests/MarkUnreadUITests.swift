@@ -90,8 +90,9 @@ final class MarkUnreadUITests: XCTestCase {
         XCTAssertTrue(waitFor(chapter(id, 2), "value == 'unread'"), "chapter 2 still shows as read")
         XCTAssertEqual(chapter(id, 1).value as? String, "read", "other chapters keep their state")
         XCTAssertEqual(chapter(id, 3).value as? String, "in progress")
-        // The main button now points at the first unread chapter.
-        XCTAssertTrue(waitFor(app.buttons["series.continue"], "label CONTAINS 'Chapter 2'"))
+        // The main button still resumes the chapter in progress, as
+        // Kavita's continue point does (docs/PROGRESS_SYNC.md).
+        XCTAssertTrue(waitFor(app.buttons["series.continue"], "label CONTAINS 'Chapter 3'"))
     }
 
     func testMarkSeriesAsUnreadFromChapterLongPress() {

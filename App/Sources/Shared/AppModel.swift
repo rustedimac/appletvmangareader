@@ -24,6 +24,12 @@ final class AppModel {
     @ObservationIgnored var makeClient: (ServerConfig, ServerCredential?, Set<String>?, HTTPTransport) -> MangaServer = {
         MangaServerFactory.make(config: $0, credential: $1, categoryScope: $2, transport: $3)
     }
+    /// Signs in to Kavita with a username and password and returns the
+    /// login to keep (an auth key, never the password). UI tests swap in a
+    /// fake (see `AppModel+Demo.swift`).
+    @ObservationIgnored var kavitaSignIn: (ServerConfig, String, String, HTTPTransport) async throws -> ServerCredential = {
+        try await KavitaClient.signIn(baseURL: $0.baseURL, username: $1, password: $2, transport: $3)
+    }
 
     /// The app runs as the current Apple TV user, so `state` belongs to that
     /// user alone. See `AppleTVUsers/AppleTVUsers.swift`.
@@ -181,6 +187,39 @@ final class AppModel {
         update { $0.setSelectedCategories(ids, profile: profile, server: server.id) }
     }
 
+    /// Turns the server form into the login to save: signs in to Kavita
+    /// when a password was typed, names the owner of a pasted Kavita key,
+    /// and works out how a Suwayomi server takes a username and password.
+    func resolveCredential(_ draft: ServerDraft, for server: ServerConfig) async throws -> ServerCredential? {
+        if draft.needsKavitaSignIn {
+            return try await kavitaSignIn(server, draft.username, draft.password, transport)
+        }
+        guard var credential = draft.credential else { return nil }
+        switch server.kind {
+        case .kavita:
+            if credential.username == nil, let kavita = makeClient(server, credential, nil, transport) as? KavitaClient {
+                credential.username = try await kavita.username()
+            }
+        case .suwayomi:
+            if credential.suwayomiLogin == nil, let user = credential.username {
+                credential.suwayomiLogin = await SuwayomiClient.detectLoginMode(
+                    config: server, username: user, password: credential.password ?? "", transport: transport)
+            }
+        case .komga, .opds, .freeLibrary:
+            break
+        }
+        return credential
+    }
+
+    /// The Suwayomi user a login maps to, on servers with user accounts.
+    /// Nil when the server keeps one shared progress.
+    func suwayomiUser(_ server: ServerConfig, credential: ServerCredential?) async -> String? {
+        guard server.kind == .suwayomi, let client = makeClient(server, credential, nil, transport) as? SuwayomiClient else {
+            return nil
+        }
+        return await client.currentUser()
+    }
+
     func serverSettings(for server: ServerConfig) -> ProfileServerSettings {
         state.serverSettings(profile: activeProfile.id, server: server.id)
     }
@@ -222,9 +261,10 @@ final class AppModel {
     /// Writes the reader's position to this profile's saved state only. The
     /// reader calls it on every page change so a crash or a force quit
     /// never loses the page; `recordProgress` pushes to the server.
-    func recordLocalProgress(chapter: Chapter, page: Int, completed: Bool) {
+    func recordLocalProgress(chapter: Chapter, series: SeriesSummary, page: Int, completed: Bool) {
         let profile = activeProfile.id
-        update { $0.recordProgress(chapter.seriesRef, chapterID: chapter.id, page: page, completed: completed, profile: profile) }
+        update { $0.recordProgress(chapter.seriesRef, chapterID: chapter.id, page: page, completed: completed,
+                                   profile: profile, series: series) }
     }
 
     /// The page to open `chapter` at when none was asked for.
@@ -233,13 +273,30 @@ final class AppModel {
                                  local: state.progress(chapter.seriesRef, profile: activeProfile.id))
     }
 
-    /// Records progress locally, and on the server if this profile syncs there.
-    func recordProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async {
+    /// Records progress locally, and on the server if this profile syncs
+    /// there. A change the server doesn't confirm stays queued on the
+    /// series and is retried by `seriesDetail` / `syncPendingProgress`.
+    func recordProgress(chapter: Chapter, series: SeriesSummary, page: Int, completed: Bool) async {
         let profile = activeProfile.id
-        unreadCountOverrides[chapter.seriesRef] = nil
-        update { $0.recordProgress(chapter.seriesRef, chapterID: chapter.id, page: page, completed: completed, profile: profile) }
-        guard syncsProgress(to: chapter.seriesRef.serverID), let client = client(for: chapter.seriesRef) else { return }
-        try? await client.saveProgress(chapter: chapter, libraryID: libraryID, page: page, completed: completed)
+        let ref = chapter.seriesRef
+        unreadCountOverrides[ref] = nil
+        let now = Date()
+        let syncs = syncsProgress(to: ref.serverID)
+        update {
+            $0.recordProgress(ref, chapterID: chapter.id, page: page, completed: completed, profile: profile,
+                              now: now, series: series)
+            if syncs {
+                $0.queuePending(PendingProgress(chapterID: chapter.id, page: page, completed: completed, at: now),
+                                for: ref, profile: profile)
+            }
+        }
+        guard syncs, let client = client(for: ref) else { return }
+        do {
+            try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: completed)
+            update { $0.clearPending(ref, chapterIDs: [chapter.id], through: now, profile: profile) }
+        } catch {
+            // Stays queued.
+        }
     }
 
     /// Poster badge counts changed by "Mark as Unread" since the feeds
@@ -255,7 +312,12 @@ final class AppModel {
     func markUnread(_ chapters: [Chapter], in ref: SeriesRef) async throws {
         guard !chapters.isEmpty else { return }
         let profile = activeProfile.id
-        update { $0.markUnread(ref, chapterIDs: Set(chapters.map(\.id)), profile: profile) }
+        let ids = Set(chapters.map(\.id))
+        update {
+            $0.markUnread(ref, chapterIDs: ids, profile: profile)
+            // A queued push would mark them read again.
+            $0.clearPending(ref, chapterIDs: ids, through: .distantFuture, profile: profile)
+        }
         if syncsProgress(to: ref.serverID), let client = client(for: ref) {
             try await client.markUnread(chapters: chapters)
         }
@@ -279,6 +341,7 @@ final class AppModel {
     /// server when this profile syncs there.
     func markSeriesUnread(_ ref: SeriesRef) async throws {
         let profile = activeProfile.id
+        // Also drops any queued pushes for the series.
         update { $0.markSeriesUnread(ref, profile: profile) }
         if syncsProgress(to: ref.serverID), let client = client(for: ref) {
             try await client.markSeriesUnread(ref.seriesID)
@@ -294,13 +357,55 @@ final class AppModel {
             : detail.chapters.filter { !$0.isRead }.count
     }
 
-    /// Series detail with this profile's local progress applied when it
-    /// doesn't sync to the server.
+    /// Series detail with progress resolved for this profile: local
+    /// progress on top when it doesn't sync to the server; otherwise the
+    /// server's, merged with any queued local changes (latest wins), which
+    /// are pushed.
     func seriesDetail(_ ref: SeriesRef) async throws -> SeriesDetail {
         guard let client = client(for: ref) else { throw MangaError.notFound }
         let detail = try await client.seriesDetail(ref.seriesID)
-        if syncsProgress(to: ref.serverID) { return detail }
-        return state.applyingLocalProgress(to: detail, profile: activeProfile.id)
+        let profile = activeProfile.id
+        guard syncsProgress(to: ref.serverID) else {
+            return state.applyingLocalProgress(to: detail, profile: profile)
+        }
+        let pending = state.pending(ref, profile: profile)
+        guard !pending.isEmpty else { return detail }
+        let resolution = ProgressSync.reconcile(detail, pending: pending)
+        if !resolution.dropped.isEmpty {
+            update { state in
+                for p in resolution.dropped {
+                    state.clearPending(ref, chapterIDs: [p.chapterID], through: p.at, profile: profile)
+                }
+            }
+        }
+        for p in resolution.push {
+            guard let chapter = resolution.detail.chapters.first(where: { $0.id == p.chapterID }) else { continue }
+            do {
+                try await client.saveProgress(chapter: chapter, libraryID: detail.summary.libraryID,
+                                              page: p.page, completed: p.completed)
+                update { $0.clearPending(ref, chapterIDs: [p.chapterID], through: p.at, profile: profile) }
+            } catch {
+                break // Still offline; try again later.
+            }
+        }
+        return resolution.detail
+    }
+
+    /// Pushes queued progress for every series on servers this profile
+    /// syncs to. Home calls it before loading its rows.
+    func syncPendingProgress() async {
+        let profile = activeProfile.id
+        for server in servers where syncsProgress(to: server.id) {
+            for ref in state.seriesWithPending(server: server.id, profile: profile) {
+                guard activeProfile.id == profile else { return }
+                if (try? await seriesDetail(ref)) == nil { break } // Server unreachable.
+            }
+        }
+    }
+
+    /// This profile's own Continue Reading for a server it doesn't sync to.
+    func localContinueReading(for server: ServerConfig) -> [SeriesSummary] {
+        state.localContinueReading(server: server.id, profile: activeProfile.id)
     }
 
     // MARK: Reader settings
