@@ -21,6 +21,7 @@ struct SearchView: View {
             .searchable(text: $query, prompt: "Series title")
             .seriesNavigation()
         }
+        .resetsNavigationWhenLeft()
         .task(id: "\(model.contentKey)|\(query)") {
             // Results from before a server or library change are dropped.
             if searchedContentKey != model.contentKey { results = [] }

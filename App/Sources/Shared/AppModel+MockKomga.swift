@@ -14,7 +14,7 @@ extension AppModel {
             return previous(config, credential, scope, mock)
         }
         guard !servers.contains(where: { $0.name == "Test Komga" }) else { return }
-        saveServer(ServerConfig(kind: .komga, name: "Test Komga", baseURL: URL(string: "http://komga.test")!),
+        try? saveServer(ServerConfig(kind: .komga, name: "Test Komga", baseURL: URL(string: "http://komga.test")!),
                    credential: ServerCredential(apiKey: MockKomgaTransport.apiKey))
     }
 }

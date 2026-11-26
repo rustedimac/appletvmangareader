@@ -103,11 +103,22 @@ struct PagedReaderView: View {
         preloading = wanted
         let chapterID = session.chapter.id
         let reader = session
-        pipeline.prefetch(urls, server: reader.server, targetSize: screenPixels) { url, size in
+        let onSize: @Sendable (URL, PageSize) -> Void = { url, size in
             Task { @MainActor in
                 guard reader.chapter.id == chapterID, let index = byURL[url] else { return }
                 reader.reportSize(size, forPage: index)
             }
+        }
+        // Split wide pages decode at twice the screen width (see
+        // `PageImages.forHalves`), so preload them at that size.
+        let split = Set(session.navigator.layout.spreads.compactMap { $0.half == nil ? nil : $0.first })
+        let halfURLs = indices.filter { split.contains($0) }.compactMap { session.page($0)?.url }
+        let wholeURLs = urls.filter { !halfURLs.contains($0) }
+        pipeline.prefetch(wholeURLs, server: reader.server, targetSize: screenPixels, onPixelSize: onSize)
+        if !halfURLs.isEmpty {
+            pipeline.prefetch(halfURLs, server: reader.server,
+                              targetSize: CGSize(width: screenPixels.width * 2, height: screenPixels.height),
+                              onPixelSize: onSize)
         }
     }
 
@@ -133,6 +144,13 @@ struct PageImages {
     func load(_ url: URL) async throws -> LoadedImage {
         try await pipeline.load(url, server: server, targetSize: targetSize, scaling: .fit)
     }
+
+    /// For wide pages split in two: each half fills the screen, so the
+    /// whole image is decoded at twice the screen's width.
+    func forHalves() -> PageImages {
+        PageImages(pipeline: pipeline, server: server,
+                   targetSize: CGSize(width: targetSize.width * 2, height: targetSize.height))
+    }
 }
 
 /// One spread, laid out with `SpreadGeometry` so both pages share a height
@@ -146,19 +164,32 @@ private struct SpreadView: View {
 
     var body: some View {
         let order = spread.screenOrder(session.settings.direction)
-        let frames = SpreadGeometry.frames(for: order.map { session.size(ofPage: $0) },
-                                           in: Double(container.width), Double(container.height),
+        let half = spread.half
+        // A split page is laid out as half its width; the image inside is
+        // drawn at full width and shifted so only that half shows.
+        let sizes = order.map { page -> PageSize? in
+            guard half != nil, let size = session.size(ofPage: page) else { return session.size(ofPage: page) }
+            return PageSize(width: size.width / 2, height: size.height)
+        }
+        let frames = SpreadGeometry.frames(for: sizes, in: Double(container.width), Double(container.height),
                                            scale: Double(scale))
         ZStack(alignment: .topLeading) {
             ForEach(0..<min(order.count, frames.count), id: \.self) { i in
                 let index = order[i]
                 let frame = frames[i]
-                PageImageView(session: session, index: index, images: images)
-                    .frame(width: frame.width, height: frame.height)
+                PageImageView(session: session, index: index, images: half == nil ? images : images.forHalves(),
+                              half: half,
+                              framePixels: CGSize(width: frame.width * Double(scale) * (half == nil ? 1 : 2),
+                                                  height: frame.height * Double(scale)))
+                    .frame(width: frame.width * (half == nil ? 1 : 2), height: frame.height)
+                    .offset(x: half == .right ? -frame.width : 0)
+                    .frame(width: frame.width, height: frame.height, alignment: .topLeading)
+                    .clipped()
                     .offset(x: frame.x, y: frame.y)
             }
         }
         .frame(width: container.width, height: container.height, alignment: .topLeading)
+        .pictureAdjustments(session.settings.picture)
     }
 }
 
@@ -169,21 +200,35 @@ private struct PageImageView: View {
     let session: ReaderSession
     let index: Int
     let images: PageImages
+    /// Which half shows, for a split wide page (the view is laid out at
+    /// the page's full width either way).
+    var half: PageHalf? = nil
+    /// The device pixels this view covers, for Lanczos upscaling.
+    var framePixels: CGSize = .zero
 
     @State private var loaded: LoadedImage?
+    @State private var processed: CGImage?
 
     private var failure: String? { loaded == nil ? session.pageFailures[index] : nil }
 
-    /// Label, value ("loaded", "failed", "loading") and hint for VoiceOver and UI tests.
+    /// Label, value ("loaded", "failed", "loading", with ", adjusted" when
+    /// picture controls change the page) and hint for VoiceOver and UI tests.
     private var accessibilityText: (label: String, value: String, hint: String) {
-        if loaded != nil { return ("Page \(index + 1)", "loaded", "") }
+        let name = half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)"
+        let adjusted = session.settings.picture.isDefault ? "" : ", adjusted"
+        if loaded != nil { return (name, "loaded" + adjusted, "") }
         if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
-        return ("Page \(index + 1)", "loading", "")
+        return (name, "loading", "")
     }
 
     var body: some View {
         ZStack {
-            if let loaded {
+            if let processed {
+                Image(decorative: processed, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
+            } else if let loaded {
                 Image(uiImage: loaded.image)
                     .resizable()
                     .interpolation(.high)
@@ -199,13 +244,41 @@ private struct PageImageView: View {
         .accessibilityLabel(accessibilityText.label)
         .accessibilityValue(accessibilityText.value)
         .accessibilityHint(accessibilityText.hint)
-        .accessibilityIdentifier("reader.page.\(index)")
+        .accessibilityIdentifier(half.map { "reader.page.\(index).\($0.rawValue)" } ?? "reader.page.\(index)")
         .task(id: LoadKey(url: session.page(index)?.url, retry: session.pageRetryTokens[index] ?? 0)) { await load() }
+        .task(id: ProcessKey(loaded: loaded != nil, picture: session.settings.picture, pixels: framePixels)) {
+            await process()
+        }
     }
 
     private struct LoadKey: Hashable {
         var url: URL?
         var retry: Int
+    }
+
+    private struct ProcessKey: Hashable {
+        var loaded: Bool
+        var picture: PictureSettings
+        var pixels: CGSize
+    }
+
+    /// Sharpening and Lanczos upscaling (picture controls). Shows the
+    /// plain image until the processed one is ready.
+    private func process() async {
+        guard let loaded, let url = session.page(index)?.url,
+              let request = PictureProcessor.request(for: url, image: loaded.cgImage,
+                                                     picture: session.settings.picture,
+                                                     framePixels: framePixels) else {
+            processed = nil
+            return
+        }
+        if let hit = PictureProcessor.shared.cached(request) {
+            processed = hit
+            return
+        }
+        let result = await PictureProcessor.shared.process(loaded.cgImage, request)
+        guard !Task.isCancelled else { return }
+        processed = result
     }
 
     private func load() async {
@@ -254,7 +327,7 @@ struct PageFailureCard: View {
                 .foregroundStyle(.black)
                 .padding(.horizontal, 36)
                 .padding(.vertical, 10)
-                .background(.white, in: RoundedRectangle(cornerRadius: Radius.poster))
+                .background(.white, in: Capsule())
             Text("Press Select to retry")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -295,6 +368,9 @@ private struct PageIndicator: View {
         }
         let pages = session.visiblePages.map { $0 + 1 }
         guard let first = pages.first else { return "" }
+        if let half = session.currentSpread?.half {
+            return "\(first) / \(total) · \(half == .left ? "Left" : "Right") half"
+        }
         if let last = pages.last, last != first { return "\(first)–\(last) / \(total)" }
         return "\(first) / \(total)"
     }

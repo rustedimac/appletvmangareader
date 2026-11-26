@@ -24,6 +24,7 @@ struct LibraryView: View {
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: model.state.server($0.id) ?? $0) }
             .seriesNavigation()
         }
+        .resetsNavigationWhenLeft()
     }
 }
 

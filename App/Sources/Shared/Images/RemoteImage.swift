@@ -65,7 +65,7 @@ struct RemoteImage: View {
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: contentMode)
-                .accessibilityIdentifier("RemoteImage.loaded")
+                .accessibilityIdentifier("remoteImage.loaded")
         } else if failed || url == nil || server == nil {
             ZStack {
                 Rectangle().fill(.quaternary)
@@ -73,13 +73,13 @@ struct RemoteImage: View {
                     .font(.title)
                     .foregroundStyle(.secondary)
             }
-            .accessibilityIdentifier("RemoteImage.failed")
+            .accessibilityIdentifier("remoteImage.failed")
         } else {
             ZStack {
                 Rectangle().fill(.quaternary)
                 ProgressView()
             }
-            .accessibilityIdentifier("RemoteImage.loading")
+            .accessibilityIdentifier("remoteImage.loading")
         }
     }
 

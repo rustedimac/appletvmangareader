@@ -71,6 +71,7 @@ final class AppModel {
             if ProcessInfo.processInfo.arguments.contains("-demoFavorites") { model.installDemoFavoritesAndBookmarks() }
             if ProcessInfo.processInfo.arguments.contains("-freeLibrary") { model.installFreeLibraryDemo() }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
+            model.applyUITestingHomeLayout()
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
@@ -177,13 +178,22 @@ final class AppModel {
         secrets.credential(profile: activeProfile.id, server: server.id)
     }
 
-    func saveServer(_ server: ServerConfig, credential: ServerCredential?) {
+    /// Saves a server and the active profile's login for it. Throws when
+    /// the login couldn't be stored (it's read back to check), so the form
+    /// stays open with the error rather than closing as if it had saved.
+    func saveServer(_ server: ServerConfig, credential: ServerCredential?) throws {
+        // Store the login first: a failed write leaves the server list as it was.
+        try secrets.saveCredential(credential, profile: activeProfile.id, server: server.id)
         if state.server(server.id) == nil {
             update { $0.addServer(server) }
         } else {
             update { $0.updateServer(server) }
         }
-        secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
+        // Now that a new server is in the shared directory, offer the login
+        // as the one other Apple TV users fall back to.
+        if let credential, secrets is SharedFallbackSecretStore {
+            secrets.setCredential(credential, profile: activeProfile.id, server: server.id)
+        }
         resetClients()
     }
 

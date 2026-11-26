@@ -11,7 +11,8 @@ final class ContentRefreshUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-demoServers"]
+        // One row per server, so each server's posters can be checked.
+        app.launchArguments = ["-uiTesting", "-demoServers", "-homePerServer"]
         app.launch()
     }
 

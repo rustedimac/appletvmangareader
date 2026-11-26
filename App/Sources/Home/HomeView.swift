@@ -3,14 +3,18 @@ import MangaCore
 
 /// Home rows in the profile's order (`HomeLayout`): Continue Reading,
 /// Favorites, Recently Updated, Newly Added and Caught Up by default.
-/// Server feeds get one row per server. Rows can be reordered or hidden in
-/// "Customize Home", and long-pressing a Continue Reading poster removes it
-/// from that row.
+/// Server feeds are merged into one row each across servers (`HomeMerge`),
+/// or get one row per server if the profile picked that. Each server's
+/// rows show as soon as that server answers. Rows can be reordered or
+/// hidden in "Customize Home", and long-pressing a Continue Reading poster
+/// removes it from that row.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var sections: [HomeServerSection] = []
     @State private var loadedKey: String?
-    /// Only the newest reload may replace the rows.
+    /// The `contentKey` that `sections` belong to.
+    @State private var sectionsKey: String?
+    /// Only the newest reload may change the rows.
     @State private var generation = 0
     @State private var path = NavigationPath()
 
@@ -34,6 +38,7 @@ struct HomeView: View {
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
         }
+        .resetsNavigationWhenLeft(path: $path)
         // Runs on every appear too, so coming back from another tab (after
         // reading from Library, or changing servers in Settings) reloads.
         .task(id: model.contentKey) { await reload() }
@@ -44,13 +49,16 @@ struct HomeView: View {
     }
 
     private var isMultiServer: Bool { model.servers.count > 1 }
+    private var mergesServers: Bool { model.homeServerRows == .merged }
     /// Rows loaded for the current servers, libraries and profile. Rows
     /// from before a change in Settings aren't shown while the new ones
     /// load, so Home never mixes in a removed server or unticked library.
     private var currentSections: [HomeServerSection] {
-        loadedKey == model.contentKey ? sections : []
+        sectionsKey == model.contentKey ? sections : []
     }
-    private var isLoading: Bool { !model.servers.isEmpty && loadedKey != model.contentKey }
+    private var isLoading: Bool {
+        !model.servers.isEmpty && currentSections.isEmpty && loadedKey != model.contentKey
+    }
 
     @ViewBuilder
     private var content: some View {
@@ -90,15 +98,22 @@ struct HomeView: View {
         case .favorites:
             let favorites = model.favorites.map(\.series)
             if !favorites.isEmpty {
-                SeriesShelf(title: kind.title, series: favorites, identifier: "favorites", showsServer: true)
+                SeriesShelf(title: kind.title, series: favorites, identifier: "favorites", showsServer: isMultiServer)
             }
         case .caughtUp:
             let caughtUp = model.caughtUpSeries
             if !caughtUp.isEmpty {
-                SeriesShelf(title: kind.title, series: caughtUp, identifier: "caughtUp", showsServer: true)
+                SeriesShelf(title: kind.title, series: caughtUp, identifier: "caughtUp", showsServer: isMultiServer)
             }
         case .continueReading, .recentlyUpdated, .newlyAdded:
-            if let feed = kind.feed {
+            if let feed = kind.feed, mergesServers {
+                let merged = HomeMerge.merge(currentSections.map { series(feed, in: $0) })
+                if !merged.isEmpty {
+                    SeriesShelf(title: kind.title, series: merged, identifier: feed.rawValue,
+                                showsServer: isMultiServer,
+                                onRemove: feed == .continueReading ? removeFromContinueReading : nil)
+                }
+            } else if let feed = kind.feed {
                 ForEach(currentSections) { section in
                     let series = self.series(feed, in: section)
                     if !series.isEmpty {
@@ -135,22 +150,38 @@ struct HomeView: View {
         }
     }
 
+    /// Loads every server in parallel and shows each one's rows as soon
+    /// as they arrive, so a slow or offline server doesn't hold up the
+    /// others. Until a server answers, its rows from the last load stay
+    /// (same servers, libraries and logins only).
     private func reload() async {
         let key = model.contentKey
         generation += 1
         let mine = generation
         // Queued progress goes up first so Continue Reading is current.
         await model.syncPendingProgress()
-        let sources = model.servers.map { server in
+        guard !Task.isCancelled, mine == generation else { return }
+        let servers = model.servers
+        let sources = servers.map { server in
             let syncs = model.syncsProgress(to: server.id)
             return HomeSource(server: model.client(for: server), includeContinueReading: syncs,
                               localContinueReading: syncs ? [] : model.localContinueReading(for: server))
         }
-        let loaded = await HomeLoader.load(sources)
+        let previous = sectionsKey == key ? Dictionary(sections.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) : [:]
+        var fresh: [UUID: HomeServerSection] = [:]
+        if previous.isEmpty {
+            sections = []
+            sectionsKey = key
+        }
+        for await (_, section) in HomeLoader.each(sources) {
+            guard !Task.isCancelled, mine == generation else { return }
+            fresh[section.id] = section
+            sections = servers.compactMap { fresh[$0.id] ?? previous[$0.id] }
+            sectionsKey = key
+        }
         guard !Task.isCancelled, mine == generation else { return }
-        sections = loaded
         loadedKey = key
         // A Caught Up series that shows up with unread chapters isn't anymore.
-        model.pruneCaughtUp(seenIn: loaded.flatMap { $0.rows.flatMap(\.series) })
+        model.pruneCaughtUp(seenIn: sections.flatMap { $0.rows.flatMap(\.series) })
     }
 }
