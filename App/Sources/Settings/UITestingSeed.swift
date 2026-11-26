@@ -10,6 +10,7 @@ import MangaCore
 ///   "Kid" with PIN 3333 (not asked on open) and Horror hidden.
 /// - `-uiTestingSeed filtered`: one profile with the Horror genre hidden
 ///   (use with `-demoServers`; Horror is every fifth demo series).
+/// - `-uiTestingSeed multiAddress`: a Kavita server with a home and a remote address.
 /// - `-uiTestingTab settings`: start on the Settings tab.
 /// - `-uiTestingNavigationResetDelay 2`: tabs return to their top screen
 ///   after 2 s out of sight instead of 10 (`NavigationReset`).
@@ -68,6 +69,9 @@ enum UITestingSeed {
             if let me = s.profiles.first { s.setRequiresPINToOpen(true, profile: me.id) }
         case "filtered":
             if let me = s.profiles.first { s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"]), profile: me.id) }
+        case "multiAddress":
+            s.addServer(ServerConfig(kind: .kavita, name: "Home Kavita", baseURL: URL(string: "http://kavita.test")!,
+                                     alternateURLs: [URL(string: "https://kavita-remote.test")!]))
         default:
             return nil
         }

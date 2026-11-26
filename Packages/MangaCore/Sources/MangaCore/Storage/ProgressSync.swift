@@ -17,6 +17,17 @@ public struct PendingProgress: Codable, Hashable, Sendable {
         self.completed = completed
         self.at = at
     }
+
+    private enum CodingKeys: String, CodingKey { case chapterID, page, completed, at }
+
+    /// An undated change loses to the server's, but isn't thrown away.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        chapterID = try c.decode(String.self, forKey: .chapterID)
+        page = try c.decode(Int.self, forKey: .page)
+        completed = c.tolerant(.completed, default: false)
+        at = c.tolerant(.at, default: .distantPast)
+    }
 }
 
 /// Merges queued local progress with what a server reports. Latest wins,

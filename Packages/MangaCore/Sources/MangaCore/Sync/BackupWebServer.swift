@@ -150,22 +150,43 @@ public enum BackupHTTP {
 /// Serves `BackupHTTP` on the local network while it's running.
 public final class BackupWebServer: @unchecked Sendable {
     public let code: String
-    let export: @Sendable () async -> Data
-    let restore: @Sendable (Data) async -> Result<String, Error>
-    private var listener: NWListener?
-    private let queue = DispatchQueue(label: "BackupWebServer")
+    private let server: LocalHTTPServer
 
     public init(code: String = BackupHTTP.makeCode(),
                 export: @escaping @Sendable () async -> Data,
                 restore: @escaping @Sendable (Data) async -> Result<String, Error>) {
         self.code = code
-        self.export = export
-        self.restore = restore
+        self.server = LocalHTTPServer { request in
+            await BackupHTTP.route(request, code: code, export: { await export() }, restore: { await restore($0) })
+        }
     }
 
     /// Starts listening and returns the port. Tries `preferredPort` first so
     /// the address stays the same between visits.
     public func start(preferredPort: UInt16 = 8790) async throws -> UInt16 {
+        try await server.start(preferredPort: preferredPort)
+    }
+
+    public func stop() {
+        server.stop()
+    }
+}
+
+/// A minimal HTTP/1.1 server for pages the Apple TV serves to phones on the
+/// same network (Wi-Fi backup, phone setup). One request per connection.
+public final class LocalHTTPServer: @unchecked Sendable {
+    public typealias Handler = @Sendable (BackupHTTP.Request) async -> BackupHTTP.Response
+    let handler: Handler
+    private var listener: NWListener?
+    private let queue = DispatchQueue(label: "LocalHTTPServer")
+
+    public init(handler: @escaping Handler) {
+        self.handler = handler
+    }
+
+    /// Starts listening and returns the port. Tries `preferredPort` first
+    /// (0 picks any free port).
+    public func start(preferredPort: UInt16) async throws -> UInt16 {
         do {
             return try await listen(on: NWEndpoint.Port(rawValue: preferredPort) ?? .any)
         } catch {
@@ -223,10 +244,9 @@ public final class BackupWebServer: @unchecked Sendable {
             case .invalid(let status):
                 self.send(.text(status, "Bad request"), on: connection)
             case .complete(let request):
-                let code = self.code, export = self.export, restore = self.restore
+                let handler = self.handler
                 Task {
-                    let response = await BackupHTTP.route(request, code: code, export: { await export() },
-                                                          restore: { await restore($0) })
+                    let response = await handler(request)
                     self.send(response, on: connection)
                 }
             }

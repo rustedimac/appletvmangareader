@@ -121,7 +121,9 @@ public extension MangaServer {
     func filterGenres(in category: MangaCategory) async throws -> [String] { [] }
 
     func imageRequest(_ url: URL) -> URLRequest {
-        var request = URLRequest(url: url)
+        // Images follow the address API requests settled on (see
+        // `ServerAddressRouter`).
+        var request = URLRequest(url: ServerAddressRouter.shared.rewrite(url, for: config))
         request.timeoutInterval = 60
         return authorize(request)
     }
@@ -132,16 +134,23 @@ public enum MangaServerFactory {
     /// `categoryScope` limits the client to these library/category ids
     /// (`ProfileServerSettings.selectedCategoryIDs`); nil means everything.
     /// An active `contentFilter` wraps the client in `ContentFilteredServer`.
+    ///
+    /// A server with several addresses gets a `FailoverTransport`, so the
+    /// client reaches it through whichever address answers.
     public static func make(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>? = nil,
                             contentFilter: ContentFilter = .none,
-                            transport: HTTPTransport = URLSessionTransport()) -> MangaServer {
+                            transport: HTTPTransport = URLSessionTransport(),
+                            router: ServerAddressRouter = .shared) -> MangaServer {
         let client = makeUnfiltered(config: config, credential: credential, categoryScope: categoryScope,
-                                    transport: transport)
+                                    transport: transport, router: router)
         return ContentFilteredServer.wrapping(client, filter: contentFilter)
     }
 
     static func makeUnfiltered(config: ServerConfig, credential: ServerCredential?, categoryScope: Set<String>?,
-                               transport: HTTPTransport) -> MangaServer {
+                               transport: HTTPTransport, router: ServerAddressRouter) -> MangaServer {
+        let transport: HTTPTransport = config.hasAlternateAddresses
+            ? FailoverTransport(inner: transport, config: config, router: router)
+            : transport
         switch config.kind {
         case .kavita:
             return KavitaClient(config: config, apiKey: credential?.apiKey ?? "", categoryScope: categoryScope,

@@ -84,6 +84,21 @@ public struct ContentFilter: Codable, Hashable, Sendable {
 
     public static let none = ContentFilter()
 
+    enum CodingKeys: String, CodingKey {
+        case hiddenGenres, hiddenTags, maxAgeRating, hideUnrated
+    }
+
+    /// Tolerant, like all saved data (see `TolerantDecoding.swift`): a
+    /// missing field or an age rating from a newer build falls back
+    /// instead of losing the filter.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        hiddenGenres = Set(c.tolerantArray(.hiddenGenres) as [String])
+        hiddenTags = Set(c.tolerantArray(.hiddenTags) as [String])
+        maxAgeRating = c.tolerant(.maxAgeRating)
+        hideUnrated = c.tolerant(.hideUnrated, default: false)
+    }
+
     /// False when the filter hides nothing.
     public var isActive: Bool {
         !hiddenGenres.isEmpty || !hiddenTags.isEmpty || maxAgeRating != nil
