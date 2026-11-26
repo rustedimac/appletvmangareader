@@ -29,6 +29,8 @@ enum SavedFormats {
         "appstate-v1-2026-11-26",
         // Adds `showsProgressPercent` to browse (#55).
         "appstate-v1-2026-11-26-percent",
+        // Adds `unreadChapters` to series summaries (#74).
+        "appstate-v1-2026-11-26-unread-chapters",
         // Adds a profile's `contentFilter` and `requiresPINToOpen` (#19), and
         // a server's `alternateURLs` (#34).
         "appstate-v1-2026-11-26-filters",

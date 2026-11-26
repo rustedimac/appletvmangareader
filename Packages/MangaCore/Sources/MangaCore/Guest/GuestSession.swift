@@ -71,6 +71,7 @@ public struct GuestSession: Equatable, Sendable {
     public static func withoutServerProgress(_ series: SeriesSummary) -> SeriesSummary {
         var s = series
         s.unreadCount = nil
+        s.unreadChapters = nil
         s.pagesRead = nil
         return s
     }

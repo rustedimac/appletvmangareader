@@ -209,6 +209,11 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var chapterCount: Int?
     /// What `chapterCount` counts. Nil means chapters.
     public var countUnit: SeriesCountUnit?
+    /// Unread chapters for a listing that reports pages (Kavita), where
+    /// `unreadCount` is pages. Fetched per poster with the chapter count
+    /// (`SeriesCount.unread`), so the poster can show the same unread
+    /// badge as a Suwayomi poster. Nil when unknown.
+    public var unreadChapters: Int? = nil
     /// When the series got its place in a Home feed: last read (Continue
     /// Reading), added (Newly Added) or last new chapter (Recently
     /// Updated). Set by feeds when the server says, so rows from several
@@ -427,5 +432,6 @@ extension SeriesSummary {
         chapterCount = c.tolerant(.chapterCount)
         countUnit = c.tolerant(.countUnit)
         feedDate = c.tolerant(.feedDate)
+        unreadChapters = c.tolerant(.unreadChapters)
     }
 }
