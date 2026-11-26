@@ -414,9 +414,9 @@ final class LibraryBrowsingUITests: XCTestCase {
         remote.press(.select)
         XCTAssertTrue(app.descendants(matching: .any)["reader.paged"].waitForExistence(timeout: 15))
         remote.press(.down)
-        let ltr = app.descendants(matching: .any)["reader.menu.direction.leftToRight"]
-        XCTAssertTrue(ltr.waitForExistence(timeout: 10), "reader menu didn't open")
-        XCTAssertTrue(ltr.isSelected, "series opened with the library's direction")
+        let direction = app.descendants(matching: .any)["reader.menu.direction"]
+        XCTAssertTrue(direction.waitForExistence(timeout: 10), "reader menu didn't open")
+        XCTAssertEqual(direction.value as? String, "Left to Right", "series opened with the library's direction")
     }
 
     // MARK: Home

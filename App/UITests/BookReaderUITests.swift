@@ -118,13 +118,18 @@ final class BookReaderUITests: XCTestCase {
         remote.press(.select)
         wait(size, "label != '\(start)'")
 
-        moveFocus(to: "book.menu.theme.sepia")
-        remote.press(.select)
-        wait(element("book.menu.theme.sepia"), "selected == true")
+        let menu = MenuRowDriver(app: app, prefix: "book.menu")
+        menu.pick("theme.sepia")
+        menu.expectValue("theme", "Sepia")
 
-        moveFocus(to: "book.menu.columns.1")
-        remote.press(.select)
-        wait(element("book.menu.columns.1"), "selected == true")
+        menu.pick("columns.1")
+        menu.expectValue("columns", "One")
+
+        // Menu goes back from an open list first, then closes the drawer.
+        menu.press("font")
+        XCTAssertTrue(element("book.menu.font.title").waitForExistence(timeout: 5))
+        remote.press(.menu)
+        wait(element("book.menu.font"), "hasFocus == true")
 
         remote.press(.menu)
         wait(element("book.menu"), "exists == false")

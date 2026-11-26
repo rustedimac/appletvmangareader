@@ -42,6 +42,18 @@ final class DesignLayoutUITests: XCTestCase {
         audit(app, "settings-reader-defaults")
         back(app, to: "settings.readerDefaults")
 
+        select(app.element("settings.customizeHome"))
+        XCTAssertTrue(app.element("homeLayout.serverRows").waitForExistence(timeout: 5))
+        audit(app, "settings-customize-home")
+        focus(app.element("browse.libraryDefaults"), .down, maxPresses: 20)
+        audit(app, "settings-customize-home-bottom")
+        back(app, to: "settings.customizeHome")
+
+        select(app.element("settings.controls"))
+        XCTAssertTrue(app.element("controls.tabs").waitForExistence(timeout: 5))
+        audit(app, "settings-controls")
+        back(app, to: "settings.controls")
+
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.element("serverEditor.address").waitForExistence(timeout: 5))
         audit(app, "settings-add-server")
@@ -194,6 +206,13 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.8)
         audit(app, "reader-menu-settings")
+        // A row's choices open in place of the rows.
+        remote.press(.select)
+        XCTAssertTrue(app.element("reader.menu.mode.title").waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.6)
+        audit(app, "reader-menu-choices")
+        remote.press(.menu)
+        XCTAssertTrue(app.element("reader.menu.mode").waitForExistence(timeout: 5))
         let chapters = app.element("reader.menu.tab.chapters")
         focus(app.element("reader.menu.tab.settings"), .up)
         if focus(chapters, .right) {
@@ -267,6 +286,8 @@ final class DesignLayoutUITests: XCTestCase {
             }
         }
 
+        assertUniformRowHeights(app, name, screen: screen, file: file, line: line)
+
         // Rows in a settings page stay inside the form column.
         if let form = snapshot(of: app.element("settingsPage.form")) {
             for cell in all(in: form, where: { $0.elementType == .cell }) where !cell.frame.isEmpty {
@@ -302,8 +323,13 @@ final class DesignLayoutUITests: XCTestCase {
     /// the whole tree: querying each element separately costs a round trip
     /// per element and made this test slow on CI.
     private func focusables(_ app: XCUIApplication, in screen: CGRect) -> [(label: String, frame: CGRect)] {
+        focusableSnapshots(app, in: screen).map { (describe($0), $0.frame) }
+    }
+
+    /// The fully visible focusable elements, one per frame.
+    private func focusableSnapshots(_ app: XCUIApplication, in screen: CGRect) -> [XCUIElementSnapshot] {
         guard let root = snapshot(of: app) else { return [] }
-        var result: [(String, CGRect)] = []
+        var result: [XCUIElementSnapshot] = []
         // A segmented control is one focus target; its segments report
         // frames that overlap each other and the control, so measure only
         // the control.
@@ -318,10 +344,39 @@ final class DesignLayoutUITests: XCTestCase {
             let f = element.frame
             // Only fully visible elements; ones scrolled past the edge are fine.
             guard !f.isEmpty, screen.contains(f) else { continue }
-            if result.contains(where: { $0.1 == f }) { continue }
-            result.append((describe(element), f))
+            if result.contains(where: { $0.frame == f }) { continue }
+            result.append(element)
         }
         return result
+    }
+
+    /// Focusable items side by side (a row of buttons or chips) share one
+    /// height: a label that wraps to two lines makes its platter taller
+    /// than its neighbours, which John called unacceptable (2026-11-26).
+    /// Items are "side by side" when their vertical centers are within a
+    /// third of the smaller height and they don't contain each other. The
+    /// focused item grows (about 10 %), so it's left out.
+    private func assertUniformRowHeights(_ app: XCUIApplication, _ name: String, screen: CGRect,
+                                         file: StaticString = #filePath, line: UInt = #line) {
+        let scale = screen.width / 1920
+        let items = focusableSnapshots(app, in: screen).filter {
+            !$0.hasFocus && $0.frame.minY >= 140 * scale && $0.elementType != .cell
+        }
+        for i in items.indices {
+            for j in items.indices where j > i {
+                let a = items[i].frame, b = items[j].frame
+                if a.contains(b) || b.contains(a) { continue }
+                // Side by side, not stacked: no horizontal overlap.
+                guard a.maxX <= b.minX + 2 * scale || b.maxX <= a.minX + 2 * scale else { continue }
+                let shorter = min(a.height, b.height)
+                guard abs(a.midY - b.midY) < shorter / 3 else { continue }
+                XCTAssertLessThanOrEqual(abs(a.height - b.height), 4 * scale,
+                                         "[\(name)] \(describe(items[i])) is \(Int(a.height / scale)) pt tall but "
+                                         + "\(describe(items[j])) beside it is \(Int(b.height / scale)) pt: "
+                                         + "labels side by side must stay on one line",
+                                         file: file, line: line)
+            }
+        }
     }
 
     private func snapshot(of element: XCUIElement) -> XCUIElementSnapshot? {
