@@ -253,6 +253,100 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.caption.'")).count, 0)
     }
 
+    // MARK: Progress percentage
+
+    private var titlePercent: XCUIElement { app.staticTexts["poster.titlePercent.1"] }
+
+    /// Flips "Show Percentage Read" in Sort & View.
+    private func toggleShowsPercent() {
+        let options = app.buttons["library.options"]
+        moveFocus(to: options)
+        remote.press(.select)
+        let toggle = app.descendants(matching: .any)["libraryOptions.showsPercent"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        moveFocus(to: toggle)
+        let before = "\(toggle.value ?? "")"
+        remote.press(.select)
+        wait(toggle, "value != '\(before)'")
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["category.all"].waitForExistence(timeout: 10))
+    }
+
+    func testPercentageNextToProgressBar() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titlePercent.waitForExistence(timeout: 10), "percentage next to the bar (on by default)")
+        XCTAssertEqual(titlePercent.label, "0%")
+        // Same row as the bar, to its right, inside the poster's width.
+        let poster = app.buttons["poster.1"]
+        XCTAssertGreaterThan(titlePercent.frame.minX, titleProgress.frame.maxX - 1, "number sits right of the bar")
+        XCTAssertLessThanOrEqual(titlePercent.frame.maxX, poster.frame.maxX + 1, "number doesn't run past the poster")
+        XCTAssertGreaterThan(titleProgress.frame.width, 60, "bar keeps most of the width")
+        XCTAssertLessThan(abs(titlePercent.frame.midY - titleProgress.frame.midY), 20, "number and bar share a row")
+        toggleShowsPercent()
+        XCTAssertTrue(titleProgress.waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertFalse(titlePercent.exists, "setting off hides the number, keeps the bar")
+    }
+
+    func testPercentageFitsOnSmallPosters() {
+        launch()
+        openKavitaLibrary()
+        pickOption("libraryOptions.density.compact")
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titlePercent.waitForExistence(timeout: 10))
+        let posters = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.'")).allElementsBoundByIndex
+        for id in ["1", "2", "3"] {
+            let percent = app.staticTexts["poster.titlePercent.\(id)"]
+            let bar = app.descendants(matching: .any)["poster.titleProgress.\(id)"]
+            let poster = app.buttons["poster.\(id)"]
+            guard percent.exists, poster.exists else { continue }
+            XCTAssertEqual(percent.label, "0%")
+            XCTAssertLessThanOrEqual(percent.frame.maxX, poster.frame.maxX + 1, "poster \(id): number clipped")
+            XCTAssertGreaterThan(bar.frame.width, 30, "poster \(id): bar squeezed away")
+            // The next poster in the row starts after this one's number.
+            if let next = posters.first(where: { $0.identifier != poster.identifier
+                && abs($0.frame.minY - poster.frame.minY) < 5 && $0.frame.minX > poster.frame.minX }) {
+                XCTAssertLessThan(percent.frame.maxX, next.frame.minX, "poster \(id): number runs into the next poster")
+            }
+        }
+    }
+
+    /// John, 2026-11-26: "after reading, it does not get reflected on the
+    /// progress bar". With -demoProgress, series 1 (4 chapters) starts
+    /// with 2 read and chapter 3 at page 6.
+    func testProgressBarUpdatesAfterReading() {
+        launch(["-demoProgress"])
+        openKavitaLibrary()
+        pickOption("libraryOptions.caption.progress")
+        XCTAssertTrue(titlePercent.waitForExistence(timeout: 10))
+        XCTAssertEqual(titlePercent.label, "50%")
+        XCTAssertEqual(titleProgress.value as? String, "50 percent")
+
+        let poster = app.buttons["poster.1"]
+        moveFocus(to: poster)
+        remote.press(.select)
+        let resume = app.buttons["series.continue"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 10))
+        moveFocus(to: resume)
+        remote.press(.select)
+        XCTAssertTrue(app.descendants(matching: .any)["reader.paged"].waitForExistence(timeout: 15))
+        // Read to the end of chapter 3 (right to left: Left turns forward).
+        let transition = app.descendants(matching: .any)["reader.transition"]
+        for _ in 0..<20 where !transition.exists {
+            remote.press(.left)
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        XCTAssertTrue(transition.waitForExistence(timeout: 5), "never reached the end of chapter 3")
+        remote.press(.menu) // close the reader
+        XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10))
+        remote.press(.menu) // back to the grid
+        XCTAssertTrue(poster.waitForExistence(timeout: 10))
+        wait(titlePercent, "label == '75%'", timeout: 15)
+        wait(titleProgress, "value == '75 percent'")
+    }
+
     func testLibraryReadingDirectionOpensSeriesThatWay() {
         launch()
         openKavitaLibrary()

@@ -56,6 +56,7 @@ extension AppModel {
     func noteSeriesDetail(_ detail: SeriesDetail, summary: SeriesSummary) {
         seriesCounts.record(SeriesCount(chapters: detail.chapters, seriesFormat: detail.summary.format ?? summary.format),
                             for: summary.ref)
+        noteProgress(of: detail, for: summary.ref)
         var prefs = browsePreferences
         let before = prefs.caughtUp
         prefs.noteCaughtUp(detail, summary: summary, now: Date())
