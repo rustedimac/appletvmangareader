@@ -46,7 +46,8 @@ final class ServersUITests: XCTestCase {
         XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         XCTAssertTrue(app.element("serverEditor.sync").exists)
         XCTAssertTrue(app.element("serverEditor.save").isEnabled)
-        select(app.element("serverEditor.remove"))
+        XCTAssertTrue(focus(app.element("serverEditor.remove"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         select(app.element("serverEditor.confirmRemove"), .right)
 
         XCTAssertTrue(app.element("settings.server.Test Kavita").waitForExistence(timeout: 5))
@@ -71,7 +72,7 @@ final class ServerAddressesUITests: XCTestCase {
         let app = XCUIApplication.launched(seed: "multiAddress", tab: "settings")
         select(app.element("settings.server.Home Kavita"))
         let other = app.element("serverEditor.altAddress.0")
-        XCTAssertTrue(other.waitForExistence(timeout: 10))
+        XCTAssertTrue(focus(other, maxPresses: 16), "below the login")
         XCTAssertEqual(other.value as? String, "https://kavita-remote.test")
         XCTAssertEqual(app.element("serverEditor.address").value as? String, "http://kavita.test")
         XCTAssertTrue(app.element("serverEditor.addAddress").exists)
@@ -82,7 +83,8 @@ final class ServerAddressesUITests: XCTestCase {
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.element("serverEditor.address").waitForExistence(timeout: 5))
         XCTAssertFalse(app.element("serverEditor.altAddress.0").exists)
-        select(app.element("serverEditor.addAddress"))
+        XCTAssertTrue(focus(app.element("serverEditor.addAddress"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         XCTAssertTrue(app.element("serverEditor.altAddress.0").waitForExistence(timeout: 5))
     }
 
@@ -91,7 +93,8 @@ final class ServerAddressesUITests: XCTestCase {
     func testPhoneSetupFillsTheForm() throws {
         let app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.addServer"))
-        select(app.element("serverEditor.phoneSetup"), .up)
+        XCTAssertTrue(focus(app.element("serverEditor.phoneSetup"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
 
         let address = app.element("phoneSetup.address")
         let problem = app.element("phoneSetup.problem")

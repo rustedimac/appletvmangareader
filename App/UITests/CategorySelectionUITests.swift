@@ -30,15 +30,18 @@ final class CategorySelectionUITests: XCTestCase {
         XCTAssertEqual(all.value as? String, "on")
         XCTAssertEqual(short.value as? String, "on")
 
-        select(short)
+        XCTAssertTrue(focus(short, maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         XCTAssertTrue(waitUntil(short, "value == 'off'"))
 
         // A connection test keeps the ticks.
-        select(app.element("serverEditor.test"))
+        XCTAssertTrue(focus(app.element("serverEditor.test"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         XCTAssertTrue(short.waitForExistence(timeout: 10))
         XCTAssertTrue(waitUntil(short, "value == 'off'"))
 
-        select(app.element("serverEditor.save"))
+        XCTAssertTrue(focus(app.element("serverEditor.save"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         let row = app.element("settings.server.Demo Suwayomi")
         XCTAssertTrue(row.waitForExistence(timeout: 10))
 
@@ -54,7 +57,8 @@ final class CategorySelectionUITests: XCTestCase {
         select(app.element("settings.server.Demo Suwayomi"))
         let toggleAll = app.element("categories.toggleAll")
         XCTAssertTrue(toggleAll.waitForExistence(timeout: 10))
-        select(toggleAll) // "Select None"
+        XCTAssertTrue(focus(toggleAll, maxPresses: 16))
+        XCUIRemote.shared.press(.select) // "Select None"
         XCTAssertTrue(waitUntil(app.element("categories.item.all"), "value == 'off'"))
         XCTAssertFalse(app.element("serverEditor.save").isEnabled)
         select(toggleAll) // "Select All"

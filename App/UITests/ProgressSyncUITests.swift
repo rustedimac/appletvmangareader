@@ -61,7 +61,8 @@ final class ProgressSyncUITests: XCTestCase {
         enter("secret", into: app.element("serverEditor.password"))
         let save = app.element("serverEditor.save")
         XCTAssertTrue(save.isEnabled)
-        select(save)
+        XCTAssertTrue(focus(save, maxPresses: 16))
+        remote.press(.select)
 
         // Back in Settings; the editor now shows who the profile is.
         let row = app.element("settings.server.Demo Kavita")
@@ -80,7 +81,8 @@ final class ProgressSyncUITests: XCTestCase {
         openDemoKavitaEditor()
         enter("reader", into: app.element("serverEditor.username"))
         enter("nope", into: app.element("serverEditor.password"))
-        select(app.element("serverEditor.save"))
+        XCTAssertTrue(focus(app.element("serverEditor.save"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         XCTAssertTrue(app.element("serverEditor.error").waitForExistence(timeout: 10),
                       "a rejected sign-in stays on the form with an error")
         XCTAssertTrue(app.element("serverEditor.save").exists)

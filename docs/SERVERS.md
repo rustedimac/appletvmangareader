@@ -67,7 +67,7 @@ Addresses**; clear a field to remove it.
 
 ## Set up from your phone
 
-The server editor's first row, **Set Up from Your Phone**, opens a screen
+**Set Up from Your Phone**, under the login in the server editor, opens a screen
 with a QR code. While it's open, the Apple TV serves a small form at
 `http://<tv-address>:8791/<six-digit code>/` (code new on every visit, any
 other path is a 404). The phone fills in type, name, addresses and the

@@ -51,7 +51,7 @@ final class DesignLayoutUITests: XCTestCase {
         // No login yet, so Kavita offers username and password sign-in.
         XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         audit(app, "settings-edit-server")
-        focus(app.element("serverEditor.remove"))
+        focus(app.element("serverEditor.remove"), maxPresses: 16)
         audit(app, "settings-edit-server-bottom")
     }
 
@@ -100,8 +100,8 @@ final class DesignLayoutUITests: XCTestCase {
         XCTAssertTrue(title.exists, "\(name) has no settings page title", file: file, line: line)
 
         for step in ["top", "bottom", "back-to-top"] {
-            if step == "bottom" { focus(last, maxPresses: 14) }
-            if step == "back-to-top" { focus(first, .up, maxPresses: 14) }
+            if step == "bottom" { focus(last, maxPresses: 18) }
+            if step == "back-to-top" { focus(first, .up, maxPresses: 18) }
             Thread.sleep(forTimeInterval: 0.8)
             audit(app, "\(name)-\(step)", file: file, line: line)
             let form = app.element("settingsPage.form").frame

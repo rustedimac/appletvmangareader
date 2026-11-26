@@ -26,19 +26,6 @@ struct ServerEditorView: View {
 
     var body: some View {
         Form {
-            Section {
-                NavigationLink {
-                    PhoneSetupView(context: PhoneSetupHTTP.Context(draft: draft, kindLocked: editing != nil),
-                                   saveLabel: editing == nil ? "Add Server" : "Save",
-                                   receive: receiveFromPhone)
-                } label: {
-                    Label("Set Up from Your Phone", systemImage: "qrcode")
-                }
-                .accessibilityIdentifier("serverEditor.phoneSetup")
-            } footer: {
-                Text("Scan a code with your phone and type the address and login there instead of with the remote.")
-            }
-
             if editing == nil {
                 Section(settingsHeader: "Server Type") {
                     Picker("Type", selection: $draft.kind) {
@@ -70,30 +57,6 @@ struct ServerEditorView: View {
             } footer: {
                 Text(ServerDraft.addressHelp(for: draft.kind))
                     .accessibilityIdentifier("serverEditor.addressHelp")
-            }
-
-            Section {
-                ForEach(Array(draft.alternateAddresses.indices), id: \.self) { index in
-                    TextField("Address \(index + 2), e.g. https://manga.example.com", text: alternateBinding(index))
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("serverEditor.altAddress.\(index)")
-                        .settingsTextFieldRow()
-                }
-                if draft.canAddAlternateAddress {
-                    Button {
-                        draft.alternateAddresses.append("")
-                    } label: {
-                        Label("Add Another Address", systemImage: "plus")
-                    }
-                    .accessibilityIdentifier("serverEditor.addAddress")
-                }
-            } header: {
-                SettingsHeader("Other Addresses")
-            } footer: {
-                Text("For when the first address doesn't answer, such as a remote or reverse-proxy address for when you're away from home. The app uses the first one that answers, in this order. Clear an address to remove it.")
             }
 
             Section {
@@ -159,6 +122,43 @@ struct ServerEditorView: View {
             } footer: {
                 Text(loginFooter)
                     .accessibilityIdentifier("serverEditor.loginFooter")
+            }
+
+            Section {
+                NavigationLink {
+                    PhoneSetupView(context: PhoneSetupHTTP.Context(draft: draft, kindLocked: editing != nil),
+                                   saveLabel: editing == nil ? "Add Server" : "Save",
+                                   receive: receiveFromPhone)
+                } label: {
+                    Label("Set Up from Your Phone", systemImage: "qrcode")
+                }
+                .accessibilityIdentifier("serverEditor.phoneSetup")
+            } footer: {
+                Text("Or scan a code with your phone and type the address and login there instead of with the remote.")
+            }
+
+            Section {
+                ForEach(Array(draft.alternateAddresses.indices), id: \.self) { index in
+                    TextField("Address \(index + 2), e.g. https://manga.example.com", text: alternateBinding(index))
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("serverEditor.altAddress.\(index)")
+                        .settingsTextFieldRow()
+                }
+                if draft.canAddAlternateAddress {
+                    Button {
+                        draft.alternateAddresses.append("")
+                    } label: {
+                        Label("Add Another Address", systemImage: "plus")
+                    }
+                    .accessibilityIdentifier("serverEditor.addAddress")
+                }
+            } header: {
+                SettingsHeader("Other Addresses")
+            } footer: {
+                Text("For when the first address doesn't answer, such as a remote or reverse-proxy address for when you're away from home. The app uses the first one that answers, in this order. Clear an address to remove it.")
             }
 
             if draft.kind.canSyncProgress {
