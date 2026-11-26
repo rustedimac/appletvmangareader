@@ -175,20 +175,20 @@ final class ReaderFitZoomUITests: XCTestCase {
         expectIndicator("1 / 6")
     }
 
-    func testZoomedPageReadsRowByRowThenTurns() {
+    func testZoomedPageTurnsAtTheEdgeWithoutDroppingARow() {
         launch()
         holdToZoom()
-        expectViewport("zoom 2.00")
-        // Left pans; at the left edge it drops a row and goes back right;
-        // only at the bottom-left corner does it turn.
-        var turned = false
-        for _ in 0..<10 {
-            remote.press(.left)
-            Thread.sleep(forTimeInterval: 0.5)
-            if indicator.label == "2–3 / 6" { turned = true; break }
-        }
-        XCTAssertTrue(turned, "Never turned the page; viewport \(indicator.value as? String ?? "")")
-        // The zoom resets on the new spread.
+        expectViewport("zoom 2.00 x 0.50 y 0.50")
+        // Up to the top half, then left to the left edge.
+        remote.press(.up)
+        expectViewport("y 0.00")
+        remote.press(.left)
+        expectViewport("x 0.00 y 0.00")
+        expectIndicator("1 / 6")
+        // Left again, at the left edge: the page turns (no drop to the
+        // next row), and the zoom resets on the new spread.
+        remote.press(.left)
+        expectIndicator("2–3 / 6")
         expectViewport("zoom 1.00 x 1.00 y 0.00")
         XCTAssertFalse(element("reader.zoom").exists)
     }

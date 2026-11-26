@@ -35,6 +35,11 @@ struct PagedReaderView: View {
     /// start (top) or, reading backward, at its end (bottom).
     @State private var arrivedForward = true
     @State private var container: CGSize = .zero
+    /// The viewport when a finger went down on the touch surface.
+    @State private var dragStart: PagedViewport?
+    /// When a touch-surface drag last moved the page; the swipe's own
+    /// move command arrives around then and is ignored.
+    @State private var lastDragMove: Date = .distantPast
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
     @Environment(\.imagePipeline) private var pipeline
@@ -66,6 +71,9 @@ struct PagedReaderView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
+            .background {
+                TouchSurfacePan(isEnabled: canDrag, onChanged: drag, onEnded: { dragStart = nil })
+            }
             .onChange(of: geo.size, initial: true) { _, size in container = size }
         }
         .ignoresSafeArea()
@@ -168,7 +176,38 @@ struct PagedReaderView: View {
 
     // MARK: Remote
 
+    // MARK: Touch surface
+
+    /// Points the finger travels before the page starts to follow, so a
+    /// click on the edge of the touch surface doesn't nudge the page.
+    private static let dragThreshold: CGFloat = 40
+    /// Touch-surface points per screen point; a full swipe moves a bit
+    /// more than a screen, like the vertical reader.
+    private static let dragGain = 1.5
+
+    /// A finger on the touch surface moves the page freely while there is
+    /// more of it than fits (zoomed in, Fit Width or Fit Height).
+    private var canDrag: Bool {
+        session.edge == nil && !session.isMenuPresented && session.currentSpread != nil
+            && viewport.canDrag(canvas: currentCanvas, screen: screen)
+    }
+
+    private func drag(_ translation: CGSize) {
+        guard canDrag else { return }
+        let start = dragStart ?? viewport
+        dragStart = start
+        guard max(abs(translation.width), abs(translation.height)) > Self.dragThreshold else { return }
+        let next = start.dragged(dx: Double(translation.width), dy: Double(translation.height),
+                                 gain: Self.dragGain, canvas: currentCanvas, screen: screen)
+        guard next != viewport else { return }
+        viewport = next
+        lastDragMove = Date()
+    }
+
     private func handleMove(_ direction: MoveCommandDirection) {
+        // The swipe that just dragged the page also arrives as a move
+        // command; don't pan or turn a second time for it.
+        if Date().timeIntervalSince(lastDragMove) < 0.35 { return }
         let press: PanDirection
         switch direction {
         case .left: press = .left

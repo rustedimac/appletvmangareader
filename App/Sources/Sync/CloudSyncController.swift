@@ -84,7 +84,8 @@ final class CloudSyncController {
 
     /// Syncs now; if a sync is already running, runs once more after it.
     func syncNow() {
-        guard isAvailableInBuild, isEnabled, let model else { return }
+        // A guest's state is never synced; the owner's syncs once it ends.
+        guard isAvailableInBuild, isEnabled, let model, !model.isGuest else { return }
         if running != nil { again = true; return }
         if phase != .syncing { phase = .checking }
         let host = SyncHost(
