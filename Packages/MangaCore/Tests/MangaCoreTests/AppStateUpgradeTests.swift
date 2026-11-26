@@ -77,6 +77,7 @@ final class AppStateUpgradeTests: XCTestCase {
             // Servers.
             XCTAssertEqual(s.servers.map(\.kind), [.kavita, .suwayomi], name)
             XCTAssertEqual(s.server(kavita)?.baseURL.absoluteString, "http://kavita.local:5000", name)
+            XCTAssertEqual(s.server(kavita)?.alternateURLs, [], name)
 
             // Reading progress, to the page.
             let lantern = SeriesRef(serverID: kavita, seriesID: "12")

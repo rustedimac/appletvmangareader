@@ -46,7 +46,8 @@ final class ServersUITests: XCTestCase {
         XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         XCTAssertTrue(app.element("serverEditor.sync").exists)
         XCTAssertTrue(app.element("serverEditor.save").isEnabled)
-        select(app.element("serverEditor.remove"))
+        XCTAssertTrue(focus(app.element("serverEditor.remove"), maxPresses: 16))
+        XCUIRemote.shared.press(.select)
         select(app.element("serverEditor.confirmRemove"), .right)
 
         XCTAssertTrue(app.element("settings.server.Test Kavita").waitForExistence(timeout: 5))

@@ -58,50 +58,12 @@ struct SeriesPoster: View {
                 } message: {
                     Text(markError ?? "")
                 }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(series.title)
-                    .font(width < PosterMetrics.width ? .caption2 : .caption)
-                    .lineLimit(2)
-                    // Take the height two lines need; without it a shelf can
-                    // squeeze a long title onto one truncated line.
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("poster.title.\(series.ref.seriesID)")
-                if let caption = badges.caption {
-                    // The server name shares the caption's line, so a
-                    // merged row doesn't get taller.
-                    Text(serverLabel == .underTitle ? [caption, serverName].compactMap { $0 }.joined(separator: " · ") : caption)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .accessibilityIdentifier("poster.caption.\(series.ref.seriesID)")
-                }
-                if let read = badges.titleProgress {
-                    HStack(spacing: 12) {
-                        TitleProgressBar(fraction: read)
-                            .accessibilityElement()
-                            .accessibilityLabel("Reading progress")
-                            .accessibilityValue("\(Int((read * 100).rounded())) percent")
-                            .accessibilityIdentifier("poster.titleProgress.\(series.ref.seriesID)")
-                        if showsPercent {
-                            ProgressPercentLabel(fraction: read)
-                                .accessibilityIdentifier("poster.titlePercent.\(series.ref.seriesID)")
-                        }
-                    }
-                    .padding(.top, 6)
-                }
-                if badges.caption == nil, serverLabel == .underTitle, let serverName {
-                    Text(serverName)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .accessibilityIdentifier("poster.server.\(series.ref.seriesID)")
-                }
-            }
-            .frame(width: width, alignment: .leading)
-            // The focused cover grows over the space under it; move the
-            // title out of its way (like the TV app does).
-            .offset(y: isPosterFocused ? PosterMetrics.focusedTitleDrop(forWidth: width) : 0)
-            .animation(.easeOut(duration: 0.2), value: isPosterFocused)
+            captionBlock(badges, style: style, showsPercent: showsPercent)
+                .frame(width: width, alignment: .leading)
+                // The focused cover grows over the space under it; move the
+                // title out of its way (like the TV app does).
+                .offset(y: isPosterFocused ? PosterMetrics.focusedTitleDrop(forWidth: width) : 0)
+                .animation(.easeOut(duration: 0.2), value: isPosterFocused)
         }
         // Grids that fill right to left flip only the layout, not the text.
         .environment(\.layoutDirection, .leftToRight)
@@ -110,10 +72,84 @@ struct SeriesPoster: View {
         .onDisappear { model.seriesCounts.cancel(series.ref) }
     }
 
+    /// Everything under the cover, at a fixed height per row: the title
+    /// always takes two lines, and each line the row's settings call for
+    /// (count, progress bar, server) is there even while its value is
+    /// missing. So every poster in a row is the same height and the bars,
+    /// percentages and server names line up, whatever the title's length.
+    @ViewBuilder
+    private func captionBlock(_ badges: PosterBadges, style: PosterCaption, showsPercent: Bool) -> some View {
+        let id = series.ref.seriesID
+        let underTitle = showsServer && serverLabel == .underTitle
+        VStack(alignment: .leading, spacing: 2) {
+            Text(series.title)
+                .font(width < PosterMetrics.width ? .caption2 : .caption)
+                .lineLimit(2, reservesSpace: true)
+                // Take the height two lines need; without it a shelf can
+                // squeeze a long title onto one truncated line.
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("poster.title.\(id)")
+            switch style {
+            case .chapters, .pages:
+                // The server name shares the count's line, so a merged row
+                // doesn't get taller.
+                let text = [badges.caption, underTitle ? serverName : nil].compactMap { $0 }.joined(separator: " · ")
+                secondaryLine(text, identifier: badges.caption != nil ? "poster.caption.\(id)"
+                                                : underTitle ? "poster.server.\(id)" : nil)
+            case .progress, .off:
+                if style == .progress {
+                    progressRow(badges.titleProgress, showsPercent: showsPercent)
+                }
+                if underTitle {
+                    secondaryLine(serverName ?? "", identifier: "poster.server.\(id)")
+                }
+            }
+        }
+    }
+
+    /// One `.caption2` secondary line. Empty text still takes its line
+    /// (hidden from VoiceOver), so the row keeps its height.
+    @ViewBuilder
+    private func secondaryLine(_ text: String, identifier: String?) -> some View {
+        let line = Text(text.isEmpty ? " " : text)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        if text.isEmpty {
+            line.accessibilityHidden(true)
+        } else if let identifier {
+            line.accessibilityIdentifier(identifier)
+        } else {
+            line
+        }
+    }
+
+    /// The bar and "40%" under the title. A series the server can't
+    /// measure gets an invisible row of the same height.
+    @ViewBuilder
+    private func progressRow(_ read: Double?, showsPercent: Bool) -> some View {
+        let id = series.ref.seriesID
+        HStack(spacing: 12) {
+            TitleProgressBar(fraction: read ?? 0)
+                .accessibilityElement()
+                .accessibilityLabel("Reading progress")
+                .accessibilityValue("\(Int(((read ?? 0) * 100).rounded())) percent")
+                .accessibilityIdentifier("poster.titleProgress.\(id)")
+            if showsPercent {
+                ProgressPercentLabel(fraction: read ?? 0)
+                    .accessibilityIdentifier("poster.titlePercent.\(id)")
+            }
+        }
+        .padding(.top, 6)
+        .opacity(read == nil ? 0 : 1)
+        .accessibilityHidden(read == nil)
+    }
+
     /// Kavita listings have no chapter count; fetch it for posters on
     /// screen (see `SeriesCountStore`).
+    /// Also fetched for the unread badge of page-counted series.
     private func requestCountIfNeeded(_ style: PosterCaption) {
-        guard style.needsChapterCount(series), model.seriesCounts.count(for: series.ref) == nil,
+        guard style.needsChapterCount(badgeSeries), model.seriesCounts.count(for: series.ref) == nil,
               let client = model.client(for: series.ref) else { return }
         model.seriesCounts.request(series.ref, client: client)
     }
