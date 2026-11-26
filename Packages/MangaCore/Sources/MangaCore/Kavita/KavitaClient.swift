@@ -3,9 +3,15 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Client for Kavita's REST API. Logs in with the user's API key through the
-/// plugin endpoint, then uses the returned JWT for API calls. Image URLs carry
-/// the API key as a query parameter, which Kavita accepts for images.
+/// Client for Kavita's REST API, signed in as one Kavita user through one
+/// of that user's auth keys (see docs/PROGRESS_SYNC.md).
+///
+/// API calls send the key in the `x-api-key` header, so the client never
+/// logs in and never replaces the user's refresh token (Kavita keeps one
+/// per user, and a new login would sign their web browser out). Servers
+/// that predate `x-api-key` answer 401; the client then exchanges the key
+/// for a JWT through `api/Plugin/authenticate` and uses that from then on.
+/// Image URLs carry the key as a query parameter, which Kavita accepts.
 public final class KavitaClient: MangaServer, @unchecked Sendable {
     public let config: ServerConfig
     let apiKey: String
@@ -15,6 +21,8 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     private let tokenCache = TokenCache()
 
     public static let pluginName = "AppleTVMangaReader"
+    /// Name of the auth key the app creates on a user's account at sign-in.
+    public static let authKeyName = "Apple TV Manga Reader"
 
     /// Kavita's sentinel volume numbers.
     static let looseLeafVolumeNumber: Double = -100_000
@@ -34,8 +42,45 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
 
     private var anonymous: HTTPClient { HTTPClient(baseURL: config.baseURL, transport: transport) }
 
+    // MARK: Sign-in
+
+    /// Signs in with a Kavita username and password and returns a
+    /// credential holding one of that user's auth keys: the app's own key
+    /// ("Apple TV Manga Reader", no expiry), created on first sign-in, or
+    /// the account's OPDS key when the user may not create keys. The
+    /// password is not kept.
+    public static func signIn(baseURL: URL, username: String, password: String,
+                              transport: HTTPTransport, now: Date = Date()) async throws -> ServerCredential {
+        let http = HTTPClient(baseURL: baseURL, transport: transport)
+        let user: KavitaUserDTO = try await http.post(
+            "api/Account/login",
+            body: KavitaLoginDTO(username: username.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+        )
+        let name = user.username ?? username
+        if let existing = user.authKeys?.first(where: { $0.name == authKeyName && !$0.isExpired(now: now) }),
+           !existing.key.isEmpty {
+            return ServerCredential(apiKey: existing.key, username: name)
+        }
+        if let token = user.token, !token.isEmpty {
+            let authed = HTTPClient(baseURL: baseURL, transport: transport,
+                                    defaultHeaders: ["Authorization": "Bearer \(token)"])
+            let created: KavitaAuthKeyDTO? = try? await authed.post(
+                "api/Account/create-auth-key",
+                body: KavitaCreateAuthKeyDTO(keyLength: 32, name: authKeyName, expiresUtc: nil)
+            )
+            if let key = created?.key, !key.isEmpty {
+                return ServerCredential(apiKey: key, username: name)
+            }
+        }
+        if let key = user.apiKey, !key.isEmpty {
+            return ServerCredential(apiKey: key, username: name)
+        }
+        throw MangaError.unauthorized
+    }
+
     // MARK: Auth
 
+    /// Exchanges the key for a JWT. Also tells us whose key it is.
     func login() async throws -> KavitaUserDTO {
         guard !apiKey.isEmpty else { throw MangaError.missingCredential }
         let request = try anonymous.request("POST", "api/Plugin/authenticate",
@@ -48,6 +93,10 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     }
 
     func authed() async throws -> HTTPClient {
+        guard !apiKey.isEmpty else { throw MangaError.missingCredential }
+        guard await tokenCache.usesJWT else {
+            return HTTPClient(baseURL: config.baseURL, transport: transport, defaultHeaders: ["x-api-key": apiKey])
+        }
         let token: String
         if let cached = await tokenCache.token {
             token = cached
@@ -60,12 +109,18 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                           defaultHeaders: ["Authorization": "Bearer \(token)"])
     }
 
-    /// Runs a call, logging in again once if the cached token has expired.
+    /// Runs a call. On 401 with the key header, falls back to a JWT once
+    /// (older Kavita); with a JWT, logs in again once (expired token).
     func withAuth<T>(_ body: (HTTPClient) async throws -> T) async throws -> T {
         do {
             return try await body(try await authed())
         } catch MangaError.unauthorized {
-            await tokenCache.clear()
+            if await tokenCache.usesJWT {
+                await tokenCache.clear()
+            } else {
+                _ = try await login()
+                await tokenCache.useJWT()
+            }
             return try await body(try await authed())
         }
     }
@@ -75,6 +130,11 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
     public func validate() async throws -> String {
         let user = try await login()
         return "Signed in to Kavita as \(user.username ?? "user")"
+    }
+
+    /// The Kavita user this key belongs to.
+    public func username() async throws -> String? {
+        try await login().username
     }
 
     public func categories() async throws -> [MangaCategory] {
@@ -161,6 +221,31 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }
     }
 
+    /// One `api/Series/volumes` call (series detail makes three). Kavita
+    /// series listings have pages but no chapter count.
+    public func chapterCount(seriesID: String) async throws -> SeriesCount {
+        guard let id = Int(seriesID) else { throw MangaError.notFound }
+        let volumes: [KavitaVolumeDTO] = try await withAuth {
+            try await $0.get("api/Series/volumes", query: ["seriesId": seriesID])
+        }
+        return Self.count(volumes, seriesRef: ref(id))
+    }
+
+    /// Volumes when every entry is a whole volume file (no chapter split),
+    /// books for ebooks and PDFs, chapters otherwise.
+    static func count(_ volumes: [KavitaVolumeDTO], seriesRef: SeriesRef, seriesFormat: ContentFormat? = nil) -> SeriesCount {
+        let list = chapters(from: volumes, seriesRef: seriesRef, seriesFormat: seriesFormat)
+        var count = SeriesCount(chapters: list, seriesFormat: seriesFormat)
+        let entries = volumes.flatMap { volume in (volume.chapters ?? []).map { (volume.minNumber ?? 0, $0) } }
+        let allVolumeFiles = entries.allSatisfy { entry in
+            let (volumeNumber, chapter) = entry
+            return (chapter.minNumber ?? 0) <= looseLeafVolumeNumber && chapter.isSpecial != true
+                && volumeNumber > looseLeafVolumeNumber && volumeNumber < specialVolumeNumber
+        }
+        if count.unit == .chapter, !entries.isEmpty, allVolumeFiles { count.unit = .volume }
+        return count
+    }
+
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {
         let dimensions: [KavitaFileDimensionDTO]? = try? await withAuth {
             try await $0.get("api/Reader/file-dimensions", query: ["chapterId": chapter.id, "extractPdf": "true"])
@@ -173,16 +258,14 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
         }
     }
 
+    /// Kavita works out the volume, series and library from the chapter, so
+    /// only the chapter id and page matter; the rest is sent when known.
     public func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {
-        guard let chapterID = Int(chapter.id),
-              let seriesID = Int(chapter.seriesRef.seriesID),
-              let volumeID = chapter.volumeID.flatMap(Int.init),
-              let libraryID = libraryID.flatMap(Int.init) else {
-            throw MangaError.notFound
-        }
-        let body = KavitaProgressDTO(volumeId: volumeID, chapterId: chapterID,
-                                     pageNum: completed ? chapter.pageCount : max(0, page),
-                                     seriesId: seriesID, libraryId: libraryID)
+        guard let chapterID = Int(chapter.id) else { throw MangaError.notFound }
+        let body = KavitaProgressDTO(volumeId: chapter.volumeID.flatMap(Int.init) ?? 0, chapterId: chapterID,
+                                     pageNum: completed ? max(chapter.pageCount, page + 1) : max(0, page),
+                                     seriesId: Int(chapter.seriesRef.seriesID) ?? 0,
+                                     libraryId: libraryID.flatMap(Int.init) ?? 0)
         try await withAuth { try await $0.postIgnoringResponse("api/Reader/progress", body: body) }
     }
 
@@ -242,12 +325,24 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
             if n >= specialVolumeNumber { return (2, 0) }
             return (0, n)
         }
-        let sorted = volumes.sorted { volumeRank($0) < volumeRank($1) }
+        // Numbers decide; ties (specials and loose volumes often share one)
+        // fall back to the names in natural order, then the ids.
+        let sorted = volumes.sorted { a, b in
+            let (ra, rb) = (volumeRank(a), volumeRank(b))
+            if ra != rb { return ra < rb }
+            let byName = NaturalSort.compare(a.name ?? "", b.name ?? "")
+            return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+        }
         var result: [Chapter] = []
         var sequence = 0.0
         for volume in sorted {
             let rank = volumeRank(volume)
-            let chapters = (volume.chapters ?? []).sorted { ($0.sortOrder ?? $0.minNumber ?? 0) < ($1.sortOrder ?? $1.minNumber ?? 0) }
+            let chapters = (volume.chapters ?? []).sorted { a, b in
+                let (oa, ob) = (a.sortOrder ?? a.minNumber ?? 0, b.sortOrder ?? b.minNumber ?? 0)
+                if oa != ob { return oa < ob }
+                let byName = NaturalSort.compare(chapterSortName(a), chapterSortName(b))
+                return byName != .orderedSame ? byName == .orderedAscending : a.id < b.id
+            }
             for dto in chapters {
                 let pages = dto.pages ?? 0
                 let read = dto.pagesRead ?? 0
@@ -263,11 +358,24 @@ public final class KavitaClient: MangaServer, @unchecked Sendable {
                     lastPageRead: max(0, min(read, max(pages - 1, 0))),
                     isRead: pages > 0 && read >= pages,
                     updatedAt: dto.lastModifiedUtc ?? dto.created,
-                    format: dto.files?.lazy.compactMap { ContentFormat(kavitaFormat: $0.format) }.first ?? seriesFormat
+                    format: dto.files?.lazy.compactMap { ContentFormat(kavitaFormat: $0.format) }.first ?? seriesFormat,
+                    lastReadAt: read > 0 ? realDate(dto.lastReadingProgressUtc) : nil
                 ))
             }
         }
         return result
+    }
+
+    /// What a chapter is called on disk or in its metadata, for ordering
+    /// chapters Kavita gives the same sort number (e.g. specials).
+    static func chapterSortName(_ dto: KavitaChapterDTO) -> String {
+        [dto.range, dto.title, dto.titleName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
+    }
+
+    /// Kavita sends `0001-01-01T00:00:00` for "never".
+    static func realDate(_ date: Date?) -> Date? {
+        guard let date, date.timeIntervalSince1970 > 86_400 else { return nil }
+        return date
     }
 
     static func chapterTitle(_ dto: KavitaChapterDTO, volume: KavitaVolumeDTO, volumeRank: Int) -> String {
@@ -294,6 +402,9 @@ struct EmptyBody: Encodable {}
 
 actor TokenCache {
     private(set) var token: String?
+    /// True once the server turned the `x-api-key` header down.
+    private(set) var usesJWT = false
     func set(_ token: String) { self.token = token }
     func clear() { token = nil }
+    func useJWT() { usesJWT = true }
 }

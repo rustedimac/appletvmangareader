@@ -1,8 +1,8 @@
 import SwiftUI
 import MangaCore
 
-/// "Customize Home": the order of Home rows, which are shown, and the
-/// poster size for grids. Opened from the bottom of Home and from Settings.
+/// "Customize Home": the order of Home rows, which are shown, the poster
+/// size for grids, and what posters show under the title. Opened from the bottom of Home and from Settings.
 struct BrowseSettingsView: View {
     @Environment(AppModel.self) private var model
 
@@ -45,6 +45,27 @@ struct BrowseSettingsView: View {
                 }
                 .focusSection()
                 Text("For library grids and Favorites. Small fits more series on screen.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Text("Under Each Poster")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 30)
+                HStack(spacing: 30) {
+                    ForEach(PosterCaption.allCases) { caption in
+                        let isSelected = model.posterCaption == caption
+                        Button {
+                            model.updateBrowse { $0.posterCaption = caption }
+                        } label: {
+                            Label(caption.title, systemImage: isSelected ? "checkmark.circle.fill" : "circle")
+                        }
+                        .accessibilityIdentifier("browse.caption.\(caption.rawValue)")
+                        .accessibilityValue(isSelected ? "selected" : "")
+                    }
+                }
+                .focusSection()
+                Text(PosterCaption.footnote)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

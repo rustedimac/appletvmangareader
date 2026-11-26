@@ -19,12 +19,17 @@ jobs:
   # Seconds on Linux: catches screen titles or headers that would stay pinned
   # over scrolling rows (see tools/check_pinned_headers.py).
   ui-lint:
-    name: UI lint (pinned headers)
+    name: UI lint (pinned headers, design tokens)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check_pinned_headers.py
+      # Literal radii, fixed font sizes, off-table text styles, Section("…")
+      # headers and "Retry" labels (see tools/check_design_tokens.py).
+      - run: python3 tools/check_design_tokens.py
+      # Every per-series reader setting has a global default.
+      - run: python3 tools/check_setting_scopes.py
 
   core-tests:
     name: MangaCore unit tests

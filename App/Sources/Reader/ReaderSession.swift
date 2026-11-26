@@ -61,6 +61,11 @@ final class ReaderSession {
     var isAutoScrolling = false
     /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
     private(set) var autoScrollLevel: Int
+    /// Paged reader: pages of this chapter whose image didn't load after
+    /// the automatic retries, with a short reason. Turning pages still works.
+    private(set) var pageFailures: [Int: String] = [:]
+    /// Bumped per page by `retryVisibleFailedPages`; page views reload on a change.
+    private(set) var pageRetryTokens: [Int: Int] = [:]
     /// A short message shown over the page, such as "Bookmarked".
     var notice: ReaderNotice?
     /// Asks the webtoon strip to scroll to a page (opening a bookmark).
@@ -107,6 +112,35 @@ final class ReaderSession {
     var currentPage: Int { navigator.currentPage }
     var currentSpread: Spread? { navigator.currentSpread }
     var visiblePages: [Int] { navigator.visiblePages }
+
+    // MARK: Page failures
+
+    func reportPageFailure(_ message: String, forPage page: Int) {
+        pageFailures[page] = message
+    }
+
+    func reportPageLoaded(_ page: Int) {
+        if pageFailures[page] != nil { pageFailures[page] = nil }
+    }
+
+    /// Failed pages on screen right now.
+    var visibleFailedPages: [Int] {
+        guard edge == nil else { return [] }
+        return visiblePages.filter { pageFailures[$0] != nil }
+    }
+
+    /// Reloads the failed pages on screen (Select on a failed page).
+    /// Returns false if none had failed, so Select can do its usual job.
+    @discardableResult
+    func retryVisibleFailedPages() -> Bool {
+        let failed = visibleFailedPages
+        guard !failed.isEmpty else { return false }
+        for page in failed {
+            pageFailures[page] = nil
+            pageRetryTokens[page, default: 0] += 1
+        }
+        return true
+    }
     /// Non-nil while a chapter transition card is showing.
     var edge: ChapterEdge? { navigator.edge }
     var pageCount: Int { pages.count }
@@ -139,6 +173,7 @@ final class ReaderSession {
     func start() async {
         guard !started else { return }
         started = true
+        model.noteReading(series)
         await load(chapter: chapter, startPage: initialPage)
     }
 
@@ -152,12 +187,16 @@ final class ReaderSession {
         loadState = .loading
         pages = []
         sizes = [:]
+        pageFailures = [:]
         navigator = ReaderNavigator(pageCount: 0, settings: settings)
         lastSaved = nil
         lastLocal = nil
         let task = Task { [server] in
             do {
-                let loaded = try await server.pages(for: chapter)
+                // A slow or briefly unreachable server gets a few tries
+                // before the chapter shows its error card (which has Retry).
+                let policy = ReaderDemo.isEnabled ? ReaderDemo.retryPolicy : RetryPolicy.pageLists
+                let loaded = try await policy.run { _ in try await server.pages(for: chapter) }
                 try Task.checkCancellation()
                 self.apply(pages: loaded, chapter: chapter, startPage: startPage)
             } catch is CancellationError {
@@ -198,6 +237,7 @@ final class ReaderSession {
         let ordered = loaded.sorted { $0.index < $1.index }
         pages = ordered
         sizes = known
+        pageFailures = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
         navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
         lastSaved = nil
@@ -351,7 +391,7 @@ final class ReaderSession {
         visitedPages[progress.chapterID] = progress.page
         guard progress != lastLocal else { return }
         lastLocal = progress
-        model.recordLocalProgress(chapter: chapter, page: progress.page, completed: progress.completed)
+        model.recordLocalProgress(chapter: chapter, series: series, page: progress.page, completed: progress.completed)
     }
 
     private func scheduleSave() {
@@ -374,9 +414,9 @@ final class ReaderSession {
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
         lastSaved = progress
         let chapter = self.chapter
-        let libraryID = series.libraryID
+        let series = self.series
         let model = self.model
-        Task { await model.recordProgress(chapter: chapter, libraryID: libraryID,
+        Task { await model.recordProgress(chapter: chapter, series: series,
                                           page: progress.page, completed: progress.completed) }
     }
 
