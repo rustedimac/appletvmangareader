@@ -129,11 +129,14 @@ final class ContentRefreshUITests: XCTestCase {
         selectTab("Settings")
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.element("serverEditor.address").waitForExistence(timeout: 10))
+        // A Suwayomi server needs no login, so only the address is required.
+        let suwayomi = app.buttons["Suwayomi"]
+        if focus(suwayomi, .right, maxPresses: 4) { remote.press(.select) }
+        XCTAssertTrue(waitUntil(app.element("serverEditor.kavitaMethod"), "exists == false"), "still on Kavita")
         enter("Harbor Shelf", into: "serverEditor.name")
         enter("https://harbor.invalid", into: "serverEditor.address")
-        enter("demo-key", into: "serverEditor.apiKey")
         let save = app.element("serverEditor.save")
-        XCTAssertTrue(waitUntil(save, "isEnabled == true"), "address and key typed")
+        XCTAssertTrue(waitUntil(save, "isEnabled == true"), "address typed")
         select(save)
         XCTAssertTrue(app.element("settings.server.Harbor Shelf").waitForExistence(timeout: 10))
 
