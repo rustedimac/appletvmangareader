@@ -19,6 +19,14 @@ extension AppModel {
     /// peppercarrot.com being up. Page images still load from the network
     /// when it's there; tests don't depend on them.
     func installFreeLibraryDemo() {
+        useFreeLibraryDemoTransport()
+        installFreeLibraryIfNeeded()
+    }
+
+    /// The offline Free Library client without adding the library, for
+    /// `-welcome` tests that start from an empty install and add it from
+    /// the welcome.
+    func useFreeLibraryDemoTransport() {
         let store = FreeLibraryStore(remoteURL: nil, cacheFile: nil)
         let transport = FreeLibraryDemoTransport()
         let previous = makeClient
@@ -27,6 +35,5 @@ extension AppModel {
                 ? FreeLibraryClient(config: config, categoryScope: scope, transport: transport, store: store)
                 : previous(config, credential, scope, http)
         }
-        installFreeLibraryIfNeeded()
     }
 }

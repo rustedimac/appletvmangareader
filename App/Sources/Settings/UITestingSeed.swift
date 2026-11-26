@@ -16,6 +16,9 @@ import MangaCore
 ///   with these fields filled in, as if pasted (the tvOS simulator can't
 ///   paste from the Mac). Works in Debug builds even without `-uiTesting`,
 ///   e.g. `-serverEditorPrefill "kavita|http://kavita.local:5000/api/opds/fake-key"`.
+/// - `-welcome`: let the first-run welcome show (it never does in UI tests
+///   otherwise). Without `-freeLibrary` it starts from an empty install with
+///   the offline Free Library client ready for "Start Reading".
 enum UITestingSeed {
     static var arguments: [String] { ProcessInfo.processInfo.arguments }
 

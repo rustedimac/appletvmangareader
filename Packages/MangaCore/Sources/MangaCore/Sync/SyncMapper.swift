@@ -8,7 +8,8 @@ import Foundation
 /// - per profile: per-server settings (library selection, progress sync
 ///   toggle), favorites, reading progress, default reader settings and
 ///   per-series reader settings, and browse preferences (Home rows, poster
-///   size, per-library sort and reading style).
+///   size, per-library sort and reading style), and whether the profile
+///   finished the first-run welcome.
 ///
 /// Secrets stay in the device's Keychain. New features add a `Domain` to
 /// `domains` with their own kind; nothing else in sync has to change.
@@ -211,6 +212,16 @@ public enum SyncMapper {
                apply: { state, id, value, _ in
                    guard let profile = UUID(uuidString: id) else { return }
                    data(&state, profile) { $0.browse = value }
+               }),
+        // Only "done" travels: another Apple TV that finished the welcome
+        // for this profile shouldn't show it again here.
+        domain(.welcome, order: 8, Bool.self,
+               values: { state in
+                   state.profileData.compactMapValues { $0.welcomeCompleted == true ? true : nil }
+               },
+               apply: { state, id, value, _ in
+                   guard let profile = UUID(uuidString: id) else { return }
+                   data(&state, profile) { $0.welcomeCompleted = value == true ? true : nil }
                }),
     ]
 
