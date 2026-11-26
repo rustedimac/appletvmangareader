@@ -152,7 +152,7 @@ the server editor and category picker) uses the tvOS Settings layout:
 - Use `Form` (not `List`) so every settings page has the same row and
   section rhythm.
 - Every section has a header, and headers use `SettingsHeader` (or
-  `Section(settingsHeader:)`): `.callout` semibold, primary at 75 % opacity, title case,
+  `Section(settingsHeader:)`): `.callout` semibold, primary at 80 % opacity, title case,
   24 pt above and 16 pt below. Don't use `Section("Title")`: on tvOS its
   size and case differ between `List` and `Form`.
 - Row icons go through `Label`; `SettingsPage` applies `.settingsRow`, which
