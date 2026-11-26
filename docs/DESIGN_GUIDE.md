@@ -275,6 +275,13 @@ another page with a value uses `SettingsValueRow` for the same spacing.
   first item, so titles and the tab bar come back into view. Don't put
   `.scrollClipDisabled()` on a vertical scroll view that sits under a
   navigation title.
+- Focusing the tab bar scrolls the visible screen back to its top, so the bar
+  is never left half off screen (`TabBarScrollReset`, installed once in
+  `RootView`). It finds the UIKit scroll view behind any SwiftUI
+  `ScrollView`, `List` or `Form`, so new screens need nothing extra. Don't
+  wrap a tab's content in a scroll view that offsets itself (custom
+  `.offset` scrolling or a `ScrollViewReader` that pins content), since
+  it can't reset those.
 
 ## 9. Checklist for a new or changed screen
 
