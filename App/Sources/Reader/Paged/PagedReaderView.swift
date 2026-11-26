@@ -46,12 +46,13 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onMoveCommand(perform: handleMove)
-        // Select on a failed page retries it in place.
-        .onTapGesture { session.retryVisibleFailedPages() }
         .onPlayPauseCommand { session.isMenuPresented = true }
-        // A click, or holding Select, opens the menu in every reader.
+        // A click, or holding Select, opens the menu in every reader. A
+        // click on a failed page retries it in place instead.
         .onLongPressGesture(minimumDuration: 0.5) { session.isMenuPresented = true }
-        .onTapGesture { session.isMenuPresented = true }
+        .onTapGesture {
+            if !session.retryVisibleFailedPages() { session.isMenuPresented = true }
+        }
         .onAppear {
             focused = true
         }
