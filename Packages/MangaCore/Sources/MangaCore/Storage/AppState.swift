@@ -390,6 +390,19 @@ public struct AppState: Codable, Hashable, Sendable {
         }
     }
 
+    /// Marks chapters of one series read for this profile. The open
+    /// chapter and page (where Continue resumes) stay as they are.
+    public mutating func markRead(_ ref: SeriesRef, chapterIDs: Set<String>, profile: UUID, now: Date = Date()) {
+        guard !chapterIDs.isEmpty else { return }
+        mutateData(profile) { data in
+            var p = data.progress[ref.storageKey] ?? SeriesProgress(chapterID: "", page: 0, updatedAt: now)
+            p.readChapterIDs.formUnion(chapterIDs)
+            p.unreadChapterIDs.subtract(chapterIDs)
+            p.updatedAt = now
+            data.progress[ref.storageKey] = p
+        }
+    }
+
     /// Marks a whole series unread for this profile. Server read state is
     /// ignored from now on, so profiles that don't sync see it unread too.
     public mutating func markSeriesUnread(_ ref: SeriesRef, profile: UUID, now: Date = Date()) {
@@ -420,15 +433,15 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public func readerSettings(for ref: SeriesRef, profile: UUID) -> ReaderSettings {
         let data = profileData[profile.uuidString]
-        return data?.readerOverrides[ref.storageKey] ?? data?.defaultReaderSettings ?? .default
+        return (data?.readerOverrides[ref.storageKey] ?? data?.defaultReaderSettings ?? .default).normalizedPairing
     }
 
     public mutating func setReaderSettings(_ settings: ReaderSettings, for ref: SeriesRef, profile: UUID) {
-        mutateData(profile) { $0.readerOverrides[ref.storageKey] = settings }
+        mutateData(profile) { $0.readerOverrides[ref.storageKey] = settings.normalizedPairing }
     }
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
-        mutateData(profile) { $0.defaultReaderSettings = settings }
+        mutateData(profile) { $0.defaultReaderSettings = settings.normalizedPairing }
     }
 
     // MARK: Book settings

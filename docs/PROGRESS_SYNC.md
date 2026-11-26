@@ -101,7 +101,9 @@ signed-in user. Only `UI_LOGIN` maps a login to a user.
 - Push: every page settle, chapter change and reader close writes local
   progress first, then the server. A failed push stays queued on the
   series (`SeriesProgress.pending`) and is retried the next time the series
-  or Home loads.
+  or Home loads, after a backoff (5 s, 10 s, 20 s, ... up to every 5
+  minutes) while the app runs, and as soon as the app returns to the
+  foreground.
 - Conflicts: latest wins, per chapter. A queued local change is pushed only
   if it is newer than the server's `lastReadAt` for that chapter;
   otherwise the server's state wins and the queued change is dropped.

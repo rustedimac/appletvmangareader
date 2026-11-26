@@ -49,6 +49,23 @@ final class CategorySelectionUITests: XCTestCase {
         XCTAssertEqual(all.value as? String, "on")
     }
 
+    func testSavedServerTicksApplyWithoutSave() {
+        let app = launch(tab: "settings")
+        let row = app.element("settings.server.Demo Suwayomi")
+        select(row)
+        let short = app.element("categories.item.short")
+        XCTAssertTrue(short.waitForExistence(timeout: 10))
+        select(short)
+        XCTAssertTrue(waitUntil(short, "value == 'off'"))
+
+        // Leave with Menu instead of Save; the tick sticks.
+        XCUIRemote.shared.press(.menu)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        select(row)
+        XCTAssertTrue(short.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitUntil(short, "value == 'off'"))
+    }
+
     func testCannotSaveWithNothingTicked() {
         let app = launch(tab: "settings")
         select(app.element("settings.server.Demo Suwayomi"))
@@ -72,7 +89,9 @@ final class CategorySelectionUITests: XCTestCase {
         XCTAssertTrue(all.waitForExistence(timeout: 10))
         select(all)
         XCTAssertTrue(waitUntil(all, "value == 'off'"))
-        select(app.element("categories.save"))
+        // No Save button: the tick already applied, Menu just goes back.
+        XCTAssertFalse(app.element("categories.save").exists)
+        XCUIRemote.shared.press(.menu)
 
         XCTAssertTrue(app.element("category.short").waitForExistence(timeout: 10))
         XCTAssertTrue(waitUntilGone(app.element("category.all")), "the unticked library is still listed")

@@ -72,7 +72,7 @@ struct BrowseSettingsView: View {
                     }
                 }
                 .focusSection()
-                Text("For library grids and Favorites. Small fits more series on screen.")
+                Text("For Home, Library, Favorites and Search. Small fits more series on screen.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
@@ -94,6 +94,21 @@ struct BrowseSettingsView: View {
                 }
                 .focusSection()
                 Text(PosterCaption.footnote)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Text("Libraries")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 30)
+                NavigationLink {
+                    LibraryDefaultsView()
+                } label: {
+                    Label("Library Defaults: \(model.libraryDefaults.sort.title), \(model.libraryDefaults.filter.summary)",
+                          systemImage: "square.grid.3x3")
+                }
+                .accessibilityIdentifier("browse.libraryDefaults")
+                Text("The sort, filters and grid order for libraries that don't set their own in Sort & View.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

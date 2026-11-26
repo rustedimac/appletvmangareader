@@ -52,7 +52,12 @@ struct CategoryChecklist: View {
                         load = .loaded(s)
                     } label: {
                         HStack {
-                            Text(category.name)
+                            VStack(alignment: .leading, spacing: Space.xxs) {
+                                Text(category.name)
+                                if let note = Self.note(for: category, kind: kind) {
+                                    Text(note).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
                             Spacer()
                             Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(isOn ? Color.accentColor : .secondary)
@@ -73,21 +78,32 @@ struct CategoryChecklist: View {
         }
     }
 
-    /// Footer text under the checklist.
-    static func footer(kind: ServerKind, load: CategoryLoad) -> String? {
+    /// Suwayomi's built-in "Default" category is where series without a
+    /// category live. It's an ordinary tick box like the rest, but its name
+    /// reads like a "use the default" choice, so it says what it holds.
+    static func note(for category: MangaCategory, kind: ServerKind) -> String? {
+        kind == .suwayomi && category.id == SuwayomiClient.defaultCategoryID ? "Series not in any category" : nil
+    }
+
+    /// Footer text under the checklist. `live`: ticks apply as they change,
+    /// so with none ticked the last choice stays in effect.
+    static func footer(kind: ServerKind, load: CategoryLoad, live: Bool = false) -> String? {
         guard let selection = load.selection, !selection.available.isEmpty else { return nil }
         let noun = kind.categoryNoun.lowercased()
-        if !selection.canSave { return "Pick at least one to import." }
+        if !selection.canSave {
+            return live ? "Pick at least one to import. Until you do, the last choice stays." : "Pick at least one to import."
+        }
         let base = "\(selection.summary(kind: kind)). Home, Library, Search and Favorites only show what's ticked."
         return selection.allSelected ? base + " New \(noun) on the server are added automatically." : base
     }
 }
 
 /// Picks which libraries/categories of a saved server the active profile
-/// imports. Opened from the Library tab; saves when "Save" is pressed.
+/// imports. Opened from the Library tab. Every tick applies right away;
+/// there's no Save button (docs/DESIGN_GUIDE.md, "No Save buttons"). With
+/// nothing ticked, the last choice that had at least one stays in effect.
 struct CategorySelectionView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let server: ServerConfig
 
     @State private var load: CategoryLoad = .idle
@@ -99,21 +115,19 @@ struct CategorySelectionView: View {
             } header: {
                 SettingsHeader("\(server.kind.categoryNoun) to Import for \(model.activeProfile.name)")
             } footer: {
-                if let footer = CategoryChecklist.footer(kind: server.kind, load: load) { Text(footer) }
-            }
-            Section {
-                Button("Save") {
-                    if let selection = load.selection {
-                        model.setSelectedCategories(selection.storedValue, for: server)
-                    }
-                    dismiss()
-                }
-                .disabled(!(load.selection?.canSave ?? false))
-                .accessibilityIdentifier("categories.save")
+                if let footer = CategoryChecklist.footer(kind: server.kind, load: load, live: true) { Text(footer) }
             }
         }
         .settingsPage("\(server.name) \(server.kind.categoryNoun)", systemImage: "checklist")
         .task { if load == .idle { await fetch() } }
+        .onChange(of: load) { _, new in apply(new) }
+    }
+
+    /// Stores the ticks as soon as they change (skipped while nothing is ticked).
+    private func apply(_ load: CategoryLoad) {
+        guard let selection = load.selection, selection.canSave,
+              selection.storedValue != model.selectedCategories(for: server) else { return }
+        model.setSelectedCategories(selection.storedValue, for: server)
     }
 
     private func fetch() async {
