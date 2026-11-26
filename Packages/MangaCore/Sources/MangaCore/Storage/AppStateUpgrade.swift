@@ -12,9 +12,10 @@ import Foundation
 ///    keep everything that can be read. One bad entry costs that entry, not
 ///    the whole state.
 ///
-/// When you change the shape of anything `AppState` stores, add the JSON a
-/// build *before* your change writes to `AppStateUpgradeTests` (the
-/// `Fixtures` list) so every past shape stays covered.
+/// When you change the shape of anything `AppState` stores, add a snapshot
+/// of the new shape to `Tests/MangaCoreTests/Fixtures/SavedData` so every
+/// past shape stays covered (`SavedDataUpgradeTests` fails until you do;
+/// see docs/UPGRADE_SAFETY.md).
 public enum AppStateUpgrade {
     public enum Outcome: Equatable, Sendable {
         /// Decoded normally (after any migrations).

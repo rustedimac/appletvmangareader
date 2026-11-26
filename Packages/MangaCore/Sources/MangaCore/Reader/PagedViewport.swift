@@ -144,6 +144,24 @@ public struct PagedViewport: Hashable, Sendable {
         return v
     }
 
+    /// Moves with a finger on the touch surface: the canvas follows the
+    /// finger, so dragging right shows more of the left. `dx`/`dy` are in
+    /// screen points, scaled by `gain`, and the result is clamped to the
+    /// canvas edges.
+    public func dragged(dx: Double, dy: Double, gain: Double = 1, canvas: Extent, screen: Extent) -> PagedViewport {
+        let t = travel(canvas: canvas, screen: screen)
+        var v = self
+        if t.width > 0 { v.x = Self.unit(x - dx * gain / t.width) }
+        if t.height > 0 { v.y = Self.unit(y - dy * gain / t.height) }
+        return v
+    }
+
+    /// Whether there is anything to drag (the canvas is bigger than the screen).
+    public func canDrag(canvas: Extent, screen: Extent) -> Bool {
+        let t = travel(canvas: canvas, screen: screen)
+        return t.width > 0.5 || t.height > 0.5
+    }
+
     /// Changes magnification keeping the point at the center of the screen
     /// where it is.
     public func zoomed(to newZoom: Double, canvas: Extent, screen: Extent) -> PagedViewport {
@@ -185,9 +203,10 @@ public enum PagedRemoteAction: Hashable, Sendable {
 ///
 /// - Left/right follow the reading direction. While there is more of the
 ///   spread that way (zoomed in, or Fit Height on a wide spread) they pan
-///   there first. Going forward at the edge of a row drops down a screen
-///   and returns to the side reading starts from, so a zoomed page reads
-///   like lines of panels. Only at the end of the spread do they turn.
+///   there; pressed toward an edge the view is already at, they turn the
+///   page. Up/down (or a finger on the touch surface) move vertically.
+///   With no sideways room (Fit Width), forward scrolls down and backward
+///   up before turning.
 /// - Up/down pan when the spread is taller than the screen (Fit Width,
 ///   zoom). Down opens the menu only when there's nothing below.
 public enum PagedRemote {
@@ -209,16 +228,17 @@ public enum PagedRemote {
             if canPan(press) {
                 return .pan(viewport.panned(press, step: step, canvas: canvas, screen: screen))
             }
+            // Sideways room (zoomed, Fit Height): a press toward the edge
+            // you're already at turns the page, wherever you are vertically.
+            if viewport.travel(canvas: canvas, screen: screen).width > 0.5 {
+                return .turn(screenDirection)
+            }
+            // A page only taller than the screen (Fit Width) reads down
+            // with forward and back up with backward before turning.
             let forward = direction.isForward(screenDirection)
             let vertical: PanDirection = forward ? .down : .up
             if canPan(vertical) {
-                var v = viewport.panned(vertical, step: step, canvas: canvas, screen: screen)
-                if viewport.travel(canvas: canvas, screen: screen).width > 0.5 {
-                    // Back to the start (forward) or end (backward) of the next row.
-                    let startX: Double = direction == .rightToLeft ? 1 : 0
-                    v.x = forward ? startX : 1 - startX
-                }
-                return .pan(v)
+                return .pan(viewport.panned(vertical, step: step, canvas: canvas, screen: screen))
             }
             return .turn(screenDirection)
         }

@@ -15,6 +15,19 @@ public struct Favorite: Codable, Hashable, Identifiable, Sendable {
 
     public var id: SeriesRef { series.ref }
 
+    private enum CodingKeys: String, CodingKey { case series, addedAt, latestChapterAt, unreadChapters, refreshedAt }
+
+    /// A favorite saved without a date (or with one this build can't read)
+    /// is kept and sorts as the oldest.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        series = try c.decode(SeriesSummary.self, forKey: .series)
+        addedAt = c.tolerant(.addedAt, default: .distantPast)
+        latestChapterAt = c.tolerant(.latestChapterAt)
+        unreadChapters = c.tolerant(.unreadChapters)
+        refreshedAt = c.tolerant(.refreshedAt)
+    }
+
     public init(series: SeriesSummary, addedAt: Date = Date(), latestChapterAt: Date? = nil,
                 unreadChapters: Int? = nil, refreshedAt: Date? = nil) {
         self.series = series
@@ -68,12 +81,14 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         chapterID = try c.decode(String.self, forKey: .chapterID)
         page = try c.decode(Int.self, forKey: .page)
-        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
-        readChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .readChapterIDs) ?? []
-        unreadChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .unreadChapterIDs) ?? []
-        ignoresServerProgress = try c.decodeIfPresent(Bool.self, forKey: .ignoresServerProgress) ?? false
-        series = try c.decodeIfPresent(SeriesSummary.self, forKey: .series)
-        pending = try c.decodeIfPresent([PendingProgress].self, forKey: .pending) ?? []
+        // Undated progress loses to any dated progress, but is kept.
+        updatedAt = c.tolerant(.updatedAt, default: .distantPast)
+        readChapterIDs = c.tolerant(.readChapterIDs, default: [])
+        unreadChapterIDs = c.tolerant(.unreadChapterIDs, default: [])
+        ignoresServerProgress = c.tolerant(.ignoresServerProgress, default: false)
+        // Only for drawing the Continue Reading row; never worth the position.
+        series = c.tolerant(.series)
+        pending = c.tolerantArray(.pending)
     }
 
     // Skip empty optional fields to keep AppState small.
@@ -158,7 +173,7 @@ public struct ProfileData: Codable, Hashable, Sendable {
         bookSettings = try? c.decodeIfPresent(BookSettings.self, forKey: .bookSettings)
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
-        webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        webtoonAutoScrollLevel = c.tolerant(.webtoonAutoScrollLevel)
         // A damaged list only loses Top Shelf titles, never the profile.
         recentSeries = try? c.decodeIfPresent([String: SeriesSummary].self, forKey: .recentSeries)
         // A browse shape this build can't read falls back to defaults.
@@ -205,6 +220,25 @@ public struct AppState: Codable, Hashable, Sendable {
     /// True once the user removed the built-in Free Library, so it isn't
     /// added back on the next launch. Nil in state saved before it existed.
     public var freeLibraryRemoved: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case version, profiles, activeProfileID, servers, profileData, rememberedProfileID, freeLibraryRemoved
+    }
+
+    /// Missing fields get defaults. Only the profile list is required:
+    /// without it, and for any entry that can't be read, `AppStateUpgrade`
+    /// salvages (keeping a backup of the original), bringing back a profile
+    /// for each set of profile data.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = c.tolerant(.version, default: 1)
+        profiles = try c.decode([Profile].self, forKey: .profiles)
+        activeProfileID = c.tolerant(.activeProfileID)
+        servers = try c.decodeIfPresent([ServerConfig].self, forKey: .servers) ?? []
+        profileData = try c.decodeIfPresent([String: ProfileData].self, forKey: .profileData) ?? [:]
+        rememberedProfileID = c.tolerant(.rememberedProfileID)
+        freeLibraryRemoved = c.tolerant(.freeLibraryRemoved)
+    }
 
     public init(version: Int = AppState.currentVersion, profiles: [Profile] = [], activeProfileID: UUID? = nil,
                 servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:],
