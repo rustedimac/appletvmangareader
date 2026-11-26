@@ -376,8 +376,6 @@ private extension View {
     /// Menu press to the tab bar instead of going back. The message takes
     /// focus without looking like a button.
     func emptyStateFocus() -> some View {
-        focusable()
-            .accessibilityElement(children: .combine)
-            .centeredFocusRow()
+        focusable().centeredFocusRow()
     }
 }
