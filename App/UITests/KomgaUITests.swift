@@ -16,7 +16,7 @@ final class KomgaUITests: XCTestCase {
 
     func testHomeShowsKomgaRowsAndOpensASeries() throws {
         let app = launch()
-        XCTAssertTrue(app.staticTexts["shelf.Test Komga.newlyAdded"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["shelf.newlyAdded"].waitForExistence(timeout: 20))
 
         // The same series can sit in several rows, so open whichever poster
         // takes focus first and check that series.

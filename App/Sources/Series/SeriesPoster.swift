@@ -51,7 +51,9 @@ struct SeriesPoster: View {
                     .font(width < PosterMetrics.width ? .caption2 : .caption)
                     .lineLimit(2)
                 if let caption = badges.caption {
-                    Text(caption)
+                    // The server name shares the caption's line, so a
+                    // merged row doesn't get taller.
+                    Text(serverLabel == .underTitle ? [caption, serverName].compactMap { $0 }.joined(separator: " · ") : caption)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -71,11 +73,12 @@ struct SeriesPoster: View {
                     }
                     .padding(.top, 6)
                 }
-                if showsServer, let server = model.state.server(series.ref.serverID) {
-                    Text(server.name)
+                if badges.caption == nil, serverLabel == .underTitle, let serverName {
+                    Text(serverName)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .accessibilityIdentifier("poster.server.\(series.ref.seriesID)")
                 }
             }
             .frame(width: width, alignment: .leading)
@@ -94,6 +97,14 @@ struct SeriesPoster: View {
               let client = model.client(for: series.ref) else { return }
         model.seriesCounts.request(series.ref, client: client)
     }
+
+    /// The server's name, when this poster should say which server it's from.
+    private var serverName: String? {
+        guard showsServer, serverLabel != .off else { return nil }
+        return model.state.server(series.ref.serverID)?.name
+    }
+
+    private var serverLabel: PosterServerLabel { model.posterServerLabel }
 
     /// The series with any progress changed since the row loaded (reading,
     /// "Mark as Unread"), so the badge, bar and percentage are current.
@@ -114,6 +125,9 @@ struct SeriesPoster: View {
                     }
                 }
                 .overlay(alignment: .topTrailing) { corner(badges.corner) }
+                .overlay(alignment: .topLeading) {
+                    if serverLabel == .onCover, let serverName { ServerTag(name: serverName, maxWidth: width * 0.62) }
+                }
                 .overlay(alignment: .bottom) {
                     if let progress = badges.progress { ProgressBadge(fraction: progress) }
                 }
@@ -128,7 +142,8 @@ struct SeriesPoster: View {
                 }
         }
         .buttonStyle(.card)
-        .accessibilityLabel(series.title)
+        // VoiceOver hears the server wherever the poster shows it.
+        .accessibilityLabel(serverName.map { "\(series.title), \($0)" } ?? series.title)
         .accessibilityValue(badges.accessibilityValue)
         .accessibilityIdentifier("poster.\(series.ref.seriesID)")
         .contextMenu {
@@ -180,6 +195,29 @@ struct SeriesPoster: View {
         case .none:
             EmptyView()
         }
+    }
+}
+
+/// The `.onCover` server label: the server's name in a small dark tag in
+/// the cover's top-left corner, clear of the unread count on the right.
+private struct ServerTag: View {
+    let name: String
+    let maxWidth: CGFloat
+
+    var body: some View {
+        Text(name)
+            .font(.caption2.bold())
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: Radius.small))
+            .foregroundStyle(.white)
+            .frame(maxWidth: maxWidth, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(10)
+            .accessibilityIdentifier("poster.serverTag")
+            .accessibilityLabel(name)
     }
 }
 
