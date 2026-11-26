@@ -5,9 +5,9 @@ final class ReaderControlsTests: XCTestCase {
     func testEveryReaderHasAMenuRouteBesidesPlayPause() {
         for mode in ReadingMode.allCases {
             let entries = ReaderControls.remote(for: mode)
-            let click = entries.first { $0.input.hasPrefix("Click or hold Select") }
-            XCTAssertNotNil(click, "\(mode) needs a click route to the options")
-            XCTAssertTrue(click?.action.hasPrefix("Reader options") == true)
+            let hold = entries.first { $0.input.contains("hold Select") || $0.input == "Hold Select" }
+            XCTAssertNotNil(hold, "\(mode) needs a hold-Select route to the options")
+            XCTAssertTrue(hold?.action.hasPrefix("Reader options") == true)
             XCTAssertTrue(entries.contains { $0.input.hasPrefix("Menu") })
         }
         XCTAssertTrue(ReaderControls.bookRemote.contains { $0.input.hasPrefix("Click or hold Select") })

@@ -5,10 +5,11 @@ import Foundation
 /// same thing as the readers do.
 ///
 /// The scheme follows tvOS's own media apps: a click (Select) brings up the
-/// controls, Play/Pause plays, and Menu goes back. In every reader a click
-/// or holding Select opens the reader options, so the options are always
-/// one press away. Play/Pause opens them too in the page and book readers;
-/// in the vertical reader it starts and stops auto-scroll instead.
+/// controls, Play/Pause plays, and Menu goes back. In every reader holding
+/// Select opens the reader options; a click does too, except in the page
+/// reader, where a click zooms. Play/Pause opens them in the page and book
+/// readers; in the vertical reader it starts and stops auto-scroll. The
+/// scheme is under review in docs/READER_CONTROLS.md.
 public enum ReaderControls {
     public struct Entry: Hashable, Sendable, Identifiable {
         /// "Click", "Play/Pause", "Swipe left or right".
@@ -28,12 +29,13 @@ public enum ReaderControls {
         switch mode {
         case .paged:
             return [
-                Entry("Click or hold Select", "Reader options"),
+                Entry("Hold Select", "Reader options"),
                 Entry("Play/Pause", "Reader options"),
-                Entry("Swipe or click down", "Reader options"),
-                Entry("Swipe or click left or right", "Turn the page (follows the reading direction)"),
-                Entry("Swipe or click up", "Bookmark the page, or remove the bookmark"),
-                Entry("Menu (Back)", "Close the options, then close the reader"),
+                Entry("Swipe or click down", "Reader options (pans down first when zoomed)"),
+                Entry("Click", "Zoom in or out (retries a page that didn't load)"),
+                Entry("Swipe or click left or right", "Turn the page (follows the reading direction); pans first when zoomed"),
+                Entry("Swipe or click up", "Bookmark the page, or remove the bookmark (pans up first when zoomed)"),
+                Entry("Menu (Back)", "Zoom out, close the options, then close the reader"),
             ]
         case .webtoon:
             return [
@@ -80,7 +82,7 @@ public enum ReaderControls {
     /// The one-line hint shown the first few times a reader opens.
     public static func hint(for mode: ReadingMode) -> String {
         switch mode {
-        case .paged: return "Click or press Play/Pause for reader options · Menu closes the reader"
+        case .paged: return "Hold Select or press Play/Pause for reader options · Click zooms · Menu closes the reader"
         case .webtoon: return "Click for reader options · Play/Pause auto-scrolls · Menu closes the reader"
         }
     }

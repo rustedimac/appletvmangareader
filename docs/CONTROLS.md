@@ -4,8 +4,9 @@ The same map is in the app under **Settings > Remote and Controller**, built
 from `ReaderControls` in MangaCore, so change both together.
 
 The scheme follows tvOS's own media apps: a click brings up the controls,
-Play/Pause plays, Menu goes back. **In every reader a click or holding Select
-opens the reader options**, so they are always one press away. Play/Pause
+Play/Pause plays, Menu goes back. **In every reader holding Select opens the
+reader options**, and a click does too except in the page reader, where a
+click zooms. The scheme is under review in docs/READER_CONTROLS.md. Play/Pause
 opens them too in the page and book readers; in the vertical reader it starts
 and stops auto-scroll instead. The first few times each reader mode opens, a
 hint at the top of the screen says this.
@@ -14,12 +15,13 @@ hint at the top of the screen says this.
 
 | Siri Remote | Does |
 | --- | --- |
-| Click, or hold Select | Reader options |
+| Hold Select | Reader options |
 | Play/Pause | Reader options |
-| Swipe or click down | Reader options |
-| Swipe or click left / right | Turn the page (follows the reading direction) |
-| Swipe or click up | Bookmark the page, or remove the bookmark |
-| Menu (Back) | Close the options, then close the reader |
+| Swipe or click down | Reader options (pans down first when zoomed) |
+| Click | Zoom in / out (retries a page that didn't load) |
+| Swipe or click left / right | Turn the page (follows the reading direction); pans first when zoomed |
+| Swipe or click up | Bookmark the page, or remove the bookmark (pans up first when zoomed) |
+| Menu (Back) | Zoom out, close the options, then close the reader |
 
 ## Vertical (webtoon) reader
 

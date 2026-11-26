@@ -1,7 +1,8 @@
 import XCTest
 
 /// The route to the reader options in every reader (`ReaderControls`):
-/// a click or holding Select opens them in the paged and vertical readers,
+/// holding Select opens them in the paged and vertical readers (and a click
+/// in the vertical one; a click zooms in the paged reader),
 /// Play/Pause still runs auto-scroll in the vertical reader, the first-use
 /// hint says so, and Settings lists the whole button map.
 final class ReaderControlsUITests: XCTestCase {
@@ -84,10 +85,10 @@ final class ReaderControlsUITests: XCTestCase {
 
     // MARK: Paged reader
 
-    func testPagedClickAndPlayPauseBothOpenOptions() {
+    func testPagedHoldingSelectAndPlayPauseBothOpenOptions() {
         launchReader("paged")
-        remote.press(.select)
-        XCTAssertTrue(menu.waitForExistence(timeout: 5), "a click opens the options, as in the vertical reader")
+        remote.press(.select, forDuration: 1.2)
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "holding Select opens the options, as in the vertical reader")
         remote.press(.menu)
         wait(menu, "exists == false")
         XCTAssertTrue(element("reader.paged").exists)
@@ -100,7 +101,7 @@ final class ReaderControlsUITests: XCTestCase {
         launchReader("paged", hints: true)
         let hint = element("reader.hint")
         XCTAssertTrue(hint.waitForExistence(timeout: 5))
-        XCTAssertTrue(hint.label.contains("Play/Pause for reader options"), hint.label)
+        XCTAssertTrue(hint.label.contains("Hold Select or press Play/Pause for reader options"), hint.label)
     }
 
     // MARK: Settings
@@ -108,9 +109,9 @@ final class ReaderControlsUITests: XCTestCase {
     func testSettingsListsTheButtonMap() {
         app = XCUIApplication.launched(tab: "settings")
         select(app.element("settings.controls"))
-        let click = app.element("controls.paged.Click or hold Select")
-        XCTAssertTrue(click.waitForExistence(timeout: 5), "Remote and Controller page didn't open")
-        XCTAssertTrue(click.label.contains("Reader options"), click.label)
+        let hold = app.element("controls.paged.Hold Select")
+        XCTAssertTrue(hold.waitForExistence(timeout: 5), "Remote and Controller page didn't open")
+        XCTAssertTrue(hold.label.contains("Reader options"), hold.label)
         XCTAssertTrue(app.element("controls.paged.Play/Pause").label.contains("Reader options"))
     }
 }

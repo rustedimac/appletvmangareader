@@ -23,6 +23,7 @@ struct ProfileEditorView: View {
                     .textContentType(.name)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("profileEditor.name")
+                    .font(SettingsFieldFont.text)
 
                 VStack(alignment: .leading, spacing: Space.m) {
                 header("Avatar")
