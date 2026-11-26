@@ -229,6 +229,10 @@ Form { … }
   series, the current profile in the picker, the first row in a form).
 - Group regions with `.focusSection()` so moving down from a wide row of
   buttons lands somewhere predictable.
+- A lone centered control under or above a row (Customize Home under the last
+  Home shelf, Try Again in an error message) uses `.centeredFocusRow()`, which
+  makes the full width a focus section. Otherwise focus only reaches it from
+  the items directly above it.
 - Never move focus without the user doing something, except restoring it when
   a screen appears.
 - Scrolling containers must scroll back to the top when focus moves to their

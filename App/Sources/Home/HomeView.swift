@@ -23,7 +23,8 @@ struct HomeView: View {
                         Label("Customize Home", systemImage: "slider.horizontal.3")
                     }
                     .accessibilityIdentifier("home.customize")
-                    .frame(maxWidth: .infinity)
+                    // Down from any poster in the last row reaches it.
+                    .centeredFocusRow()
                     .padding(.top, 20)
                 }
                 .padding(.bottom, 60)
