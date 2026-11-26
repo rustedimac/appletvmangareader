@@ -55,10 +55,11 @@ jobs:
   app:
     name: tvOS app build and UI tests
     runs-on: macos-15
-    # The UI suite took 43 minutes at 91 tests. Tests run one at a time on
-    # purpose: parallel simulator clones made each test 2-5x slower on these
-    # 3-core runners and the job timed out (PR #42). See docs/CI.md.
-    timeout-minutes: 60
+    # The full UI suite took 52 minutes at 125 tests (run 372); the PR smoke
+    # set about 18. Tests run one at a time on purpose: parallel simulator
+    # clones made each test 2-5x slower on these 3-core runners (PR #42).
+    # See docs/CI.md.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
