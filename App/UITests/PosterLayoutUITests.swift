@@ -148,4 +148,34 @@ final class PosterLayoutUITests: XCTestCase {
         XCTAssertLessThan(label.frame.maxY, below.frame.minY,
                           "focused title \(label.frame) runs into \(below.identifier) \(below.frame)")
     }
+
+    /// John (2026-11-26): posters in a row had different heights (one- or
+    /// two-line titles), so the lines under them didn't line up. Every
+    /// title now takes two lines, so each line under it starts at the same
+    /// height across the row.
+    func testCaptionLinesLineUpAcrossARow() {
+        launch()
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
+        let shelf = app.descendants(matching: .any)["shelfRow.recentlyUpdated"]
+        XCTAssertTrue(shelf.waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 1.5) // counts fill in
+        let screen = app.windows.firstMatch.frame
+        // A focused poster's caption drops on purpose; leave it out.
+        let focusedFrame = focusedPoster.exists ? focusedPoster.frame : nil
+        func onScreen(_ prefix: String) -> [XCUIElement] {
+            shelf.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
+                .filter { $0.frame.width > 0 && $0.frame.minX >= 0 && $0.frame.maxX <= screen.maxX }
+                .filter { el in focusedFrame.map { abs(el.frame.minX - $0.minX) > $0.width / 2 } ?? true }
+        }
+        let titles = onScreen("poster.title.")
+        XCTAssertGreaterThanOrEqual(titles.count, 3, "not enough posters on screen")
+        let heights = titles.map(\.frame.height)
+        XCTAssertLessThan(heights.max()! - heights.min()!, 1, "titles take different heights: \(heights)")
+        XCTAssertGreaterThan(heights.min()!, 50, "titles don't reserve two lines: \(heights)")
+        for prefix in ["poster.title.", "poster.caption.", "poster.server."] {
+            let tops = onScreen(prefix).map(\.frame.minY)
+            guard let first = tops.first else { continue }
+            XCTAssertTrue(tops.allSatisfy { abs($0 - first) < 1 }, "\(prefix) lines don't line up: \(tops)")
+        }
+    }
 }

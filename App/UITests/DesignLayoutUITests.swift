@@ -51,7 +51,7 @@ final class DesignLayoutUITests: XCTestCase {
         // No login yet, so Kavita offers username and password sign-in.
         XCTAssertTrue(app.element("serverEditor.username").waitForExistence(timeout: 5))
         audit(app, "settings-edit-server")
-        focus(app.element("serverEditor.remove"))
+        focus(app.element("serverEditor.remove"), maxPresses: 16)
         audit(app, "settings-edit-server-bottom")
     }
 
@@ -63,6 +63,16 @@ final class DesignLayoutUITests: XCTestCase {
         select(app.element("settings.readerDefaults"))
         checkTitleBesideForm(app, "settings-reader-defaults",
                              first: app.element("readerDefaults.mode"), last: app.element("readerDefaults.reset"))
+    }
+
+    func testWelcome() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-welcome"]
+        app.launch()
+        XCTAssertTrue(app.element("welcome.start").waitForExistence(timeout: 10))
+        audit(app, "welcome")
+        checkTitleBesideForm(app, "welcome",
+                             first: app.element("welcome.collection.comics"), last: app.element("welcome.restore"))
     }
 
     func testServerEditorTitleNeverOverlapsRows() {

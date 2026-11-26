@@ -85,12 +85,24 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
 
     public static let genreNames = ["Adventure", "Comedy", "Mystery"]
 
-    /// "Demo" plus one of `genreNames`, by id.
+    /// "Demo" plus one of `genreNames`, by id. Multiples of 5 are also
+    /// "Horror", for content-filter tests.
     public static func genres(for n: Int) -> [String] {
-        [genreNames[n % genreNames.count], "Demo"]
+        [genreNames[n % genreNames.count], "Demo"] + (n % 5 == 0 ? ["Horror"] : [])
     }
 
-    private func summary(_ n: Int) -> SeriesSummary {
+    /// Multiples of 6 are tagged "Cliffhanger".
+    public static func tags(for n: Int) -> [String] { n % 6 == 0 ? ["Cliffhanger"] : [] }
+
+    /// Age ratings (demo Kavita only): multiples of 7 are Mature 17+,
+    /// multiples of 11 unrated, the rest Everyone.
+    public static func ageRating(for n: Int) -> AgeRating {
+        if n % 7 == 0 { return .mature17Plus }
+        if n % 11 == 0 { return .unknown }
+        return .everyone
+    }
+
+    func summary(_ n: Int) -> SeriesSummary {
         let read = chapters(n).filter(\.isRead).count
         return SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(n)),
                              title: Self.title(for: n), coverURL: nil,
@@ -100,7 +112,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
                              chapterCount: Self.chapterCount(for: n))
     }
 
-    private func chapters(_ n: Int) -> [Chapter] {
+    func chapters(_ n: Int) -> [Chapter] {
         let ref = SeriesRef(serverID: config.id, seriesID: String(n))
         let base = Date(timeIntervalSince1970: 1_700_000_000)
         return (1...Self.chapterCount(for: n)).map { c in
@@ -112,7 +124,7 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
         }
     }
 
-    private func wait() async throws {
+    func wait() async throws {
         if latency > .zero { try await Task.sleep(for: latency) }
         if let failure { throw failure }
     }
@@ -251,4 +263,22 @@ public final class SampleLibraryServer: MangaServer, @unchecked Sendable {
     }
 
     public func authorize(_ request: URLRequest) -> URLRequest { request }
+
+    public func contentFacets() async throws -> ContentFacets {
+        try await wait()
+        return ContentFacets(genres: ["Adventure", "Comedy", "Demo", "Horror", "Mystery"],
+                             tags: config.kind == .kavita ? ["Cliffhanger"] : [],
+                             supportsAgeRating: config.kind == .kavita)
+    }
+
+    /// Like the real clients: Suwayomi matches genres only.
+    public func hiddenSeriesIDs(for filter: ContentFilter) async throws -> Set<String> {
+        guard filter.isActive else { return [] }
+        try await wait()
+        let kavita = config.kind == .kavita
+        return Set((1...seriesCount).filter { n in
+            filter.hides(genres: Self.genres(for: n), tags: kavita ? Self.tags(for: n) : [],
+                         ageRating: kavita ? Self.ageRating(for: n) : nil, supportsAgeRating: kavita)
+        }.map(String.init))
+    }
 }

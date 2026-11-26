@@ -35,7 +35,7 @@ public enum PosterCaption: String, Codable, CaseIterable, Sendable, Identifiable
         switch self {
         case .chapters: return true
         case .pages: return (series.pageCount ?? 0) <= 0
-        case .progress, .off: return false
+        case .progress, .off: return series.needsUnreadChapters
         }
     }
 }
@@ -54,10 +54,14 @@ public enum SeriesCountUnit: String, Codable, Sendable {
 public struct SeriesCount: Codable, Hashable, Sendable {
     public var count: Int
     public var unit: SeriesCountUnit
+    /// How many of them are unread, when the server said (for the unread
+    /// badge on posters whose listing reports pages).
+    public var unread: Int?
 
-    public init(count: Int, unit: SeriesCountUnit = .chapter) {
+    public init(count: Int, unit: SeriesCountUnit = .chapter, unread: Int? = nil) {
         self.count = count
         self.unit = unit
+        self.unread = unread
     }
 
     /// Counts a chapter list: books when every entry opens in the book
@@ -65,15 +69,26 @@ public struct SeriesCount: Codable, Hashable, Sendable {
     public init(chapters: [Chapter], seriesFormat: ContentFormat? = nil) {
         let formats = chapters.map { $0.format ?? seriesFormat }
         let books = !formats.isEmpty && formats.allSatisfy { $0?.isText == true || $0 == .pdf }
-        self.init(count: chapters.count, unit: books ? .book : .chapter)
+        self.init(count: chapters.count, unit: books ? .book : .chapter,
+                  unread: chapters.filter { !$0.isRead }.count)
     }
 }
 
 public extension SeriesSummary {
     /// The series with `count` filled in where the listing left it out.
+    /// A series whose listing reports pages (Kavita) and that isn't
+    /// finished needs its unread chapter count fetched for the poster's
+    /// unread badge, whatever the caption shows.
+    var needsUnreadChapters: Bool {
+        guard unreadChapters == nil, let pages = pageCount, pages > 0, let read = pagesRead else { return false }
+        return read < pages
+    }
+
     func withCount(_ count: SeriesCount?) -> SeriesSummary {
-        guard let count, chapterCount == nil else { return self }
+        guard let count else { return self }
         var s = self
+        if s.unreadChapters == nil, pageCount != nil { s.unreadChapters = count.unread }
+        guard chapterCount == nil else { return s }
         s.chapterCount = count.count
         s.countUnit = count.unit
         return s

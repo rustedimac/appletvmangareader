@@ -11,12 +11,13 @@ people can move their data with **Back Up and Restore over Wi‑Fi**.
 | --- | --- |
 | Profiles (name, symbol, color) | Kavita API keys, Suwayomi usernames and passwords (Keychain only) |
 | | Anything from a guest session (never saved) |
-| Servers (name, kind, address) | Profile PINs, once that feature lands (#19) |
+| Servers (name, kind, every address) | Profile PINs, once that feature lands (#19) |
 | Per profile and server: library/category choice, "sync progress to server" | Image caches |
 | Favorites | Which profile is active on this device |
 | Reading progress: position and every read/unread chapter | |
 | Default reader settings and per-series reader settings (picture controls and split pages included) | |
 | Home rows (order, hidden, merged or per-server rows, where posters name their server), poster size, poster caption, per-library sort, filters, reading direction and grid order; Library Defaults; Continue Reading removals; Caught Up | |
+| Whether the profile finished the first-run welcome (its Free Library picks travel as the library choice above) | |
 
 Logins stay on each device on purpose: the Keychain is the only safe place
 for them, and iCloud Keychain sync would need its own opt-in. On a new

@@ -70,7 +70,10 @@ extension AppModel {
 
     // MARK: Caught Up
 
-    var caughtUpSeries: [SeriesSummary] { state.visibleCaughtUp(profile: activeProfile.id).map(\.series) }
+    var caughtUpSeries: [SeriesSummary] {
+        // Local like Favorites, so the content filter applies here too.
+        visibleSeries(state.visibleCaughtUp(profile: activeProfile.id).map(\.series))
+    }
 
     /// Called whenever series detail loads, with the summary the user
     /// navigated with. Saves only when the Caught Up row changes.

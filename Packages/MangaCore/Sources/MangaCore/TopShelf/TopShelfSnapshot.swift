@@ -68,11 +68,28 @@ public struct TopShelfSnapshot: Codable, Hashable, Sendable {
     /// Builds the Top Shelf for the active profile: Continue Reading, then
     /// Favorites with new chapters first. Series already in Continue Reading
     /// aren't repeated under Favorites. Empty sections are left out.
-    public static func make(from state: AppState, continueLimit: Int = 10, favoritesLimit: Int = 12) -> TopShelfSnapshot {
+    ///
+    /// Only series the profile may see are listed: in its imported
+    /// libraries/categories and not hidden by its content filter. `hidden`
+    /// is `AppModel.hiddenSeries` (server id to hidden series ids); with an
+    /// active filter, a server missing from it lists nothing (fails closed,
+    /// see `ContentVisibility`). A `isPrivate` profile (one that asks for
+    /// its PIN to open) shows nothing, since the Top Shelf is on screen for
+    /// anyone.
+    public static func make(from state: AppState, hidden: [UUID: Set<String>] = [:], isPrivate: Bool = false,
+                            continueLimit: Int = 10, favoritesLimit: Int = 12) -> TopShelfSnapshot {
         guard let profile = state.activeProfile?.id else { return .empty }
+        guard !isPrivate else { return TopShelfSnapshot(profileID: profile, sections: []) }
         let serverIDs = Set(state.servers.map(\.id))
+        let filter = state.contentFilter(profile: profile)
+        func mayShow(_ s: SeriesSummary) -> Bool {
+            state.serverSettings(profile: profile, server: s.ref.serverID).includes(s)
+                && !ContentVisibility.visible([s], filter: filter, hidden: hidden).isEmpty
+        }
 
-        let continuing = state.continueReading(profile: profile, limit: continueLimit)
+        let continuing = state.continueReading(profile: profile, limit: .max)
+            .filter { mayShow($0.series) }
+            .prefix(continueLimit)
         let continueItems = continuing.map { entry in
             item(entry.series, title: entry.series.title,
                  play: .read(entry.series.ref, chapterID: entry.progress.chapterID, page: entry.progress.page,
@@ -81,8 +98,8 @@ public struct TopShelfSnapshot: Codable, Hashable, Sendable {
         }
 
         let shown = Set(continuing.map(\.series.ref))
-        let favoriteItems = state.favoritesForTopShelf(profile: profile, limit: favoritesLimit + shown.count)
-            .filter { serverIDs.contains($0.series.ref.serverID) && !shown.contains($0.series.ref) }
+        let favoriteItems = state.favoritesForTopShelf(profile: profile, limit: .max)
+            .filter { serverIDs.contains($0.series.ref.serverID) && !shown.contains($0.series.ref) && mayShow($0.series) }
             .prefix(favoritesLimit)
             .map { fav -> Item in
                 let s = fav.series

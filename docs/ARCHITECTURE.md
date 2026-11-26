@@ -6,7 +6,8 @@
 | --- | --- |
 | `Packages/MangaCore` | Swift package with all non-UI logic. No SwiftUI. Tested with `swift test`. |
 | `MangaCore/Models` | Shared value types: `ServerConfig`, `Profile`, `SeriesSummary`, `SeriesDetail`, `Chapter`, `PageDescriptor`, `HomeFeed`. |
-| `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), and the `MangaServer` protocol every backend implements. |
+| `MangaCore/Networking` | `HTTPClient`, `HTTPTransport` (mockable), the `MangaServer` protocol every backend implements, and `ServerAddressRouter` / `FailoverTransport` for servers with several addresses (see [SERVERS.md](SERVERS.md#several-addresses-per-server)). |
+| `MangaCore/Pairing` | `PhoneSetupHTTP` / `PhoneSetupServer`: the "Set Up from Your Phone" form the Apple TV serves on the local network. |
 | `MangaCore/Kavita` | `KavitaClient` (REST, auth key in `x-api-key`, username/password sign-in via `KavitaClient.signIn`) and `KavitaOPDS` URL parsing. |
 | `MangaCore/Suwayomi` | `SuwayomiClient` (GraphQL at `/api/graphql`; no auth, basic auth, or `login` + Bearer tokens). |
 | `MangaCore/Kavita` | `KavitaClient` (REST, API key → JWT via `api/Plugin/authenticate`) and `KavitaOPDS` URL parsing. |
@@ -14,6 +15,7 @@
 | `MangaCore/OPDS` | `OPDSClient` (OPDS 1.2 Atom and 2.0 JSON), `OPDSParser`, `ZipArchive` and `LocalArchiveCache` for CBZ files. See `docs/SERVERS.md`. |
 | `MangaCore/FreeLibrary` | `FreeLibraryClient`, the built-in source of public-domain Internet Archive items (IIIF) and Pepper&Carrot, read from the curated `catalog.json`. See [FREE_LIBRARY.md](FREE_LIBRARY.md). |
 | `MangaCore/Storage` | `AppState` (profiles, servers, per-profile favorites / progress / reader settings / bookmarks), `StateStore` (UserDefaults JSON), `SecretStore` (Keychain), `ProgressSync` (queued pushes, latest-wins merge). `Bookmarks.swift`: `Bookmark`, the `BookmarkSyncing` server capability and `BookmarkSync` merge rules. |
+| `MangaCore/ContentFilter` | `ContentFilter` (per-profile hidden genres/tags and age limit), `ContentFilteredServer` (wraps a client so every list leaves hidden series out), `ContentVisibility` (the same rule for local lists). |
 | `MangaCore/Images` | `ImagePipeline` (`ImageLoading`): authorized image fetch, ImageIO downsampling, memory + disk cache, shared downloads, prefetch with original pixel sizes. Views use `RemoteImage` in `App/Sources/Shared/Images`. |
 | `MangaCore/Sync` | iCloud sync and backup: `SyncMapper` (AppState ↔ `SyncRecord`), `SyncMerge`, `SyncEngine`, `SyncStore` (`CloudKitSyncStore`, `LocalOnlySyncStore`, `InMemoryCloudStore`), `MangaBackup`, `BackupWebServer`. See [ICLOUD.md](ICLOUD.md). |
 | `MangaCore/Reader` | `ReaderSettings`, `SpreadLayout` (two-page pairing), `ReaderNavigator` (page turns, chapter edges, re-layout anchoring, preload order) and `SpreadGeometry` (seamless spread frames). |
@@ -31,14 +33,16 @@
 - **All persisted changes go through `AppModel.update { }`**, which mutates
   `AppState` and saves it. Add new persisted fields to `AppState` /
   `ProfileData` with tests in `AppStateTests`.
-- **An update must never reset saved state.** New stored fields decode with
-  a default when missing (`decodeIfPresent`, or an optional). Every shape a
-  merged build has written is a fixture in `AppStateUpgradeTests`; when you
-  change what `AppState` stores, add the JSON the build before your change
-  writes. Renames or moves bump `AppState.currentVersion` with an
+- **An update must never reset saved state.** Every saved type decodes with
+  the `tolerant` helpers: a missing field or an unknown value falls back to
+  a default instead of failing its entry. Every saved shape is a fixture in
+  `Tests/MangaCoreTests/Fixtures/SavedData` (older ones inline in
+  `AppStateUpgradeTests`); when you change what the app saves, add a new
+  snapshot. `SavedDataUpgradeTests` checks it field by field and fails until
+  you do. Renames or moves bump `AppState.currentVersion` with an
   `AppStateUpgrade.step`. If the normal decode still fails, `StateStore`
   salvages what it can entry by entry and keeps the original bytes under
-  `StateStore.backupKey`.
+  `StateStore.backupKey`. Rules: [UPGRADE_SAFETY.md](UPGRADE_SAFETY.md).
 - **Secrets never go in `AppState`.** Credentials are per profile, per server,
   in the Keychain.
 - **tvOS storage is small.** Only UserDefaults (~1 MB) and the Keychain
@@ -80,6 +84,42 @@ the server's categories all follow it. Favorites are filtered with
 
 Every client also drops anything outside the selection after the server
 answers, as a safety net.
+
+## Content filters and profile PINs
+
+Each profile can hide content three ways. Libraries and categories come
+from the import selection above. Genres, tags and an age limit live in
+`ProfileData.contentFilter` (`ContentFilter`), edited in Settings →
+Content & PIN (`ContentSettingsView`).
+
+- **Where it applies.** `AppModel.client(for:)` wraps every client in
+  `ContentFilteredServer` when the filter is on. The wrapper asks the
+  backend once for the ids it hides (`MangaServer.hiddenSeriesIDs(for:)`,
+  cached five minutes) and drops them from feeds, library pages, search
+  and series detail (which reads as not found). Lists built from saved
+  data go through `AppModel.visibleSeries(_:)` / `ContentVisibility`:
+  Favorites now, and **Top Shelf must too**. Both fail closed: if the
+  hidden ids can't be loaded, nothing from that server shows.
+- **Kavita**: one FilterV2 query, `combination` 0 (or): `Genres contains`
+  and `Tags contains` with ids from `api/Metadata/genres` / `tags`,
+  `AgeRating > limit`, and optionally `AgeRating <= 1` for unrated. Paged
+  500 at a time. Genre and tag names match ignoring case and accents.
+- **Suwayomi** has genres only (`MangaType.genre`), read for the whole
+  library in one query. Age limits and tags don't apply there.
+- Backends that don't implement the two methods get defaults that offer
+  no facets and fail closed when a filter is on.
+
+PINs: four digits, optional per profile. Only a salted PBKDF2-SHA256 hash
+is kept, in the Keychain (`KeychainPINStore`, this device only), never in
+`AppState`. `ProfileLocks` tracks which profiles were unlocked this session
+(all lock again when the app goes to the background) and throttles wrong
+PINs: five tries, then 30 s doubling up to 15 min. A profile's PIN guards
+its Content & PIN screen, its profile editor, server changes and library
+picks while it's active; adding a profile needs any profile's PIN once one
+exists. `AppState.requiresPINToOpen` also asks for it on the profile
+picker, so a parent can lock a child's settings without locking the child
+out. Views use `PINGate(kind:)` around a destination and `PINPadView` for
+the keypad (`pin.key.<n>`).
 
 ## Server API notes (verified against Kavita 0.9.1 and Suwayomi 2.4)
 

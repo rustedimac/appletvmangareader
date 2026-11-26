@@ -56,7 +56,7 @@ extension AppModel {
     /// The client to sync a series' bookmarks with, or nil to keep them local.
     func bookmarkClient(for ref: SeriesRef) -> BookmarkSyncing? {
         guard syncsProgress(to: ref.serverID) else { return nil }
-        return client(for: ref) as? BookmarkSyncing
+        return client(for: ref)?.unfiltered as? BookmarkSyncing
     }
 
     /// Merges one series' bookmarks with the server and uploads any that

@@ -32,13 +32,46 @@ public struct ServerConfig: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var kind: ServerKind
     public var name: String
+    /// The main address. Every URL the clients build starts with it;
+    /// `FailoverTransport` swaps it for whichever address answers.
     public var baseURL: URL
+    /// Other addresses of the same server, e.g. a remote or reverse-proxy
+    /// address for when the Apple TV isn't on the home network. Tried in
+    /// order after `baseURL` (see `ServerAddressRouter`). Saved only when
+    /// there are some, so older builds and backups read the same JSON.
+    public var alternateURLs: [URL]
 
-    public init(id: UUID = UUID(), kind: ServerKind, name: String, baseURL: URL) {
+    public init(id: UUID = UUID(), kind: ServerKind, name: String, baseURL: URL, alternateURLs: [URL] = []) {
         self.id = id
         self.kind = kind
         self.name = name
         self.baseURL = baseURL
+        self.alternateURLs = alternateURLs
+    }
+
+    /// Every address in the order they're tried, main address first,
+    /// without repeats.
+    public var addresses: [URL] {
+        var seen = Set<String>()
+        return ([baseURL] + alternateURLs).filter { seen.insert($0.absoluteString).inserted }
+    }
+
+    /// True when there's more than one address to choose from.
+    public var hasAlternateAddresses: Bool { addresses.count > 1 }
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, name, baseURL, alternateURLs
+    }
+
+    // Decoding is in "Saved data" below (tolerant of missing fields).
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(name, forKey: .name)
+        try c.encode(baseURL, forKey: .baseURL)
+        if !alternateURLs.isEmpty { try c.encode(alternateURLs, forKey: .alternateURLs) }
     }
 }
 
@@ -169,6 +202,11 @@ public struct SeriesSummary: Codable, Hashable, Identifiable, Sendable {
     public var chapterCount: Int?
     /// What `chapterCount` counts. Nil means chapters.
     public var countUnit: SeriesCountUnit?
+    /// Unread chapters for a listing that reports pages (Kavita), where
+    /// `unreadCount` is pages. Fetched per poster with the chapter count
+    /// (`SeriesCount.unread`), so the poster can show the same unread
+    /// badge as a Suwayomi poster. Nil when unknown.
+    public var unreadChapters: Int? = nil
     /// When the series got its place in a Home feed: last read (Continue
     /// Reading), added (Newly Added) or last new chapter (Recently
     /// Updated). Set by feeds when the server says, so rows from several
@@ -334,5 +372,73 @@ public struct Paged<Item: Sendable>: Sendable {
     public init(items: [Item], hasMore: Bool) {
         self.items = items
         self.hasMore = hasMore
+    }
+}
+
+// MARK: Saved data
+
+// These are saved on the Apple TV (AppState, the shared server directory,
+// the keychain), so a missing field or an unknown value falls back instead
+// of losing the server, login, profile or series (see TolerantDecoding).
+
+extension ServerConfig {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        kind = try c.decode(ServerKind.self, forKey: .kind)
+        baseURL = try c.decode(URL.self, forKey: .baseURL)
+        name = c.tolerant(.name, default: baseURL.host ?? kind.rawValue)
+        // Older builds and backups have no alternate addresses. Not
+        // `tolerantArray`: JSONDecoder reads a URL from a string only when
+        // asked for `URL` directly, not through `Lossy<URL>`.
+        alternateURLs = c.tolerant(.alternateURLs, default: [])
+    }
+}
+
+extension ServerCredential {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        apiKey = c.tolerant(.apiKey)
+        username = c.tolerant(.username)
+        password = c.tolerant(.password)
+        // Unknown: the client finds out again on the next sign-in.
+        suwayomiLogin = c.tolerant(.suwayomiLogin)
+    }
+}
+
+extension Profile {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = c.tolerant(.name, default: "Profile")
+        symbol = c.tolerant(.symbol, default: "person.fill")
+        colorIndex = c.tolerant(.colorIndex, default: 0)
+    }
+}
+
+extension ProfileServerSettings {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        syncProgressToServer = c.tolerant(.syncProgressToServer, default: true)
+        selectedCategoryIDs = c.tolerant(.selectedCategoryIDs)
+    }
+}
+
+extension SeriesSummary {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ref = try c.decode(SeriesRef.self, forKey: .ref)
+        title = c.tolerant(.title, default: "")
+        coverURL = c.tolerant(.coverURL)
+        unreadCount = c.tolerant(.unreadCount)
+        libraryID = c.tolerant(.libraryID)
+        format = c.tolerant(.format)
+        categoryIDs = c.tolerant(.categoryIDs)
+        pageCount = c.tolerant(.pageCount)
+        pagesRead = c.tolerant(.pagesRead)
+        chapterCount = c.tolerant(.chapterCount)
+        countUnit = c.tolerant(.countUnit)
+        feedDate = c.tolerant(.feedDate)
+        unreadChapters = c.tolerant(.unreadChapters)
     }
 }

@@ -115,6 +115,17 @@ struct SeriesDetailView: View {
                         .frame(maxWidth: 1100, alignment: .leading)
                         .accessibilityIdentifier("series.synopsis")
                 }
+                if model.browsePreferences.showsProgressPercent, let detail,
+                   let read = PosterBadges.readText(detail: detail, summary: series) {
+                    // "42% read", next to Continue, so checking how far
+                    // along a series is doesn't need a trip back out.
+                    Text(read)
+                        .font(.callout.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 10)
+                        .accessibilityIdentifier("series.percentRead")
+                }
                 actions.padding(.top, 10)
             }
         }

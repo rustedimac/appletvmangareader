@@ -12,9 +12,10 @@ import Foundation
 ///    keep everything that can be read. One bad entry costs that entry, not
 ///    the whole state.
 ///
-/// When you change the shape of anything `AppState` stores, add the JSON a
-/// build *before* your change writes to `AppStateUpgradeTests` (the
-/// `Fixtures` list) so every past shape stays covered.
+/// When you change the shape of anything `AppState` stores, add a snapshot
+/// of the new shape to `Tests/MangaCoreTests/Fixtures/SavedData` so every
+/// past shape stays covered (`SavedDataUpgradeTests` fails until you do;
+/// see docs/UPGRADE_SAFETY.md).
 public enum AppStateUpgrade {
     public enum Outcome: Equatable, Sendable {
         /// Decoded normally (after any migrations).
@@ -147,6 +148,11 @@ struct SalvagedProfileData: Decodable {
         let recent = c.lossyDictionary(SeriesSummary.self, "recentSeries")
         d.recentSeries = recent.isEmpty ? nil : recent
         d.browse = c.lossy(BrowsePreferences.self, "browse")
+        d.welcomeCompleted = c.lossy(Bool.self, "welcomeCompleted")
+        // Keep the filter and PIN rule, so a damaged save never unlocks
+        // a profile or shows what it hid.
+        d.contentFilter = c.lossy(ContentFilter.self, "contentFilter")
+        d.requiresPINToOpen = c.lossy(Bool.self, "requiresPINToOpen")
         data = d
     }
 }
