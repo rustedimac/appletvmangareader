@@ -85,7 +85,7 @@ final class WelcomeUITests: XCTestCase {
         let start = app.element("welcome.start")
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         select(start)
-        XCTAssertTrue(app.staticTexts["shelf.Free Library.newlyAdded"].waitForExistence(timeout: 15), "Home has no Free Library row")
+        XCTAssertTrue(app.staticTexts["shelf.newlyAdded"].waitForExistence(timeout: 15), "Home has no Free Library row")
     }
 
     func testOtherWaysToStartOpenAndComeBack() {
