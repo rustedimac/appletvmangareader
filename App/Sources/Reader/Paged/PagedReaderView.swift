@@ -254,7 +254,7 @@ struct PageFailureCard: View {
                 .foregroundStyle(.black)
                 .padding(.horizontal, 36)
                 .padding(.vertical, 10)
-                .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                .background(.white, in: RoundedRectangle(cornerRadius: Radius.poster))
             Text("Press Select to retry")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -262,7 +262,7 @@ struct PageFailureCard: View {
         .foregroundStyle(.white)
         .minimumScaleFactor(0.6)
         .padding(32)
-        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: 24))
+        .background(Color(white: 0.12).opacity(0.92), in: RoundedRectangle(cornerRadius: Radius.card))
         .padding(16)
         .frame(maxWidth: 640)
     }
