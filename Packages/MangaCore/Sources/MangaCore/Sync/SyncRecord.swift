@@ -55,6 +55,20 @@ public struct SyncRecord: Codable, Hashable, Sendable {
         self.deviceID = deviceID
     }
 
+    private enum CodingKeys: String, CodingKey { case key, kind, payload, modifiedAt, deviceID }
+
+    /// Saved in the offline queue and in backups. A record without a date
+    /// loses every merge but is still offered; one without a device id
+    /// counts as another device's.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = try c.decode(String.self, forKey: .key)
+        kind = try c.decode(SyncKind.self, forKey: .kind)
+        payload = try c.decodeIfPresent(Data.self, forKey: .payload)
+        modifiedAt = c.tolerant(.modifiedAt, default: .distantPast)
+        deviceID = c.tolerant(.deviceID, default: "")
+    }
+
     public var isDeleted: Bool { payload == nil }
 
     public static func key(_ kind: SyncKind, _ id: String) -> String { "\(kind.rawValue)/\(id)" }

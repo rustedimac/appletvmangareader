@@ -53,12 +53,12 @@ public struct Bookmark: Codable, Hashable, Identifiable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         series = try c.decode(SeriesSummary.self, forKey: .series)
         chapterID = try c.decode(String.self, forKey: .chapterID)
-        volumeID = try c.decodeIfPresent(String.self, forKey: .volumeID)
-        chapterTitle = try c.decodeIfPresent(String.self, forKey: .chapterTitle) ?? ""
-        chapterNumber = try c.decodeIfPresent(Double.self, forKey: .chapterNumber)
+        volumeID = c.tolerant(.volumeID)
+        chapterTitle = c.tolerant(.chapterTitle, default: "")
+        chapterNumber = c.tolerant(.chapterNumber)
         page = try c.decode(Int.self, forKey: .page)
-        createdAt = try c.decode(Date.self, forKey: .createdAt)
-        needsUpload = try c.decodeIfPresent(Bool.self, forKey: .needsUpload) ?? false
+        createdAt = c.tolerant(.createdAt, default: .distantPast)
+        needsUpload = c.tolerant(.needsUpload, default: false)
     }
 
     // Skip empty fields to keep AppState small.

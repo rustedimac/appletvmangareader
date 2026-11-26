@@ -138,6 +138,18 @@ public struct LibraryOptions: Codable, Hashable, Sendable {
 
     public var isEmpty: Bool { sort == nil && readingStyle == nil && gridOrder == nil && filter == nil }
 
+    private enum CodingKeys: String, CodingKey { case sort, readingStyle, gridOrder, filter }
+
+    /// A value this build doesn't know falls back to the profile's default
+    /// for that one option; the library's other options are kept.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sort = c.tolerant(.sort)
+        readingStyle = c.tolerant(.readingStyle)
+        gridOrder = c.tolerant(.gridOrder)
+        filter = c.tolerant(.filter)
+    }
+
     /// These options with every unset sort, grid order and filter taken
     /// from `defaults`. The reading style stays as it is.
     public func resolved(with defaults: LibraryDefaults) -> LibraryOptions {

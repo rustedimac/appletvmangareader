@@ -39,6 +39,18 @@ public struct SyncJournal: Codable, Sendable, Equatable {
     public init(deviceID: String = UUID().uuidString) {
         self.deviceID = deviceID
     }
+
+    private enum CodingKeys: String, CodingKey { case deviceID, pending, lastSuccessAt, lastError }
+
+    /// The queue holds changes that exist nowhere else: a record that can't
+    /// be read is skipped, never the queue.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        deviceID = try c.decode(String.self, forKey: .deviceID)
+        pending = c.tolerantDictionary(.pending)
+        lastSuccessAt = c.tolerant(.lastSuccessAt)
+        lastError = c.tolerant(.lastError)
+    }
 }
 
 public protocol SyncPersistence: Sendable {

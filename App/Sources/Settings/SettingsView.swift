@@ -8,11 +8,13 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if model.perAppleTVUser {
+                if model.isGuest {
+                    GuestSessionSection()
+                } else if model.perAppleTVUser {
                     AppleTVUserSection()
                 }
 
-                Section(settingsHeader: model.perAppleTVUser ? "Reading" : "Profile") {
+                Section(settingsHeader: model.perAppleTVUser || model.isGuest ? "Reading" : "Profile") {
                     if showsInAppProfiles {
                         Button {
                             model.isPickingProfile = true
@@ -64,52 +66,9 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.controls")
                 }
 
-                Section {
-                    ForEach(model.servers) { server in
-                        NavigationLink {
-                            if server.kind == .freeLibrary {
-                                FreeLibrarySettingsView(server: server)
-                            } else {
-                                ServerEditorView(editing: server)
-                            }
-                        } label: {
-                            ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
-                                      credential: model.credential(for: server),
-                                      pickedCount: model.selectedCategories(for: server)?.count)
-                        }
-                        .accessibilityIdentifier("settings.server.\(server.name)")
-                    }
-                    NavigationLink {
-                        ServerEditorView(editing: nil)
-                    } label: {
-                        Label("Add Server", systemImage: "plus")
-                    }
-                    .accessibilityIdentifier("settings.addServer")
-                    if !model.state.hasFreeLibrary {
-                        Button {
-                            model.restoreFreeLibrary()
-                        } label: {
-                            Label("Add the Free Library", systemImage: FreeLibrarySymbol.name)
-                        }
-                        .accessibilityIdentifier("settings.addFreeLibrary")
-                    }
-                } header: {
-                    SettingsHeader("Servers")
-                } footer: {
-                    if model.servers.isEmpty {
-                        Text("Add a Kavita or Suwayomi server to start reading.")
-                    } else {
-                        Text("Logins are saved separately for each profile.")
-                    }
-                }
-
-                Section(settingsHeader: "Sync and Backup") {
-                    NavigationLink {
-                        ICloudSyncView()
-                    } label: {
-                        Label("iCloud Sync and Backup", systemImage: "icloud")
-                    }
-                    .accessibilityIdentifier("settings.icloud")
+                // A guest can't change servers, logins, sync or backups.
+                if !model.isGuest {
+                    ownerSections
                 }
             }
             .settingsPage("Settings", systemImage: "gearshape")
@@ -117,11 +76,64 @@ struct SettingsView: View {
         .resetsNavigationWhenLeft()
     }
 
+    @ViewBuilder
+    private var ownerSections: some View {
+        Section {
+            ForEach(model.servers) { server in
+                NavigationLink {
+                    if server.kind == .freeLibrary {
+                        FreeLibrarySettingsView(server: server)
+                    } else {
+                        ServerEditorView(editing: server)
+                    }
+                } label: {
+                    ServerRow(server: server, syncs: model.syncsProgress(to: server.id),
+                              credential: model.credential(for: server),
+                              pickedCount: model.selectedCategories(for: server)?.count)
+                }
+                .accessibilityIdentifier("settings.server.\(server.name)")
+            }
+            NavigationLink {
+                ServerEditorView(editing: nil)
+            } label: {
+                Label("Add Server", systemImage: "plus")
+            }
+            .accessibilityIdentifier("settings.addServer")
+            if !model.state.hasFreeLibrary {
+                Button {
+                    model.restoreFreeLibrary()
+                } label: {
+                    Label("Add the Free Library", systemImage: FreeLibrarySymbol.name)
+                }
+                .accessibilityIdentifier("settings.addFreeLibrary")
+            }
+        } header: {
+            SettingsHeader("Servers")
+        } footer: {
+            if model.servers.isEmpty {
+                Text("Add a Kavita or Suwayomi server to start reading.")
+            } else {
+                Text("Logins are saved separately for each profile.")
+            }
+        }
+
+        Section(settingsHeader: "Sync and Backup") {
+            NavigationLink {
+                ICloudSyncView()
+            } label: {
+                Label("iCloud Sync and Backup", systemImage: "icloud")
+            }
+            .accessibilityIdentifier("settings.icloud")
+        }
+
+        GuestStartSection()
+    }
+
     /// In-app profiles are the fallback when there are no Apple TV users.
     /// With Apple TV users they only show for older state that already has
     /// several profiles.
     private var showsInAppProfiles: Bool {
-        !model.perAppleTVUser || model.state.profiles.count > 1
+        !model.isGuest && (!model.perAppleTVUser || model.state.profiles.count > 1)
     }
 }
 
