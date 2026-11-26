@@ -28,6 +28,8 @@ public struct SyncKind: RawRepresentable, Hashable, Codable, Sendable, CustomStr
     public static let readerOverride = SyncKind("readerOverride")
     /// Home layout, poster size, per-library sort and reading style.
     public static let browse = SyncKind("browse")
+    /// The profile finished the first-run welcome.
+    public static let welcome = SyncKind("welcome")
 }
 
 /// One synced piece of state, e.g. one favorite or one series' progress.
@@ -53,6 +55,20 @@ public struct SyncRecord: Codable, Hashable, Sendable {
         self.payload = payload
         self.modifiedAt = modifiedAt
         self.deviceID = deviceID
+    }
+
+    private enum CodingKeys: String, CodingKey { case key, kind, payload, modifiedAt, deviceID }
+
+    /// Saved in the offline queue and in backups. A record without a date
+    /// loses every merge but is still offered; one without a device id
+    /// counts as another device's.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = try c.decode(String.self, forKey: .key)
+        kind = try c.decode(SyncKind.self, forKey: .kind)
+        payload = try c.decodeIfPresent(Data.self, forKey: .payload)
+        modifiedAt = c.tolerant(.modifiedAt, default: .distantPast)
+        deviceID = c.tolerant(.deviceID, default: "")
     }
 
     public var isDeleted: Bool { payload == nil }

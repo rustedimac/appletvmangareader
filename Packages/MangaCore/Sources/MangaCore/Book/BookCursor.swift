@@ -90,6 +90,15 @@ public struct BookPosition: Codable, Hashable, Sendable {
         self.fraction = fraction
         self.updatedAt = updatedAt
     }
+
+    private enum CodingKeys: String, CodingKey { case section, fraction, updatedAt }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        section = try c.decode(Int.self, forKey: .section)
+        fraction = c.tolerant(.fraction, default: 0)
+        updatedAt = c.tolerant(.updatedAt, default: .distantPast)
+    }
 }
 
 /// Keeps the in-section position for books, per profile. Servers only
@@ -131,9 +140,16 @@ public final class BookPositionStore: @unchecked Sendable {
 
     private func load() -> [String: BookPosition] {
         if let cache { return cache }
-        let decoded = backing.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: BookPosition].self, from: $0) } ?? [:]
+        let decoded = backing.data(forKey: Self.key).map(Self.decode) ?? [:]
         cache = decoded
         return decoded
+    }
+
+    /// Saved positions, skipping any entry that can't be read so one bad
+    /// entry doesn't lose every book's place.
+    static func decode(_ data: Data) -> [String: BookPosition] {
+        let raw = (try? JSONDecoder().decode([String: Lossy<BookPosition>].self, from: data)) ?? [:]
+        return raw.compactMapValues(\.value)
     }
 
     /// Where to open a book chapter: the server's (or local) section, and

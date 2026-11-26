@@ -51,6 +51,16 @@ public struct FavoritesSort: Codable, Hashable, Sendable {
         self.ascending = ascending
     }
 
+    private enum CodingKeys: String, CodingKey { case key, ascending }
+
+    /// A key this build doesn't know falls back to date favorited; the
+    /// direction is kept either way.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = c.tolerant(.key, default: FavoritesSort.default.key)
+        ascending = c.tolerant(.ascending, default: key.defaultAscending)
+    }
+
     /// Picking the current key flips the direction; picking another key
     /// switches to it in its natural direction.
     public func selecting(_ newKey: FavoritesSortKey) -> FavoritesSort {

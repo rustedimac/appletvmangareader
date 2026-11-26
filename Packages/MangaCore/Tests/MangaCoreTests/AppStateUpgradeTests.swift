@@ -5,9 +5,10 @@ import XCTest
 /// `.sortedKeys`, dates as seconds since 2001). An app update must load
 /// every one of these without losing a profile, favorite or page.
 ///
-/// When a PR changes the shape of anything `AppState` stores, add the JSON
-/// the build before it writes (copy the latest fixture and edit it) and
-/// assert the new field's default in `testEveryFixtureKeepsEverything`.
+/// These are the early, small shapes. Newer snapshots are files in
+/// `Fixtures/SavedData`, checked field by field by `SavedDataUpgradeTests`:
+/// when a PR changes the shape of anything `AppState` stores, add a new file
+/// there (see that test and docs/UPGRADE_SAFETY.md).
 /// Titles are fictional and hosts are generic.
 enum AppStateFixtures {
     static let meID = "0E5B8C3A-1111-4A7B-9C3D-000000000001"
@@ -76,6 +77,7 @@ final class AppStateUpgradeTests: XCTestCase {
             // Servers.
             XCTAssertEqual(s.servers.map(\.kind), [.kavita, .suwayomi], name)
             XCTAssertEqual(s.server(kavita)?.baseURL.absoluteString, "http://kavita.local:5000", name)
+            XCTAssertEqual(s.server(kavita)?.alternateURLs, [], name)
 
             // Reading progress, to the page.
             let lantern = SeriesRef(serverID: kavita, seriesID: "12")
@@ -180,6 +182,8 @@ final class AppStateUpgradeTests: XCTestCase {
                          now: Date(timeIntervalSinceReferenceDate: 2))
         s.setReaderSettings(.webtoonDefault, for: ref, profile: p)
         s.setSelectedCategories(["1"], profile: p, server: server.id)
+        s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"], maxAgeRating: .teen), profile: p)
+        s.setRequiresPINToOpen(true, profile: p)
         let backing = InMemoryKeyValueStore()
         StateStore(backing: backing).save(s)
         let store = StateStore(backing: backing)
@@ -216,6 +220,29 @@ final class AppStateUpgradeTests: XCTestCase {
         XCTAssertEqual(Set(s.profiles.map(\.id)), [me, kid])
         XCTAssertEqual(s.activeProfile?.id, kid)
         XCTAssertEqual(s.progress(SeriesRef(serverID: kavita, seriesID: "12"), profile: me)?.page, 17)
+    }
+
+    func testDamagedProfileKeepsItsFilterAndPINRule() throws {
+        // Added by #19: older saves have no filter and open freely.
+        let old = makeStore(with: F.v1MarkUnread).0.load()
+        XCTAssertEqual(old.contentFilter(profile: kid), .none)
+        XCTAssertFalse(old.requiresPINToOpen(profile: kid))
+
+        // A bad favorite on the kid's profile must not drop its filter or
+        // its PIN rule along with it.
+        let kidData = #""0E5B8C3A-2222-4A7B-9C3D-000000000002":{"#
+        let damaged = F.v1MarkUnread.replacingOccurrences(
+            of: kidData + #""defaultReaderSettings""#,
+            with: kidData + #""contentFilter":{"hiddenGenres":["Horror"],"hiddenTags":[],"hideUnrated":true,"maxAgeRating":6},"favorites":[{"broken":1}],"requiresPINToOpen":true,"defaultReaderSettings""#)
+            .replacingOccurrences(of: #""favorites":[],"progress":{"5A1D2C3B-BBBB"#, with: #""progress":{"5A1D2C3B-BBBB"#)
+        XCTAssertNotEqual(damaged, F.v1MarkUnread)
+        let (store, _) = makeStore(with: damaged)
+        let s = store.load()
+        XCTAssertEqual(store.lastLoad, .salvaged)
+        XCTAssertTrue(s.requiresPINToOpen(profile: kid))
+        XCTAssertTrue(s.contentFilter(profile: kid).isGenreHidden("Horror"))
+        XCTAssertTrue(s.contentFilter(profile: kid).hideUnrated)
+        XCTAssertEqual(s.progress(SeriesRef(serverID: suwayomi, seriesID: "7"), profile: kid)?.page, 4)
     }
 
     func testGarbageStartsFreshButIsKept() {

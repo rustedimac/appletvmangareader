@@ -10,11 +10,16 @@ struct ProfilesListView: View {
             Section {
                 ForEach(model.state.profiles) { profile in
                     NavigationLink {
-                        ProfileEditorView(editing: profile)
+                        PINGate(kind: .profile(profile.id), reason: "Enter the PIN to edit this profile.") {
+                            ProfileEditorView(editing: profile)
+                        }
                     } label: {
                         HStack(spacing: Space.m) {
                             ProfileAvatarView(profile: profile, size: Size.avatarRow)
                             Text(profile.name)
+                            if model.hasPIN(profile.id) {
+                                Image(systemName: "lock.fill").foregroundStyle(.secondary)
+                            }
                             Spacer()
                             if profile.id == model.activeProfile.id {
                                 Text("Current").foregroundStyle(.secondary)
@@ -29,7 +34,9 @@ struct ProfilesListView: View {
 
             Section {
                 NavigationLink {
-                    ProfileEditorView(editing: nil)
+                    PINGate(kind: .anyProtected, reason: "A profile on this Apple TV has a PIN. Enter one to add a profile.") {
+                        ProfileEditorView(editing: nil)
+                    }
                 } label: {
                     Label("Add Profile", systemImage: "plus")
                 }

@@ -2,7 +2,9 @@ import SwiftUI
 import MangaCore
 
 /// Server → categories (Kavita libraries, Suwayomi categories) → poster
-/// grid. With one server the server list is skipped.
+/// grid. With one server the server list is skipped. Servers with reading
+/// lists, collections or smart filters get a button for each in the
+/// category bar (`ServerCollectionsView`).
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
 
@@ -134,7 +136,9 @@ struct ServerLibraryView: View {
     /// Opens the picker for which libraries/categories this profile imports.
     private var chooseLink: some View {
         NavigationLink {
-            CategorySelectionView(server: server)
+            PINGate(kind: .profile(model.activeProfile.id), reason: "Enter the PIN to change what this profile imports.") {
+                CategorySelectionView(server: server)
+            }
         } label: {
             Label("Choose \(server.kind.categoryNoun)", systemImage: "checklist")
         }
@@ -168,6 +172,8 @@ struct ServerLibraryView: View {
                     .accessibilityIdentifier("library.options")
                     .accessibilityValue(filters == 0 ? "" : filters == 1 ? "1 filter" : "\(filters) filters")
                 }
+                // Reading lists, collections and smart filters (Kavita).
+                ServerCollectionLinks(server: server)
                 chooseLink
             }
             .padding(.vertical, 20)

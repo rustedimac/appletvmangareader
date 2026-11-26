@@ -147,6 +147,19 @@ Posters (`SeriesPoster`):
 - Titles get two lines (`.lineLimit(2)` plus
   `.fixedSize(horizontal: false, vertical: true)`, so a row never squeezes them
   to one truncated line).
+- Every poster in a row is the same height. The title always reserves two
+  lines (`.lineLimit(2, reservesSpace: true)`), and each line the row's
+  settings call for (count, progress bar, server name) is drawn even while its
+  value is missing (an empty line, or an invisible bar). So bars, percentages
+  and server names line up across the row whatever the title's length, as in
+  the TV app and Infuse. `PosterLayoutUITests.testCaptionLinesLineUpAcrossARow`
+  and `LibraryBrowsingUITests.testProgressBarsLineUpAcrossARow` check it.
+- The unread badge counts chapters on every server. Kavita listings report
+  pages, so its posters fetch the unread chapter count with the chapter count
+  (`SeriesCount.unread` → `SeriesSummary.unreadChapters`) whatever the caption
+  shows. Home, Library, Favorites, Search and collections all use
+  `SeriesPoster`, so badge, bar and percentage are the same on every screen;
+  don't draw posters any other way.
 - Badges on covers sit on a near-opaque dark plate with white bold text (the
   unread count adds a light rim so it shows on dark covers too). Never put
   badge text on a translucent tint: it disappears on light covers.
@@ -159,7 +172,10 @@ before the end) unless the profile turns off Show Percentage Read
 under the title it is `.caption2` `.secondary`, fixed size, on the same row,
 so the bar gives up width and the number never clips. On the cover (when the
 title bar isn't shown) it sits bottom trailing above the thin bar on the
-same dark plate as the format badge. Posters lay
+same dark plate as the format badge. The series page shows "42% read"
+(`PosterBadges.readText`, measured the same way as the poster) above its
+Continue button under the same setting, and updates when the reader
+closes. Posters lay
 `AppModel.withCurrentProgress` over their summary, so progress made after a
 row loaded (reading, Mark as Unread) shows without reloading the row.
 
@@ -305,6 +321,26 @@ Menu simply goes back.
 - Ignores the safe area for its background only; its content is inset
   `Layout.safeTop` from the top and `Layout.safeSide` from the trailing edge.
 - Option chips use `Capsule()` and `Space.m` between chips.
+- Its section switcher is a `SectionTabBar`, not option chips (see Section tabs).
+
+### Section tabs (`SectionTabBar`)
+
+Tabs and choices must never look alike. A control that switches what the
+screen shows (the reader menu's Settings / Chapters / Bookmarks, the book
+reader's Settings / Contents) is a tab; a control that sets a value (On/Off,
+Single/Double, a sort order) is a choice.
+
+- Tabs use `SectionTabBar`, drawn like the top tab bar: a `Capsule()` track
+  with text-only tabs inside, the open tab as a filled pill, the focused tab
+  as the white focus pill. No checkmarks, rings or icons in a tab.
+- Labels are one line and never wrap or truncate (the bar sizes to its
+  labels); keep them to one short word.
+- Clicking a tab opens it. Focus moving across the tabs doesn't, so the pane
+  below doesn't rebuild and take focus while you pass over a tab.
+- Choices keep their own look: `OptionButton` chips (ring that fills with a
+  check) in the reader drawers, `SettingsPicker` or a toggle in settings.
+- Identifiers: `<screen>.tab.<name>` for each tab (with the `.isSelected`
+  trait when open) and `<screen>.tabs` for the track.
 
 ### Setting scopes
 
@@ -386,6 +422,7 @@ them only through `ThemeStyle` (`App/Sources/Shared/Design/ThemeStyle.swift`).
 - [ ] Spacing uses `Space` tokens; focusable neighbours ≥ 40 pt apart.
 - [ ] Only system text styles; nothing below `.caption2`.
 - [ ] Corners: system shapes, or `Radius` tokens, or `Capsule()`.
+- [ ] Tabs that switch sections use `SectionTabBar`; only real choices look like radio options.
 - [ ] First focus is the obvious action; Menu goes back.
 - [ ] Changes apply as they're made; no Save button (server form excepted).
 - [ ] Scrolling to the first item shows the title again.

@@ -50,7 +50,7 @@ struct BookReaderView: View {
         }
         .task {
             guard session == nil, !unsupported else { return }
-            guard let books = (server ?? model.client(for: series.ref)) as? BookProviding else {
+            guard let books = (server ?? model.client(for: series.ref))?.unfiltered as? BookProviding else {
                 unsupported = true
                 return
             }

@@ -89,6 +89,14 @@ After a successful connection test you pick which Kavita libraries or
 Suwayomi categories to import. Each profile has its own choice; change it
 later in the server's settings or with "Choose Libraries" on the Library tab.
 
+## Content filters and PINs
+
+Settings → Content & PIN sets what the current profile can see: hide
+genres and tags, set an age limit (Kavita age ratings), and untick whole
+libraries or categories. Give the profile a four-digit PIN so nobody else
+can change those settings, and optionally ask for the PIN to open the
+profile.
+
 ## iCloud sync and backup
 
 Profiles, servers (without logins), favorites, progress and reader settings

@@ -7,6 +7,8 @@ struct ProfilePickerView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var focused: UUID?
     @State private var showingManage = false
+    /// The profile waiting for its PIN before it opens.
+    @State private var unlocking: Profile?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +33,16 @@ struct ProfilePickerView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear { focused = model.activeProfile.id }
+            .navigationDestination(item: $unlocking) { profile in
+                PINPadView(title: "Enter \(profile.name)'s PIN") { pin in
+                    let result = model.attemptPIN(pin, candidates: [profile.id])
+                    if case .unlocked = result {
+                        unlocking = nil
+                        open(profile)
+                    }
+                    return PINGate<EmptyView>.feedback(result)
+                }
+            }
             .themedScreen()
         }
     }
@@ -39,10 +51,23 @@ struct ProfilePickerView: View {
         HStack(spacing: 60) {
             ForEach(model.state.profiles) { profile in
                 Button {
-                    model.pickProfile(profile.id)
+                    if model.needsPINToOpen(profile.id) {
+                        unlocking = profile
+                    } else {
+                        open(profile)
+                    }
                 } label: {
                     VStack(spacing: 24) {
                         ProfileAvatarView(profile: profile, size: 220)
+                            .overlay(alignment: .bottomTrailing) {
+                                if model.requiresPINToOpen(profile.id) && model.hasPIN(profile.id) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.title3)
+                                        .padding(12)
+                                        .background(.thinMaterial, in: Circle())
+                                        .padding(10)
+                                }
+                            }
                         Text(profile.name)
                             .font(.headline)
                             .lineLimit(1)
@@ -54,21 +79,28 @@ struct ProfilePickerView: View {
                 .accessibilityIdentifier("profilePicker.\(profile.name)")
             }
             // Reads with the logins of the profile used last; see GuestSession.
-            Button {
-                model.startGuestSession()
-            } label: {
-                VStack(spacing: 24) {
-                    ProfileAvatarView(profile: GuestSession.profile, size: 220)
-                    Text(GuestSession.profile.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .frame(maxWidth: 260)
+            // Not offered when that profile asks for its PIN to open.
+            if !model.needsPINToOpen(model.activeProfile.id) {
+                Button {
+                    model.startGuestSession()
+                } label: {
+                    VStack(spacing: 24) {
+                        ProfileAvatarView(profile: GuestSession.profile, size: 220)
+                        Text(GuestSession.profile.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                            .frame(maxWidth: 260)
+                    }
                 }
+                .buttonStyle(ProfileTileButtonStyle())
+                .accessibilityIdentifier("profilePicker.guest")
             }
-            .buttonStyle(ProfileTileButtonStyle())
-            .accessibilityIdentifier("profilePicker.guest")
         }
         .padding(.horizontal, 80)
         .padding(.vertical, 40)
+    }
+
+    private func open(_ profile: Profile) {
+        model.pickProfile(profile.id)
     }
 }

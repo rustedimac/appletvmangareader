@@ -15,6 +15,19 @@ public struct Favorite: Codable, Hashable, Identifiable, Sendable {
 
     public var id: SeriesRef { series.ref }
 
+    private enum CodingKeys: String, CodingKey { case series, addedAt, latestChapterAt, unreadChapters, refreshedAt }
+
+    /// A favorite saved without a date (or with one this build can't read)
+    /// is kept and sorts as the oldest.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        series = try c.decode(SeriesSummary.self, forKey: .series)
+        addedAt = c.tolerant(.addedAt, default: .distantPast)
+        latestChapterAt = c.tolerant(.latestChapterAt)
+        unreadChapters = c.tolerant(.unreadChapters)
+        refreshedAt = c.tolerant(.refreshedAt)
+    }
+
     public init(series: SeriesSummary, addedAt: Date = Date(), latestChapterAt: Date? = nil,
                 unreadChapters: Int? = nil, refreshedAt: Date? = nil) {
         self.series = series
@@ -68,12 +81,14 @@ public struct SeriesProgress: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         chapterID = try c.decode(String.self, forKey: .chapterID)
         page = try c.decode(Int.self, forKey: .page)
-        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
-        readChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .readChapterIDs) ?? []
-        unreadChapterIDs = try c.decodeIfPresent(Set<String>.self, forKey: .unreadChapterIDs) ?? []
-        ignoresServerProgress = try c.decodeIfPresent(Bool.self, forKey: .ignoresServerProgress) ?? false
-        series = try c.decodeIfPresent(SeriesSummary.self, forKey: .series)
-        pending = try c.decodeIfPresent([PendingProgress].self, forKey: .pending) ?? []
+        // Undated progress loses to any dated progress, but is kept.
+        updatedAt = c.tolerant(.updatedAt, default: .distantPast)
+        readChapterIDs = c.tolerant(.readChapterIDs, default: [])
+        unreadChapterIDs = c.tolerant(.unreadChapterIDs, default: [])
+        ignoresServerProgress = c.tolerant(.ignoresServerProgress, default: false)
+        // Only for drawing the Continue Reading row; never worth the position.
+        series = c.tolerant(.series)
+        pending = c.tolerantArray(.pending)
     }
 
     // Skip empty optional fields to keep AppState small.
@@ -100,6 +115,12 @@ public struct ProfileData: Codable, Hashable, Sendable {
     public var defaultReaderSettings: ReaderSettings
     /// Per-series reader overrides, keyed by `SeriesRef.storageKey`.
     public var readerOverrides: [String: ReaderSettings]
+    /// Genres, tags and age limit hidden for this profile. Nil (the
+    /// default, and for data saved before filters existed) hides nothing.
+    public var contentFilter: ContentFilter?
+    /// Whether opening the profile asks for its PIN. The PIN itself is in
+    /// the Keychain (`PINStore`); without one this does nothing.
+    public var requiresPINToOpen: Bool?
     /// Book (EPUB/text) reader settings. Nil until changed.
     public var bookSettings: BookSettings?
     /// Bookmarked pages across every server.
@@ -116,6 +137,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
     /// `SeriesRef.storageKey`, so Continue Reading on the Top Shelf can draw
     /// them without the server. Optional so older saved state decodes.
     public var recentSeries: [String: SeriesSummary]?
+    /// True once this profile finished the first-run welcome (see
+    /// `Welcome`). Nil in older state and until then.
+    public var welcomeCompleted: Bool? = nil
 
     public init(serverSettings: [String: ProfileServerSettings] = [:],
                 favorites: [Favorite] = [],
@@ -126,7 +150,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
                 bookmarks: [Bookmark] = [],
                 favoritesSort: FavoritesSort = .default,
                 recentSeries: [String: SeriesSummary]? = nil,
-                browse: BrowsePreferences? = nil) {
+                browse: BrowsePreferences? = nil,
+                contentFilter: ContentFilter? = nil,
+                requiresPINToOpen: Bool? = nil) {
         self.bookSettings = bookSettings
         self.serverSettings = serverSettings
         self.favorites = favorites
@@ -137,10 +163,13 @@ public struct ProfileData: Codable, Hashable, Sendable {
         self.favoritesSort = favoritesSort
         self.recentSeries = recentSeries
         self.browse = browse
+        self.contentFilter = contentFilter
+        self.requiresPINToOpen = requiresPINToOpen
     }
 
     private enum CodingKeys: String, CodingKey {
-        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse
+        case serverSettings, favorites, progress, defaultReaderSettings, readerOverrides, bookSettings, bookmarks, favoritesSort, webtoonAutoScrollLevel, recentSeries, browse, welcomeCompleted,
+             contentFilter, requiresPINToOpen
     }
 
     // State saved by older versions lacks the newer fields.
@@ -155,11 +184,14 @@ public struct ProfileData: Codable, Hashable, Sendable {
         bookSettings = try? c.decodeIfPresent(BookSettings.self, forKey: .bookSettings)
         bookmarks = try c.decodeIfPresent([Bookmark].self, forKey: .bookmarks) ?? []
         favoritesSort = (try? c.decodeIfPresent(FavoritesSort.self, forKey: .favoritesSort)) ?? .default
-        webtoonAutoScrollLevel = try c.decodeIfPresent(Int.self, forKey: .webtoonAutoScrollLevel)
+        webtoonAutoScrollLevel = c.tolerant(.webtoonAutoScrollLevel)
         // A damaged list only loses Top Shelf titles, never the profile.
         recentSeries = try? c.decodeIfPresent([String: SeriesSummary].self, forKey: .recentSeries)
         // A browse shape this build can't read falls back to defaults.
         browse = (try? c.decodeIfPresent(BrowsePreferences.self, forKey: .browse)) ?? nil
+        welcomeCompleted = try? c.decodeIfPresent(Bool.self, forKey: .welcomeCompleted)
+        contentFilter = try c.decodeIfPresent(ContentFilter.self, forKey: .contentFilter)
+        requiresPINToOpen = try c.decodeIfPresent(Bool.self, forKey: .requiresPINToOpen)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -175,6 +207,9 @@ public struct ProfileData: Codable, Hashable, Sendable {
         try c.encodeIfPresent(webtoonAutoScrollLevel, forKey: .webtoonAutoScrollLevel)
         try c.encodeIfPresent(recentSeries, forKey: .recentSeries)
         try c.encodeIfPresent(browse, forKey: .browse)
+        try c.encodeIfPresent(welcomeCompleted, forKey: .welcomeCompleted)
+        try c.encodeIfPresent(contentFilter, forKey: .contentFilter)
+        try c.encodeIfPresent(requiresPINToOpen, forKey: .requiresPINToOpen)
     }
 }
 
@@ -200,6 +235,25 @@ public struct AppState: Codable, Hashable, Sendable {
     /// True once the user removed the built-in Free Library, so it isn't
     /// added back on the next launch. Nil in state saved before it existed.
     public var freeLibraryRemoved: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case version, profiles, activeProfileID, servers, profileData, rememberedProfileID, freeLibraryRemoved
+    }
+
+    /// Missing fields get defaults. Only the profile list is required:
+    /// without it, and for any entry that can't be read, `AppStateUpgrade`
+    /// salvages (keeping a backup of the original), bringing back a profile
+    /// for each set of profile data.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = c.tolerant(.version, default: 1)
+        profiles = try c.decode([Profile].self, forKey: .profiles)
+        activeProfileID = c.tolerant(.activeProfileID)
+        servers = try c.decodeIfPresent([ServerConfig].self, forKey: .servers) ?? []
+        profileData = try c.decodeIfPresent([String: ProfileData].self, forKey: .profileData) ?? [:]
+        rememberedProfileID = c.tolerant(.rememberedProfileID)
+        freeLibraryRemoved = c.tolerant(.freeLibraryRemoved)
+    }
 
     public init(version: Int = AppState.currentVersion, profiles: [Profile] = [], activeProfileID: UUID? = nil,
                 servers: [ServerConfig] = [], profileData: [String: ProfileData] = [:],
@@ -437,6 +491,35 @@ public struct AppState: Codable, Hashable, Sendable {
 
     public mutating func setDefaultReaderSettings(_ settings: ReaderSettings, profile: UUID) {
         mutateData(profile) { $0.defaultReaderSettings = settings.normalizedPairing }
+    }
+
+    // MARK: Content filter and PIN
+
+    public func contentFilter(profile: UUID) -> ContentFilter {
+        profileData[profile.uuidString]?.contentFilter ?? .none
+    }
+
+    public mutating func setContentFilter(_ filter: ContentFilter, profile: UUID) {
+        mutateData(profile) { $0.contentFilter = filter.isActive ? filter : nil }
+    }
+
+    public func requiresPINToOpen(profile: UUID) -> Bool {
+        profileData[profile.uuidString]?.requiresPINToOpen ?? false
+    }
+
+    public mutating func setRequiresPINToOpen(_ on: Bool, profile: UUID) {
+        mutateData(profile) { $0.requiresPINToOpen = on ? true : nil }
+    }
+
+    /// Favorites the profile may see: in its imported libraries/categories
+    /// and not hidden by its content filter. `hidden` maps server ids to
+    /// the ids its filter hides (see `ContentVisibility`); with an active
+    /// filter, servers missing from it show none of their favorites.
+    public func visibleFavorites(profile: UUID, hidden: [UUID: Set<String>]) -> [Favorite] {
+        let filter = contentFilter(profile: profile)
+        let favorites = visibleFavorites(profile: profile)
+        let allowed = Set(ContentVisibility.visible(favorites.map(\.series), filter: filter, hidden: hidden).map(\.ref))
+        return favorites.filter { allowed.contains($0.series.ref) }
     }
 
     // MARK: Book settings

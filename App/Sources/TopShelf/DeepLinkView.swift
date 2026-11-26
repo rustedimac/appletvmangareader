@@ -5,23 +5,64 @@ import MangaCore
 struct DeepLinkRoute: Identifiable {
     let id = UUID()
     let link: DeepLink
+    /// A profile that asks for its PIN to open: the link waits for the PIN
+    /// before switching to it.
+    var unlocking: UUID? = nil
 }
 
 extension AppModel {
     /// Prepares the app for a link: switches to the profile it was made for
     /// (if it still exists) and closes "Who's reading?". Returns the route
-    /// to present, or nil when the link's server is gone.
+    /// to present, or nil when the link's server is gone. A profile that
+    /// asks for its PIN isn't opened yet; the route asks for the PIN first.
     func route(for link: DeepLink) -> DeepLinkRoute? {
         guard state.server(link.ref.serverID) != nil else { return nil }
         // Top Shelf links belong to a real profile.
         if isGuest { endGuestSession(showPicker: false) }
-        if let profile = link.profile, profile != activeProfile.id,
-           state.profiles.contains(where: { $0.id == profile }) {
-            pickProfile(profile)
-        } else if isPickingProfile {
-            pickProfile(activeProfile.id)
+        var target = activeProfile.id
+        if let profile = link.profile, state.profiles.contains(where: { $0.id == profile }) {
+            target = profile
         }
+        if needsPINToOpen(target) {
+            return DeepLinkRoute(link: link, unlocking: target)
+        }
+        openForLink(target)
         return DeepLinkRoute(link: link)
+    }
+
+    /// Switches to the link's profile and closes "Who's reading?".
+    func openForLink(_ profile: UUID) {
+        if profile != activeProfile.id || isPickingProfile {
+            pickProfile(profile)
+        }
+    }
+}
+
+/// Asks for the PIN of the profile a link belongs to, then shows the link.
+/// Menu goes back to where the app was, without switching profiles.
+struct DeepLinkHost: View {
+    let route: DeepLinkRoute
+
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var unlocked = false
+
+    var body: some View {
+        if let profile = route.unlocking, !unlocked {
+            let name = model.state.profiles.first { $0.id == profile }?.name
+            PINPadView(title: name.map { "Enter \($0)'s PIN" } ?? "Enter the PIN",
+                       message: "This item belongs to a profile with a PIN.") { pin in
+                let result = model.attemptPIN(pin, candidates: [profile])
+                if case .unlocked = result {
+                    model.openForLink(profile)
+                    unlocked = true
+                }
+                return PINGate<EmptyView>.feedback(result)
+            }
+            .onExitCommand { dismiss() }
+        } else {
+            DeepLinkView(link: route.link)
+        }
     }
 }
 

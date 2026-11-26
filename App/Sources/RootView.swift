@@ -15,7 +15,7 @@ struct RootView: View {
     var body: some View {
         content
             .fullScreenCover(item: $link) { route in
-                DeepLinkView(link: route.link)
+                DeepLinkHost(route: route)
                     .themedScreen()
             }
             .onOpenURL { url in
@@ -27,6 +27,8 @@ struct RootView: View {
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }
             .onChange(of: scenePhase) { _, phase in
+                // PINs are asked for again after the app has been away.
+                if phase == .background { model.lockAll() }
                 if phase == .active {
                     Task { await model.refreshStaleFavorites() }
                     Task { await model.retryPendingProgressNow() }
@@ -40,6 +42,11 @@ struct RootView: View {
     private var content: some View {
         if model.isPickingProfile {
             ProfilePickerView()
+        } else if model.showsWelcome || model.isBusyInWelcome {
+            // Nothing to read yet: pick Free Library collections, add a
+            // server or restore a backup (see `Welcome`).
+            WelcomeView()
+                .id(model.activeProfile.id)
         } else {
             // Titles only, like Apple's own tvOS apps: with a symbol next to
             // every title the six tabs no longer fit the bar and it scrolls

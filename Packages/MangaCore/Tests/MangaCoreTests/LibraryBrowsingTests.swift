@@ -114,6 +114,32 @@ final class PosterBadgesTests: XCTestCase {
         XCTAssertEqual(series("1", "A", chapters: 3).withCount(SeriesCount(count: 9)).chapterCount, 3, "listing wins")
     }
 
+    func testPageListingsGetAnUnreadChapterBadge() {
+        // Kavita: unreadCount is pages, so the badge waits for the chapter
+        // count fetch, whatever the caption shows.
+        let kavita = series("1", "A", unread: 150, pages: 1383, read: 50)
+        XCTAssertEqual(PosterBadges(series: kavita, caption: .progress).corner, .none)
+        XCTAssertTrue(PosterCaption.progress.needsChapterCount(kavita))
+        XCTAssertTrue(PosterCaption.off.needsChapterCount(kavita))
+        let counted = kavita.withCount(SeriesCount(count: 42, unread: 30))
+        XCTAssertEqual(counted.unreadChapters, 30)
+        XCTAssertEqual(PosterBadges(series: counted, caption: .progress).corner, .unread(30))
+        XCTAssertFalse(PosterCaption.progress.needsChapterCount(counted))
+        // Unread series (0%) get the badge too.
+        let fresh = series("1", "A", unread: 100, pages: 100, read: 0).withCount(SeriesCount(count: 5, unread: 5))
+        XCTAssertEqual(PosterBadges(series: fresh, caption: .progress).corner, .unread(5))
+        // Finished: a check, and no fetch needed.
+        let done = series("1", "A", unread: 0, pages: 100, read: 100)
+        XCTAssertFalse(PosterCaption.progress.needsChapterCount(done))
+        XCTAssertEqual(PosterBadges(series: done.withCount(SeriesCount(count: 5, unread: 0))).corner, .finished)
+        // Chapter listings keep their own unread count.
+        XCTAssertNil(series("1", "A", unread: 3, chapters: 12).withCount(SeriesCount(count: 12, unread: 9)).unreadChapters)
+        // Reading updates it, and a guest never sees the owner's.
+        let read = SeriesProgressOverride(unreadCount: 4, chapterCount: 42, pageCount: 1383, pagesRead: 900).applied(to: counted)
+        XCTAssertEqual(PosterBadges(series: read).corner, .unread(4))
+        XCTAssertNil(GuestSession.withoutServerProgress(counted).unreadChapters)
+    }
+
     func testPagesFallBackToChapters() {
         XCTAssertEqual(PosterBadges(series: series("1", "A", unread: 3, chapters: 12), caption: .pages).caption, "12 chapters")
         XCTAssertFalse(PosterCaption.pages.needsChapterCount(series("1", "A", pages: 10, read: 0)))
@@ -142,8 +168,8 @@ final class PosterBadgesTests: XCTestCase {
         func chapter(_ format: ContentFormat?) -> Chapter {
             Chapter(id: UUID().uuidString, seriesRef: ref, title: "", number: 1, pageCount: 1, format: format)
         }
-        XCTAssertEqual(SeriesCount(chapters: [chapter(nil), chapter(.images)]), SeriesCount(count: 2, unit: .chapter))
-        XCTAssertEqual(SeriesCount(chapters: [chapter(.epub), chapter(.pdf)]), SeriesCount(count: 2, unit: .book))
+        XCTAssertEqual(SeriesCount(chapters: [chapter(nil), chapter(.images)]), SeriesCount(count: 2, unit: .chapter, unread: 2))
+        XCTAssertEqual(SeriesCount(chapters: [chapter(.epub), chapter(.pdf)]), SeriesCount(count: 2, unit: .book, unread: 2))
         XCTAssertEqual(SeriesCount(chapters: [chapter(nil)], seriesFormat: .epub).unit, .book)
         XCTAssertEqual(SeriesCount(chapters: []).count, 0)
     }

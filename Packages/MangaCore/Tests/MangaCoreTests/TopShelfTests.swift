@@ -107,6 +107,45 @@ final class TopShelfSnapshotTests: XCTestCase {
         XCTAssertEqual(TopShelfSnapshot.make(from: s).sections.count, 1)
     }
 
+    func testContentFilterHidesItemsAndFailsClosed() throws {
+        var s = AppState.initial()
+        s.addServer(kavita)
+        let p = s.activeProfile!.id
+        read(&s, summary("1"), chapter: "c", page: 0, at: 1)
+        read(&s, summary("2"), chapter: "c", page: 0, at: 2)
+        s.setFavorite(summary("3"), true, profile: p)
+        s.setFavorite(summary("4"), true, profile: p)
+        s.setContentFilter(ContentFilter(hiddenGenres: ["Horror"]), profile: p)
+
+        // Series 2 and 4 are hidden on this server.
+        let snap = TopShelfSnapshot.make(from: s, hidden: [kavita.id: ["2", "4"]])
+        XCTAssertEqual(snap.sections.flatMap(\.items).map(\.title), ["Series 1", "Series 3"])
+        // Hidden ids not loaded yet (offline): nothing from that server.
+        XCTAssertTrue(TopShelfSnapshot.make(from: s).sections.isEmpty)
+        // No filter: everything shows without hidden ids.
+        s.setContentFilter(.none, profile: p)
+        XCTAssertEqual(TopShelfSnapshot.make(from: s).sections.flatMap(\.items).count, 4)
+    }
+
+    func testUnimportedLibraryIsLeftOut() {
+        var s = AppState.initial()
+        s.addServer(kavita)
+        let p = s.activeProfile!.id
+        read(&s, summary("1"), chapter: "c", page: 0, at: 1)
+        s.setFavorite(summary("2"), true, profile: p)
+        s.setSelectedCategories(["9"], profile: p, server: kavita.id)
+        XCTAssertTrue(TopShelfSnapshot.make(from: s).sections.isEmpty)
+    }
+
+    func testPrivateProfileShowsNothing() {
+        var s = AppState.initial()
+        s.addServer(kavita)
+        read(&s, summary("1"), chapter: "c", page: 0, at: 1)
+        let snap = TopShelfSnapshot.make(from: s, isPrivate: true)
+        XCTAssertTrue(snap.sections.isEmpty)
+        XCTAssertEqual(snap.profileID, s.activeProfile!.id)
+    }
+
     func testRemovedServerDropsItems() {
         var s = AppState.initial()
         s.addServer(kavita)

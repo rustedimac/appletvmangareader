@@ -45,10 +45,12 @@ public struct SeriesProgressOverride: Equatable, Sendable {
                 s.pageCount = pageCount
                 s.pagesRead = pagesRead
                 s.unreadCount = max(0, pageCount - pagesRead)
+                s.unreadChapters = unreadCount
                 return s
             }
             // Pages unknown now: fall back to chapters.
             s.pagesRead = nil
+            s.unreadChapters = nil
         }
         s.unreadCount = unreadCount
         // A listing that counts volumes (Kavita) keeps its own count.

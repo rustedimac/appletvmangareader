@@ -113,6 +113,8 @@ public struct RetryPolicy: Sendable, Hashable {
             switch manga {
             case .http(let status, _):
                 return status == 408 || status == 425 || status == 429 || (500...599).contains(status)
+            case .unreachable:
+                return true
             default:
                 return false
             }
@@ -142,6 +144,7 @@ public enum PageLoadFailure {
         switch error as? MangaError {
         case .unauthorized?: return "The server refused the login."
         case .notFound?: return "The server doesn't have this page."
+        case .unreachable?: return "Couldn't reach the server."
         case .http(let status, _)?: return "The server returned an error (HTTP \(status))."
         default: break
         }

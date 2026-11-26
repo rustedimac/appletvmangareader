@@ -119,7 +119,7 @@ final class KavitaClientTests: XCTestCase {
         ]
         """)
         let count = try await client.chapterCount(seriesID: "5")
-        XCTAssertEqual(count, SeriesCount(count: 3, unit: .chapter))
+        XCTAssertEqual(count, SeriesCount(count: 3, unit: .chapter, unread: 3))
         XCTAssertNil(mock.lastRequest(containing: "api/Series/5"), "no series or metadata request")
         XCTAssertNil(mock.lastRequest(containing: "metadata"))
     }
@@ -130,10 +130,10 @@ final class KavitaClientTests: XCTestCase {
             KavitaVolumeDTO(id: 1, minNumber: 1, name: "1", chapters: [chapterDTO(10, minNumber: -100000)]),
             KavitaVolumeDTO(id: 2, minNumber: 2, name: "2", chapters: [chapterDTO(20, minNumber: -100000)]),
         ]
-        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref), SeriesCount(count: 2, unit: .volume))
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref), SeriesCount(count: 2, unit: .volume, unread: 2))
         let mixed = volumes + [KavitaVolumeDTO(id: 3, minNumber: -100000, name: nil, chapters: [chapterDTO(30, minNumber: 21)])]
-        XCTAssertEqual(KavitaClient.count(mixed, seriesRef: ref), SeriesCount(count: 3, unit: .chapter))
-        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref, seriesFormat: .epub), SeriesCount(count: 2, unit: .book))
+        XCTAssertEqual(KavitaClient.count(mixed, seriesRef: ref), SeriesCount(count: 3, unit: .chapter, unread: 3))
+        XCTAssertEqual(KavitaClient.count(volumes, seriesRef: ref, seriesFormat: .epub), SeriesCount(count: 2, unit: .book, unread: 2))
     }
 
     private func chapterDTO(_ id: Int, minNumber: Double) -> KavitaChapterDTO {

@@ -1,0 +1,442 @@
+{
+  "app" : "0.1.0",
+  "exportedAt" : "2025-11-16T16:23:20Z",
+  "format" : "mangareader-backup",
+  "records" : [
+    {
+      "key" : "browse\/0E5B8C3A-1111-4A7B-9C3D-000000000001",
+      "kind" : "browse",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "caughtUp" : [
+          {
+            "caughtUpAt" : 785000900,
+            "chapterCount" : 9,
+            "series" : {
+              "chapterCount" : 9,
+              "countUnit" : "volume",
+              "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+              "feedDate" : 785000400,
+              "format" : "epub",
+              "libraryID" : "k1",
+              "pageCount" : 240,
+              "pagesRead" : 60,
+              "ref" : {
+                "seriesID" : "k-55",
+                "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+              },
+              "title" : "Tidewater Notes",
+              "unreadCount" : 2
+            }
+          }
+        ],
+        "dismissedContinueReading" : {
+          "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12" : 785000800
+        },
+        "gridDensity" : "large",
+        "home" : {
+          "hidden" : [
+            "newlyAdded"
+          ],
+          "order" : [
+            "favorites",
+            "continueReading",
+            "newlyAdded",
+            "recentlyUpdated",
+            "caughtUp"
+          ],
+          "serverLabel" : "onCover",
+          "serverRows" : "perServer"
+        },
+        "libraries" : {
+          "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|1" : {
+            "filter" : {
+              "genres" : [
+                "Comedy"
+              ],
+              "readProgress" : "unfinished",
+              "statuses" : [
+                "hiatus",
+                "ongoing"
+              ]
+            },
+            "gridOrder" : "rightToLeft",
+            "readingStyle" : "rightToLeft",
+            "sort" : "recentlyUpdated"
+          }
+        },
+        "libraryDefaults" : {
+          "filter" : {
+            "readProgress" : "unread",
+            "statuses" : [
+              "completed"
+            ]
+          },
+          "gridOrder" : "leftToRight",
+          "sort" : "titleDescending"
+        },
+        "posterCaption" : "progress"
+      }
+    },
+    {
+      "key" : "favorite\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12",
+      "kind" : "favorite",
+      "modifiedAt" : "2025-11-16T15:33:20Z",
+      "value" : {
+        "addedAt" : 785000000,
+        "series" : {
+          "coverURL" : "http:\/\/kavita.local:5000\/api\/image\/series-cover?seriesId=12",
+          "libraryID" : "1",
+          "ref" : {
+            "seriesID" : "12",
+            "serverID" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A"
+          },
+          "title" : "Lantern Harbor",
+          "unreadCount" : 3
+        }
+      }
+    },
+    {
+      "key" : "favorite\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|7",
+      "kind" : "favorite",
+      "modifiedAt" : "2025-11-16T15:34:10Z",
+      "value" : {
+        "addedAt" : 785000050,
+        "series" : {
+          "categoryIDs" : [
+            "0",
+            "2"
+          ],
+          "ref" : {
+            "seriesID" : "7",
+            "serverID" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B"
+          },
+          "title" : "Paper Comet"
+        }
+      }
+    },
+    {
+      "key" : "favorite\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55",
+      "kind" : "favorite",
+      "modifiedAt" : "2025-11-16T15:41:40Z",
+      "value" : {
+        "addedAt" : 785000500,
+        "latestChapterAt" : 785000450,
+        "refreshedAt" : 785000600,
+        "series" : {
+          "chapterCount" : 9,
+          "countUnit" : "volume",
+          "coverURL" : "http:\/\/komga.local:25600\/api\/v1\/series\/k-55\/thumbnail",
+          "feedDate" : 785000400,
+          "format" : "epub",
+          "libraryID" : "k1",
+          "pageCount" : 240,
+          "pagesRead" : 60,
+          "ref" : {
+            "seriesID" : "k-55",
+            "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+          },
+          "title" : "Tidewater Notes",
+          "unreadCount" : 2
+        },
+        "unreadChapters" : 2
+      }
+    },
+    {
+      "key" : "profile\/0E5B8C3A-1111-4A7B-9C3D-000000000001",
+      "kind" : "profile",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "colorIndex" : 0,
+        "id" : "0E5B8C3A-1111-4A7B-9C3D-000000000001",
+        "name" : "Me",
+        "symbol" : "person.fill"
+      }
+    },
+    {
+      "key" : "profile\/0E5B8C3A-2222-4A7B-9C3D-000000000002",
+      "kind" : "profile",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "colorIndex" : 1,
+        "id" : "0E5B8C3A-2222-4A7B-9C3D-000000000002",
+        "name" : "Kid",
+        "symbol" : "star.fill"
+      }
+    },
+    {
+      "key" : "progress\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12",
+      "kind" : "progress",
+      "modifiedAt" : "2025-11-16T15:35:00Z",
+      "value" : {
+        "chapterID" : "104",
+        "marks" : {
+          "101" : {
+            "at" : 785000100.5,
+            "read" : true
+          },
+          "102" : {
+            "at" : 785000100.5,
+            "read" : true
+          },
+          "103" : {
+            "at" : 785000100.5,
+            "read" : true
+          }
+        },
+        "page" : 17,
+        "positionAt" : 785000100.5
+      }
+    },
+    {
+      "key" : "progress\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55",
+      "kind" : "progress",
+      "modifiedAt" : "2025-11-16T15:45:00Z",
+      "value" : {
+        "chapterID" : "v3",
+        "marks" : {
+          "v1" : {
+            "at" : 785000700,
+            "read" : true
+          },
+          "v2" : {
+            "at" : 785000700,
+            "read" : true
+          }
+        },
+        "page" : 11,
+        "positionAt" : 785000700
+      }
+    },
+    {
+      "key" : "progress\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|7",
+      "kind" : "progress",
+      "modifiedAt" : "2025-11-16T15:36:40Z",
+      "value" : {
+        "chapterID" : "70",
+        "marks" : {
+          "69" : {
+            "at" : 785000200,
+            "read" : false
+          }
+        },
+        "page" : 4,
+        "positionAt" : 785000200
+      }
+    },
+    {
+      "key" : "progress\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|8",
+      "kind" : "progress",
+      "modifiedAt" : "2025-11-16T15:38:20Z",
+      "value" : {
+        "chapterID" : "",
+        "ignoresServerProgress" : true,
+        "marks" : {
+
+        },
+        "page" : 0,
+        "positionAt" : 785000300
+      }
+    },
+    {
+      "key" : "readerDefaults\/0E5B8C3A-1111-4A7B-9C3D-000000000001",
+      "kind" : "readerDefaults",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "background" : "black",
+        "cropBorders" : false,
+        "direction" : "rightToLeft",
+        "firstPageAlone" : true,
+        "fit" : "screen",
+        "layout" : "double",
+        "mode" : "paged",
+        "picture" : {
+          "brightness" : 0,
+          "color" : "normal",
+          "contrast" : 1,
+          "sharpen" : "off",
+          "upscaling" : "standard"
+        },
+        "shiftPairing" : false,
+        "splitWidePages" : false,
+        "webtoonScrollStep" : 0.75,
+        "webtoonWidth" : 0.6,
+        "zoomScale" : 2
+      }
+    },
+    {
+      "key" : "readerDefaults\/0E5B8C3A-2222-4A7B-9C3D-000000000002",
+      "kind" : "readerDefaults",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "background" : "white",
+        "cropBorders" : false,
+        "direction" : "leftToRight",
+        "firstPageAlone" : true,
+        "fit" : "screen",
+        "layout" : "double",
+        "mode" : "paged",
+        "picture" : {
+          "brightness" : 0,
+          "color" : "normal",
+          "contrast" : 1,
+          "sharpen" : "off",
+          "upscaling" : "standard"
+        },
+        "shiftPairing" : false,
+        "splitWidePages" : false,
+        "webtoonScrollStep" : 0.75,
+        "webtoonWidth" : 0.6,
+        "zoomScale" : 2
+      }
+    },
+    {
+      "key" : "readerOverride\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12",
+      "kind" : "readerOverride",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "background" : "gray",
+        "cropBorders" : true,
+        "direction" : "leftToRight",
+        "firstPageAlone" : false,
+        "fit" : "width",
+        "layout" : "single",
+        "mode" : "webtoon",
+        "picture" : {
+          "brightness" : -0.2,
+          "color" : "grayscale",
+          "contrast" : 1.2,
+          "sharpen" : "low",
+          "upscaling" : "lanczos"
+        },
+        "shiftPairing" : true,
+        "splitWidePages" : true,
+        "webtoonScrollStep" : 0.5,
+        "webtoonWidth" : 0.8,
+        "zoomScale" : 3
+      }
+    },
+    {
+      "key" : "server\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
+      "kind" : "server",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "baseURL" : "http:\/\/kavita.local:5000",
+        "id" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
+        "kind" : "kavita",
+        "name" : "Kavita"
+      }
+    },
+    {
+      "key" : "server\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
+      "kind" : "server",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "baseURL" : "http:\/\/suwayomi.local:4567",
+        "id" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
+        "kind" : "suwayomi",
+        "name" : "Suwayomi"
+      }
+    },
+    {
+      "key" : "server\/5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
+      "kind" : "server",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "baseURL" : "http:\/\/komga.local:25600",
+        "id" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
+        "kind" : "komga",
+        "name" : "Komga"
+      }
+    },
+    {
+      "key" : "server\/5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
+      "kind" : "server",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "baseURL" : "http:\/\/opds.local\/opds",
+        "id" : "5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
+        "kind" : "opds",
+        "name" : "Catalog"
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "selectedCategoryIDs" : [
+          "1",
+          "3"
+        ],
+        "syncProgressToServer" : true
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "syncProgressToServer" : true
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "selectedCategoryIDs" : [
+          "k1"
+        ],
+        "syncProgressToServer" : true
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-1111-4A7B-9C3D-000000000001\/5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "syncProgressToServer" : false
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "syncProgressToServer" : true
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "selectedCategoryIDs" : [
+
+        ],
+        "syncProgressToServer" : false
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "selectedCategoryIDs" : [
+          "k1"
+        ],
+        "syncProgressToServer" : true
+      }
+    },
+    {
+      "key" : "serverSettings\/0E5B8C3A-2222-4A7B-9C3D-000000000002\/5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
+      "kind" : "serverSettings",
+      "modifiedAt" : "2025-11-16T16:23:20Z",
+      "value" : {
+        "syncProgressToServer" : false
+      }
+    }
+  ],
+  "version" : 1
+}

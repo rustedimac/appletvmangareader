@@ -37,4 +37,28 @@ final class TopShelfLinkUITests: XCTestCase {
         XCTAssertTrue(app.element("series.title").waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts["Who's reading?"].exists)
     }
+
+    /// "pins": Me asks for PIN 1111 to open. A Top Shelf link into Me must
+    /// ask too, and opens once it's entered.
+    func testLinkIntoProfileWithPINAsksForIt() {
+        let app = launch(link: "series:Demo Kavita:3", extra: ["-uiTestingSeed", "pins"])
+        let title = app.element("pin.title")
+        XCTAssertTrue(title.waitForExistence(timeout: 15), "the link didn't ask for the PIN")
+        XCTAssertEqual(title.label, "Enter Me's PIN")
+        XCTAssertFalse(app.element("series.title").exists)
+
+        XCTAssertTrue(focus(app.element("pin.key.1"), .right))
+        for _ in 0..<4 {
+            XCUIRemote.shared.press(.select)
+            usleep(300_000)
+        }
+        XCTAssertTrue(app.element("series.title").waitForExistence(timeout: 15), "right PIN didn't open the link")
+    }
+
+    /// "filtered" hides Horror (demo series 5). Its link must not open it.
+    func testLinkToHiddenSeriesDoesNotOpenIt() {
+        let app = launch(link: "series:Demo Kavita:5", extra: ["-uiTestingSeed", "filtered"])
+        XCTAssertTrue(app.staticTexts["Couldn't open this series"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.element("series.title").exists)
+    }
 }
