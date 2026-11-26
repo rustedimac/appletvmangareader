@@ -113,8 +113,12 @@ OPDS (verified against Komga 1.30.2 and Stump)
 ## Double-page spreads
 
 `SpreadLayout` pairs pages. Wide images are always alone; pairing restarts
-after one. The first page is alone by default (cover). `shiftPairing` flips the
-parity of the first run when a chapter's pairs come out wrong. Unknown sizes
+after one. The first page is alone by default (cover). First Page Alone is
+the only pairing control: flipping it per series is how a book whose pairs come
+out wrong is fixed. The old "Shift by one" (`shiftPairing`) did exactly the
+same thing, so it was folded in: `PagePairing.swift` reads and writes it as
+`firstPageAlone != shiftPairing` with the shift cleared, and the field stays
+only so older saves and iCloud peers decode. Unknown sizes
 count as tall; the reader re-lays out when sizes arrive and keeps the current
 page on screen. See `SpreadLayoutTests` for the exact rules.
 
@@ -357,9 +361,9 @@ is disabled so focus can't leave the drawer. Two tabs:
 
 - Settings: one row per setting, options side by side. Which rows show
   comes from `ReaderMenuOptions.items(for:)` (paged: layout, direction,
-  in two-page layout first page alone and "Shift by one", then page fit,
-  crop borders and click-to-zoom level; vertical: column width and
-  auto-scroll speed). Every change goes through `session.updateSettings(_:)` and is
+  in two-page layout First Page Alone, then page fit, crop borders and
+  click-to-zoom level; vertical: column width and auto-scroll speed).
+  Every change goes through `session.updateSettings(_:)` and is
   saved for the series. "Set as Default" copies the settings to the
   profile default; "Reset to Default" brings the series back to it.
 - Chapters: the series' chapters with the open one focused; picking one
@@ -436,6 +440,10 @@ Research and rules: [PROGRESS_SYNC.md](PROGRESS_SYNC.md). In code:
   through `ProgressSync.reconcile` (latest `lastReadAt` wins per chapter)
   and pushes the local winners. `AppModel.syncPendingProgress` runs it for
   every series with a queue before Home loads.
+- A failed push also schedules `AppModel.schedulePendingRetry`, which runs
+  `syncPendingProgress` again after `RetryBackoff` (5 s doubling to every
+  5 min, with jitter) until the queue is empty. Coming back to the
+  foreground retries at once (`retryPendingProgressNow`).
 - `SeriesDetail.continueChapter` follows Kavita's continue point: the most
   recently read unfinished chapter, else the first unread after the last
   read one.

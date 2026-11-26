@@ -26,7 +26,10 @@ struct RootView: View {
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await model.refreshStaleFavorites() } }
+                if phase == .active {
+                    Task { await model.refreshStaleFavorites() }
+                    Task { await model.retryPendingProgressNow() }
+                }
             }
     }
 
