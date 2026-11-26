@@ -222,12 +222,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             case .all: filter = ""
             case .filter(let f): filter = ", filter: \(f)"
             }
-            struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+            struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
             let r: Response = try await graphQL(
-                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+                "query($first: Int!) { mangas(condition: {inLibrary: true}\(filter), orderBy: IN_LIBRARY_AT, orderByType: DESC, first: $first) { nodes { \(Self.listFields) } } }",
                 variables: ["first": .int(limit)]
             )
-            return Array(r.mangas.nodes.map(summary).scoped(to: categoryScope).prefix(limit))
+            return Array(r.mangas.nodes.map { summary($0) }.scoped(to: categoryScope).prefix(limit))
         case .recentlyUpdated:
             return try await chapterFeed(orderBy: "FETCHED_AT", limit: limit, requireRead: false)
         case .continueReading:
@@ -241,7 +241,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         struct Response: Decodable {
             struct ChapterNode: Decodable {
                 var lastReadAt: FlexibleNumber?
-                var manga: SuwayomiMangaDTO
+                var manga: SuwayomiGridManga
             }
             var chapters: Nodes<ChapterNode>
         }
@@ -256,7 +256,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             filter += ", mangaId: {in: $ids}"
         }
         let r: Response = try await graphQL(
-            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt manga { \(SuwayomiMangaDTO.fields) } } } }",
+            "query(\(declarations)) { chapters(filter: {\(filter)}, orderBy: \(orderBy), orderByType: DESC, first: $first) { nodes { lastReadAt manga { \(Self.listFields) } } } }",
             variables: variables
         )
         var seen = Set<Int>()
@@ -265,7 +265,7 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
             if requireRead && (node.lastReadAt?.value ?? 0) <= 0 { continue }
             let series = summary(node.manga)
             guard ProfileServerSettings(selectedCategoryIDs: categoryScope).includes(series),
-                  seen.insert(node.manga.id).inserted else { continue }
+                  seen.insert(node.manga.manga.id).inserted else { continue }
             result.append(series)
             if result.count >= limit { break }
         }
@@ -282,12 +282,12 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         case .all: filter = title
         case .filter(let f): filter = "{and: [\(title), \(f)]}"
         }
-        struct Response: Decodable { var mangas: Nodes<SuwayomiMangaDTO> }
+        struct Response: Decodable { var mangas: Nodes<SuwayomiGridManga> }
         let r: Response = try await graphQL(
-            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(SuwayomiMangaDTO.fields) } } }",
+            "query($q: String!) { mangas(condition: {inLibrary: true}, filter: \(filter), first: 60) { nodes { \(Self.listFields) } } }",
             variables: ["q": .string(trimmed)]
         )
-        return r.mangas.nodes.map(summary).scoped(to: categoryScope)
+        return r.mangas.nodes.map { summary($0) }.scoped(to: categoryScope)
     }
 
     public func seriesDetail(_ seriesID: String) async throws -> SeriesDetail {
@@ -411,6 +411,17 @@ public final class SuwayomiClient: MangaServer, @unchecked Sendable {
         SeriesSummary(ref: SeriesRef(serverID: config.id, seriesID: String(m.id)), title: m.title,
                       coverURL: resolve(m.thumbnailUrl), unreadCount: m.unreadCount,
                       categoryIDs: Self.categoryIDs(m.categories))
+    }
+
+    /// Home rows and search ask for the chapter count too, for poster
+    /// captions. `chapters { totalCount }` is in every Suwayomi GraphQL
+    /// schema, unlike the grid's sort fields.
+    static let listFields = SuwayomiMangaDTO.fields + " chapters { totalCount }"
+
+    func summary(_ m: SuwayomiGridManga) -> SeriesSummary {
+        var s = summary(m.manga)
+        s.chapterCount = m.chapterCount
+        return s
     }
 
     /// A manga in no category is in Default.

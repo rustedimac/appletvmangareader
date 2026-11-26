@@ -11,37 +11,63 @@ public struct PosterBadges: Equatable, Sendable {
     }
 
     public var corner: Corner
-    /// Fraction read, only while partway (0 < progress < 1).
+    /// Fraction read, only while partway (0 < progress < 1). Drawn on the
+    /// cover.
     public var progress: Double?
-    /// "320 pages" or "45 chapters", when known.
+    /// "45 chapters" or "320 pages" under the title, per `PosterCaption`.
     public var caption: String?
+    /// Fraction read (0...1) for the bar under the title, only with the
+    /// `.progress` caption and when the server says how much was read.
+    public var titleProgress: Double?
 
-    public init(corner: Corner = .none, progress: Double? = nil, caption: String? = nil) {
+    public init(corner: Corner = .none, progress: Double? = nil, caption: String? = nil,
+                titleProgress: Double? = nil) {
         self.corner = corner
         self.progress = progress
         self.caption = caption
+        self.titleProgress = titleProgress
     }
 
     /// Kavita reports pages (total and read), so it gets a progress bar
-    /// and a page count; its `unreadCount` is pages, too big a number for
-    /// a badge. Suwayomi library grids report chapters, so they get the
+    /// from pages; its `unreadCount` is pages, too big a number for a
+    /// badge. Suwayomi library grids report chapters, so they get the
     /// unread chapter count. Anything else falls back to `unreadCount`.
-    public init(series: SeriesSummary) {
+    /// `style` picks what goes under the title.
+    public init(series: SeriesSummary, caption style: PosterCaption = .default) {
+        let fraction: Double?
         if let pages = series.pageCount, pages > 0, let read = series.pagesRead {
-            let fraction = min(1, max(0, Double(read) / Double(pages)))
-            self.init(corner: read >= pages ? .finished : .none,
-                      progress: Self.partial(fraction),
-                      caption: Self.count(pages, "page"))
+            fraction = min(1, max(0, Double(read) / Double(pages)))
+            self.init(corner: read >= pages ? .finished : .none, progress: Self.partial(fraction!))
         } else if let chapters = series.chapterCount, chapters > 0, let unread = series.unreadCount {
             let read = max(0, chapters - unread)
-            self.init(corner: unread <= 0 ? .finished : .unread(unread),
-                      progress: Self.partial(Double(read) / Double(chapters)),
-                      caption: Self.count(chapters, "chapter"))
+            fraction = min(1, Double(read) / Double(chapters))
+            self.init(corner: unread <= 0 ? .finished : .unread(unread), progress: Self.partial(fraction!))
         } else if let unread = series.unreadCount, unread > 0 {
+            fraction = nil
             self.init(corner: .unread(unread))
         } else {
+            fraction = nil
             self.init()
         }
+        switch style {
+        case .chapters:
+            caption = Self.chapterCaption(series)
+        case .pages:
+            if let pages = series.pageCount, pages > 0 {
+                caption = Self.count(pages, "page")
+            } else {
+                caption = Self.chapterCaption(series)
+            }
+        case .progress:
+            titleProgress = fraction
+        case .off:
+            break
+        }
+    }
+
+    static func chapterCaption(_ series: SeriesSummary) -> String? {
+        guard let chapters = series.chapterCount, chapters > 0 else { return nil }
+        return count(chapters, (series.countUnit ?? .chapter).noun)
     }
 
     /// For VoiceOver, e.g. "12 unread, 40 percent read".
@@ -52,7 +78,7 @@ public struct PosterBadges: Equatable, Sendable {
         case .finished: parts.append("finished")
         case .none: break
         }
-        if let progress { parts.append("\(Int((progress * 100).rounded())) percent read") }
+        if let read = progress ?? titleProgress { parts.append("\(Int((read * 100).rounded())) percent read") }
         if let caption { parts.append(caption) }
         return parts.joined(separator: ", ")
     }

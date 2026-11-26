@@ -99,6 +99,9 @@ final class KomgaClientTests: XCTestCase {
         XCTAssertEqual(first.libraryID, manga)
         XCTAssertEqual(first.unreadCount, 1)
         XCTAssertEqual(first.coverURL?.absoluteString, "http://komga.local:25600/api/v1/series/\(seriesID)/thumbnail")
+        XCTAssertEqual(first.chapterCount, 2, "Komga counts books")
+        XCTAssertEqual(first.countUnit, .book)
+        XCTAssertEqual(PosterBadges(series: first).caption, "2 books")
 
         let request = try XCTUnwrap(mock.lastRequest(containing: "series/list"))
         let url = try XCTUnwrap(request.url?.absoluteString)
