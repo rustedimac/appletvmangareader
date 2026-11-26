@@ -249,7 +249,7 @@ final class LibraryBrowsingUITests: XCTestCase {
         XCTAssertFalse(titleProgress.exists)
         // The setting is the profile's, so Home follows it too.
         selectTab("Home")
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'poster.caption.'")).count, 0)
     }
 
@@ -367,7 +367,7 @@ final class LibraryBrowsingUITests: XCTestCase {
 
     func testDownFromAnyPosterInLastRowReachesCustomizeHome() {
         launch()
-        XCTAssertTrue(app.staticTexts["shelf.Demo Kavita.recentlyUpdated"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["shelf.recentlyUpdated"].waitForExistence(timeout: 15))
         let customize = app.buttons["home.customize"]
         scrollDown(until: customize, maxPresses: 20)
         moveFocus(to: customize)

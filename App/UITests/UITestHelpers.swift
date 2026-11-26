@@ -1,11 +1,12 @@
 import XCTest
 
 extension XCUIApplication {
-    static func launched(seed: String? = nil, tab: String? = nil) -> XCUIApplication {
+    static func launched(seed: String? = nil, tab: String? = nil, extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-uiTesting"]
         if let seed { args += ["-uiTestingSeed", seed] }
         if let tab { args += ["-uiTestingTab", tab] }
+        args += extra
         app.launchArguments = args
         app.launch()
         return app
