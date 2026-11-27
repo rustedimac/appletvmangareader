@@ -159,6 +159,10 @@ final class AppModel {
     /// `state`, so screens can't observe them any other way.
     private(set) var credentialRevision = 0
 
+    /// Home's last rows. Kept here rather than in `HomeView`, which is
+    /// rebuilt when the theme changes (see `HomeSnapshot`).
+    var home = HomeSnapshot()
+
     /// Changes whenever what the browse screens load from servers could:
     /// the active profile, a server added, removed or edited, the
     /// libraries/categories it imports, its progress sync setting, or a

@@ -8,16 +8,18 @@ extension AppModel {
     /// With `-demoProgress`, every series starts with chapters 1 and 2 read
     /// and chapter 3 at page 6. With `-demoSignedOut`, Demo Kavita answers
     /// every call with "needs a login", so Home shows its "isn't signed in"
-    /// message above Demo Suwayomi's rows.
+    /// message above Demo Suwayomi's rows. `-demoLatency 4000` makes every
+    /// demo call take that many milliseconds (a slow LAN server).
     func installDemoServers() {
         var demos: [UUID: SampleLibraryServer] = [:]
         let seedsProgress = ProcessInfo.processInfo.arguments.contains("-demoProgress")
         let signedOut = ProcessInfo.processInfo.arguments.contains("-demoSignedOut")
+        let latency = UITestingSeed.value(after: "-demoLatency").flatMap { Int($0) }.map { Duration.milliseconds($0) }
         makeClient = { config, _, scope, _ in
             // Scoped copies of one instance per server share its progress.
             let base = demos[config.id] ?? {
                 let failure: MangaError? = signedOut && config.kind == .kavita ? .missingCredential : nil
-                let server = SampleLibraryServer(config: config, failure: failure)
+                let server = SampleLibraryServer(config: config, latency: latency ?? .milliseconds(150), failure: failure)
                 if seedsProgress { server.seedProgress(read: 2, inProgressPage: 5) }
                 return server
             }()
