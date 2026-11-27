@@ -43,7 +43,7 @@ struct FreeLibrarySettingsView: View {
             } header: {
                 SettingsHeader("Collections")
             } footer: {
-                Text("Progress in the Free Library is kept on this Apple TV, separately for each profile.")
+                Text("Progress in the Free Library is kept on this \(Platform.deviceName), separately for each profile.")
             }
 
             Section {

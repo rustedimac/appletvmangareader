@@ -178,10 +178,14 @@ jobs:
           UDID=$(python3 -c '
           import json,sys
           d=json.load(open(sys.argv[1]))["devices"]
-          c=[(r,x) for r,v in d.items() if "iOS" in r for x in v if x["name"].startswith("iPhone")]
+          # The iOS 18 runtime that matches Xcode 16: with a newer runtime
+          # (26.x) the UI test runner timed out waiting for accessibility.
+          c=[(r,x) for r,v in d.items() if "iOS-18" in r for x in v if x["name"].startswith("iPhone")]
           c.sort(key=lambda t:(t[0], "Pro" in t[1]["name"]))
           print(c[-1][1]["udid"])' "$RUNNER_TEMP/sims.json")
           echo "Simulator: $UDID"
+          # Boot it fully before testing so the runner doesn't time out.
+          xcrun simctl bootstatus "$UDID" -b
           set +e
           xcodebuild test-without-building \
             -project MangaReader.xcodeproj \

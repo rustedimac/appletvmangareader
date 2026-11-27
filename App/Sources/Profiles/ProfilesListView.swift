@@ -34,7 +34,7 @@ struct ProfilesListView: View {
 
             Section {
                 NavigationLink {
-                    PINGate(kind: .anyProtected, reason: "A profile on this Apple TV has a PIN. Enter one to add a profile.") {
+                    PINGate(kind: .anyProtected, reason: "A profile on this \(Platform.deviceName) has a PIN. Enter one to add a profile.") {
                         ProfileEditorView(editing: nil)
                     }
                 } label: {

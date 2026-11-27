@@ -345,7 +345,7 @@ struct PagedReaderView: View {
 
     private func doubleTapZoom() {
         guard session.edge == nil, session.currentSpread != nil, !session.isMenuPresented else { return }
-        setZoom(ReaderTouch.doubleTapTarget(currentZoom: viewport.zoom))
+        setZoom(ReaderTouch.doubleTapTarget(currentZoom: viewport.zoom, zoomScale: settings.clampedZoomScale))
     }
     #endif
 
@@ -512,7 +512,7 @@ private struct PageImageView: View {
         let name = half.map { "Page \(index + 1), \($0.rawValue) half" } ?? "Page \(index + 1)"
         let adjusted = session.settings.picture.isDefault ? "" : ", adjusted"
         if loaded != nil { return (name, (crop.isZero ? "loaded" : "cropped") + adjusted, "") }
-        if failure != nil { return ("Page \(index + 1) didn't load", "failed", "Press Select to retry") }
+        if failure != nil { return ("Page \(index + 1) didn't load", "failed", Platform.retryHint) }
         return (name, "loading", "")
     }
 
@@ -680,7 +680,7 @@ struct PageFailureCard: View {
                 .padding(.horizontal, 36)
                 .padding(.vertical, 10)
                 .background(.white, in: Capsule())
-            Text("Press Select to retry")
+            Text(Platform.retryHint)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

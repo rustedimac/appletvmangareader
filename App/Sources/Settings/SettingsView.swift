@@ -77,12 +77,15 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.libraryDefaults")
 
+                    // The remote's help page; touch controls are on screen.
+                    #if os(tvOS)
                     NavigationLink {
                         ControlsHelpView()
                     } label: {
                         Label("Remote and Controller", systemImage: "appletvremote.gen4")
                     }
                     .accessibilityIdentifier("settings.controls")
+                    #endif
 
                     SettingsPicker("Theme", selection: themeBinding, options: AppTheme.allCases,
                                    systemImage: "paintpalette") { $0.title }

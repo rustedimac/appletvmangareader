@@ -42,7 +42,8 @@ struct SearchView: View {
                           systemImage: "server.rack")
         } else if CrossServerSearch.normalize(query) == nil {
             BrowseMessage(title: "Search your servers",
-                          message: "Type a title, or hold the microphone button on the Siri Remote and say it.",
+                          message: Platform.isTV ? "Type a title, or hold the microphone button on the Siri Remote and say it."
+                                                 : "Type a title, or tap the microphone on the keyboard and say it.",
                           systemImage: "mic")
                 .accessibilityIdentifier("search.hint")
         } else if isSearching && results.isEmpty {

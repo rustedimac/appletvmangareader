@@ -50,7 +50,7 @@ struct ReaderDefaultsView: View {
                     .accessibilityIdentifier("readerDefaults.fit")
                 Toggle(ReaderMenuItem.cropBorders.title, isOn: settings.cropBorders)
                     .accessibilityIdentifier("readerDefaults.cropBorders")
-                SettingsPicker(ReaderMenuItem.zoom.title, selection: settings.zoomScale,
+                SettingsPicker(ReaderMenu.title(.zoom), selection: settings.zoomScale,
                                options: Self.options(ReaderMenuOptions.zoomScales,
                                                      current: model.defaultReaderSettings.zoomScale),
                                systemImage: "plus.magnifyingglass") { ReaderMenuOptions.zoomLabel($0) }
@@ -60,7 +60,9 @@ struct ReaderDefaultsView: View {
             } header: {
                 SettingsHeader("Paged")
             } footer: {
-                Text("The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls with up and down. Click while reading to zoom; press Menu to zoom out. Split wide pages shows a scanned two-page spread one half at a time in single-page layout.")
+                Text(Platform.isTV
+                     ? "The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls with up and down. Click while reading to zoom; press Menu to zoom out. Split wide pages shows a scanned two-page spread one half at a time in single-page layout."
+                     : "The first page is usually the cover, so showing it alone keeps the spreads that follow paired correctly. Crop borders trims white or black margins. Fit Width fills the screen's width and scrolls up and down. Double-tap a page to zoom, pinch for more, double-tap again to zoom out. Two pages show side by side in landscape. Split wide pages shows a scanned two-page spread one half at a time in single-page layout.")
             }
 
             Section {

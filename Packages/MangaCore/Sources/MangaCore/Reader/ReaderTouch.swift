@@ -81,9 +81,10 @@ public enum ReaderTouch {
         return min(maxZoom, max(1, zoom))
     }
 
-    /// Double-tap: zoom in when at fit, back to fit when zoomed.
-    public static func doubleTapTarget(currentZoom: Double) -> Double {
-        currentZoom > 1.001 ? 1 : doubleTapZoom
+    /// Double-tap: zoom in to `zoomScale` (the reader's zoom setting) when
+    /// at fit, back to fit when zoomed.
+    public static func doubleTapTarget(currentZoom: Double, zoomScale: Double = doubleTapZoom) -> Double {
+        currentZoom > 1.001 ? 1 : clampedZoom(zoomScale)
     }
 
     /// Two-page spreads need room: in a portrait window they'd shrink each

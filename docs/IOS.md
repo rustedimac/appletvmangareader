@@ -83,6 +83,14 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - `platformValue(tv:touch:)` for one-off spacings; the tvOS numbers are the old ones.
 - Not yet: servers and libraries listed in the iPad sidebar.
 
+### As built (step 4)
+
+- `FilesBackupView` (App/Sources-iOS): Export Backup (`fileExporter`, a `.json` file named "Manga Reader Backup <date>", so Files, AirDrop and Mail open it without a custom type) and Restore from a Backup File (`fileImporter`). Same `MangaBackup` format as the Apple TV page.
+- Server editor: no "Set Up from Your Phone" on iOS. Settings: no Remote and Controller page; the reader's controls tutorial isn't offered; remote hints and the Siri Remote legend are tvOS only.
+- Text: "this Apple TV" reads "this iPhone" / "this iPad" (`Platform.deviceName`), retry hints say "Tap to retry", empty Bookmarks and Search explain the touch way.
+- The Default theme follows the system's light or dark setting on iOS; Theme Lab themes keep their own. The reader stays dark-backed.
+- Profiles: in-app profiles with `SingleUserDevice` (from step 1); "Who's reading?" shows only with several profiles.
+
 ## 5. Files and local content
 
 - **Open from Files** (phase 2, after the release build): CBZ / ZIP / PDF / EPUB picked with `fileImporter` or opened from the share sheet go into an on-device "On This iPhone" source, read with the existing `ZipArchive`, PDF and book readers. Not needed for the first device build.
@@ -122,6 +130,6 @@ The first test build uses the Personal Team route: the maintainer's Mac builds t
 | 1 Foundation | built; iPhone + iPad smoke tests pass on simulators |
 | 2 Touch reader | built; iPhone + iPad touch UI tests pass on simulators |
 | 3 Layouts | built; browse screens, series page and library grid checked on iPhone and iPad simulators |
-| 4 System pieces | |
+| 4 System pieces | built; Files backup, no phone setup, system light/dark, iOS wording |
 | 5 Tests | |
 | 6 Device build | |

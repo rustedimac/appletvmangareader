@@ -127,6 +127,8 @@ struct ServerEditorView: View {
                     .accessibilityIdentifier("serverEditor.loginFooter")
             }
 
+            // On iPhone and iPad the device is the keyboard (docs/IOS.md §1).
+            #if os(tvOS)
             Section {
                 NavigationLink {
                     PhoneSetupView(context: PhoneSetupHTTP.Context(draft: draft, kindLocked: editing != nil),
@@ -139,6 +141,7 @@ struct ServerEditorView: View {
             } footer: {
                 Text("Or scan a code with your phone and type the address and login there instead of with the remote.")
             }
+            #endif
 
             Section {
                 ForEach(Array(draft.alternateAddresses.indices), id: \.self) { index in
@@ -289,14 +292,14 @@ struct ServerEditorView: View {
         case .komga:
             return "Komga keeps progress per user, so this is normally on."
         case .opds:
-            return "OPDS catalogs can't store reading progress, so it's kept on this Apple TV."
+            return "OPDS catalogs can't store reading progress, so it's kept on this \(Platform.deviceName)."
         case .suwayomi:
             let others = otherSyncingProfiles
-            let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this Apple TV."
+            let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this \(Platform.deviceName)."
             guard draft.syncProgress, !others.isEmpty else { return base }
             return base + " Also syncing: " + others.map(\.name).joined(separator: ", ") + "."
         case .freeLibrary:
-            return "The Free Library keeps progress on this Apple TV."
+            return "The Free Library keeps progress on this \(Platform.deviceName)."
         }
     }
 

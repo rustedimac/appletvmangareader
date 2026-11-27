@@ -63,6 +63,7 @@ final class ReaderTouchTests: XCTestCase {
         XCTAssertEqual(ReaderTouch.clampedZoom(.nan), 1)
         XCTAssertEqual(ReaderTouch.doubleTapTarget(currentZoom: 1), 2)
         XCTAssertEqual(ReaderTouch.doubleTapTarget(currentZoom: 2.5), 1)
+        XCTAssertEqual(ReaderTouch.doubleTapTarget(currentZoom: 1, zoomScale: 3), 3)
     }
 
     func testPortraitShowsSinglePages() {
