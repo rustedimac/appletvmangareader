@@ -69,8 +69,8 @@ Use a Kavita manga with a two-page color spread (many chapters end on one).
 - [ ] Pairs read right page first, then left.
 - [ ] A spread split across two files lines up with no gap or line at the spine.
 - [ ] A wide (landscape) page shows alone.
-- [ ] If pairs come out wrong, Play/Pause → First Page Alone (flip it) fixes
-      them for that series and stays on the same page.
+- [ ] If pairs come out wrong, hold Play/Pause → First Page Alone (flip it)
+      fixes them for that series and stays on the same page.
 - [ ] Past the last page, a card names the next chapter; one more press opens it.
 - [ ] Turning pages is instant once the reader has preloaded. **(device)**
 - [ ] Text is sharp on a 4K TV, not soft or blocky. **(device)**
@@ -79,7 +79,7 @@ Use a Kavita manga with a two-page color spread (many chapters end on one).
 
 Use a Suwayomi webtoon (KR category).
 
-- [ ] Play/Pause → Reading Mode → Vertical Scroll switches in place.
+- [ ] Hold Play/Pause → Reading Mode → Vertical Scroll switches in place.
 - [ ] Swiping on the touch surface scrolls smoothly; click down moves about one
       screen. **(device)**
 - [ ] Holding down scrolls continuously and speeds up. **(device)**
@@ -91,17 +91,33 @@ Use a Suwayomi webtoon (KR category).
 
 ## Reader menu
 
-- [ ] A click, holding Select, swipe down or Play/Pause opens the drawer on
-      the right in the page reader; the page stays visible behind it.
-- [ ] Vertical reader: a click or holding Select opens the drawer, and
-      Play/Pause starts and stops auto-scroll. Holding Select opens the
-      drawer even while auto-scroll runs.
+- [ ] Holding Play/Pause (about half a second) opens the drawer on the right
+      in every reader; the page stays visible behind it. A short press never
+      opens it. **(device: check the hold feels right)**
+- [ ] A Play/Pause press starts and stops auto-scroll (vertical) or the page
+      timer (page reader); the speed shows as a name (Slow, Medium…).
+- [ ] A light tap on the touch surface (no click) shows the page number and
+      a "Hold for options" hint in the corner for a few seconds; a click
+      doesn't. **(device)**
+- [ ] Page reader: holding Select zooms in, a click zooms out; swipe down
+      opens the page thumbnails.
+- [ ] Menu closes the drawer (or the thumbnails, or zoom) first, and only a
+      second Menu closes the reader, opened from a real series page.
+- [ ] The bottom of the drawer's Settings tab lists the controls.
 - [ ] The first few opens of each mode show a hint at the top naming these.
+- [ ] The first reader open asks "Learn the Controls?"; Show Me runs the
+      tutorial on the Pepper&Carrot sample and Menu returns to the chapter.
+      Every step can be done with the remote, including the tap. **(device)**
+- [ ] Settings > Remote and Controller > Page / Vertical Reader Tutorial
+      replays it; the sample credit shows on the last step.
+- [ ] With a game controller (an 8BitDo Micro too): ☰ opens the drawer, Y
+      bookmarks, X plays, L1/R1 change chapter, the d-pad only navigates.
+      **(device)**
 - [ ] Every setting applies immediately.
 - [ ] Settings are remembered per series (leave and reopen).
 - [ ] Set as Default makes new series open that way.
 - [ ] Chapters tab jumps to another chapter.
-- [ ] Menu or Play/Pause closes the drawer.
+- [ ] Menu or a Play/Pause press closes the drawer.
 
 ## Progress sync
 

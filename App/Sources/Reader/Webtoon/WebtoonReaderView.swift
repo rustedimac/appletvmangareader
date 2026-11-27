@@ -10,22 +10,20 @@ import MangaCore
 /// real size is known it gets an estimated height, and when the size arrives
 /// the strip re-lays out around what's on screen so nothing jumps.
 ///
-/// Siri Remote:
+/// Siri Remote (docs/READER_CONTROLS.md section 10, `ReaderControls`):
 /// - Swipe on the touch surface to scroll, with momentum.
 /// - Click up or down to move `settings.webtoonScrollStep` of a screen;
 ///   hold to scroll continuously (it speeds up the longer you hold).
 /// - Click left or right to snap to the previous or next page.
-/// - Click the center, or hold Select, to open the reader menu (holding
-///   works while auto-scroll runs too). Same as the paged reader.
-/// - Play/Pause starts or stops auto-scroll. While it runs, a click stops
-///   it, and swiping (or clicking) up/down makes it faster/slower. The
-///   speed is saved for the profile.
-/// - Menu closes the reader (handled by `ReaderView`).
-/// The full map, shown in Settings > Remote and Controller, is
-/// `ReaderControls` (docs/CONTROLS.md).
+/// - Play/Pause starts or stops auto-scroll; holding it opens the reader
+///   options (both caught by `ReaderRemoteCatcher` in `ReaderView`). While
+///   auto-scroll runs, swiping (or clicking) up/down makes it faster or
+///   slower, one named step at a time. The speed is saved for the profile.
+/// - A click retries a page that didn't load.
+/// - Menu closes what's open, stops auto-scroll, then closes the reader.
 ///
-/// Game controller: either stick scrolls smoothly, shoulders snap to the
-/// previous/next page, triggers jump chapters, X toggles auto-scroll.
+/// Game controller: either stick scrolls smoothly, X toggles auto-scroll,
+/// L1/R1 jump chapters (`GamepadMapping`).
 ///
 /// The next chapter joins the bottom of the strip as you near the end, and
 /// the previous one the top as you scroll up, with a divider between them.
@@ -45,9 +43,14 @@ struct WebtoonReaderView: View {
                         AutoScrollBadge(level: session.autoScrollLevel)
                             .transition(.opacity)
                     }
-                    WebtoonIndicator(session: session)
+                    // The page number shows with the HUD (a tap).
+                    if ReaderHUDPolicy.showsPageNumber(session) {
+                        WebtoonIndicator(session: session)
+                            .transition(.opacity)
+                    }
                 }
                 .animation(.easeInOut(duration: 0.2), value: session.isAutoScrolling)
+                .animation(.easeInOut(duration: 0.2), value: session.isHUDVisible)
             }
         }
         .ignoresSafeArea()
@@ -91,7 +94,6 @@ private struct WebtoonStripRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WebtoonContainerView {
         let controller = context.coordinator
-        controller.onMenu = { [weak session] in session?.isMenuPresented = true }
         controller.sync()
         return controller.container
     }
@@ -133,7 +135,7 @@ private struct WebtoonIndicator: View {
     }
 }
 
-/// "Auto-scroll · Speed 3 of 10" above the page indicator while it runs.
+/// "Auto-scroll · Slow" above the page indicator while it runs.
 private struct AutoScrollBadge: View {
     let level: Int
 

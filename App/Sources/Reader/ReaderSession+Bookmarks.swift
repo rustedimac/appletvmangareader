@@ -28,12 +28,18 @@ extension ReaderSession {
         return seriesBookmarks.filter { $0.chapterID == chapter.id && pages.contains($0.page) }
     }
 
-    var isShowingBookmarkedPage: Bool { !visibleBookmarks.isEmpty }
+    var isShowingBookmarkedPage: Bool {
+        if isTutorial {
+            return loadState == .loaded && edge == nil && !tutorialBookmarks.isDisjoint(with: visiblePages)
+        }
+        return !visibleBookmarks.isEmpty
+    }
 
     /// Bookmarks the page on screen, or removes the bookmark if any page on
     /// screen has one.
     func toggleBookmark() {
         guard loadState == .loaded, pageCount > 0, edge == nil else { return }
+        if isTutorial { return toggleTutorialBookmark() }
         let existing = visibleBookmarks
         if existing.isEmpty {
             let page = min(currentPage, pageCount - 1)

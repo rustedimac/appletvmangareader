@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import QuartzCore
 import MangaCore
 
 /// The panel over the page while the reader menu is open.
@@ -72,10 +73,16 @@ final class ReaderSession {
     /// (`overlay` says which). Either one takes focus from the page.
     var isMenuPresented = false {
         didSet {
-            if isMenuPresented, isAutoScrolling { isAutoScrolling = false }
-            if !isMenuPresented {
+            if isMenuPresented {
+                if isAutoScrolling { isAutoScrolling = false }
+                stopAutoTurn()
+                hideHUD()
+                if overlay == .menu { note(.openOptions) }
+            } else {
                 overlay = .menu
+                scrubberFromMenu = false
                 menuPicker = nil
+                note(.closeOptions)
             }
         }
     }
@@ -86,8 +93,35 @@ final class ReaderSession {
     /// it closes, so every way of opening the menu opens the menu.
     private(set) var overlay: ReaderOverlay = .menu
     /// Webtoon auto-scroll is running. The strip sets this; it stops when
-    /// the menu opens or a chapter loads.
-    var isAutoScrolling = false
+    /// the menu opens or a chapter loads. Setting it false stops the strip.
+    var isAutoScrolling = false {
+        didSet {
+            guard isAutoScrolling != oldValue else { return }
+            note(isAutoScrolling ? .startPlay : .stopPlay)
+        }
+    }
+    /// Paged reader: the page-turn timer is running (Play/Pause).
+    private(set) var isAutoTurning = false
+    /// The page number and reading info are showing (a tap on the touch
+    /// surface). They hide on their own after `hudDuration`.
+    private(set) var isHUDVisible = false
+    /// Whether the scrubber was opened from the menu's Pages button (Back
+    /// returns to the menu) or straight from the page (Back closes it).
+    @ObservationIgnored private var scrubberFromMenu = false
+    @ObservationIgnored private var hudTask: Task<Void, Never>?
+    @ObservationIgnored private var autoTurnTask: Task<Void, Never>?
+    /// When a game controller's ☰ last toggled the options. Some
+    /// controllers also send ☰ as a Back press; that echo is ignored.
+    @ObservationIgnored private var lastGamepadMenu: CFTimeInterval = 0
+    @ObservationIgnored private var lastPlayToggle: CFTimeInterval = 0
+    @ObservationIgnored var hudDuration: Duration = .seconds(3)
+    /// Set while this session is the controls tutorial on the sample
+    /// (`ReaderTutorial`). A tutorial saves nothing: no progress, recent
+    /// series, bookmarks or reader settings.
+    private(set) var tutorial: ReaderTutorial.Progress?
+    var isTutorial: Bool { tutorial != nil }
+    /// Tutorial only: pages bookmarked in this run, kept in memory.
+    private(set) var tutorialBookmarks: Set<Int> = []
     /// The profile's auto-scroll speed (`WebtoonAutoScroll.levels`).
     private(set) var autoScrollLevel: Int
     /// Paged reader: pages of this chapter whose image didn't load after
@@ -122,17 +156,18 @@ final class ReaderSession {
     /// - Parameter startPage: page to open at. Nil resumes from the
     ///   chapter's saved progress.
     init(model: AppModel, server: MangaServer, series: SeriesSummary, chapters: [Chapter],
-         start: Chapter, startPage: Int? = nil) {
+         start: Chapter, startPage: Int? = nil, tutorial: ReadingMode? = nil) {
         self.model = model
         self.server = server
         self.series = series
         self.chapters = chapters.isEmpty ? [start] : chapters
         self.chapter = start
         self.initialPage = startPage
-        let settings = model.readerSettings(for: series)
+        self.tutorial = tutorial.map { ReaderTutorial.Progress(mode: $0) }
+        let settings = tutorial.map(TutorialSample.settings(for:)) ?? model.readerSettings(for: series)
         self.settings = settings
         self.navigator = ReaderNavigator(pageCount: 0, settings: settings)
-        self.autoScrollLevel = model.autoScrollLevel
+        self.autoScrollLevel = WebtoonAutoScroll.nearestStep(model.autoScrollLevel)
     }
 
     // MARK: Derived state
@@ -202,7 +237,7 @@ final class ReaderSession {
     func start() async {
         guard !started else { return }
         started = true
-        model.noteReading(series)
+        if !isTutorial { model.noteReading(series) }
         await load(chapter: chapter, startPage: initialPage)
     }
 
@@ -213,6 +248,7 @@ final class ReaderSession {
         loadTask?.cancel()
         self.chapter = chapter
         isAutoScrolling = false
+        stopAutoTurn()
         loadState = .loading
         pages = []
         sizes = [:]
@@ -319,6 +355,7 @@ final class ReaderSession {
     private func handle(_ result: PageTurnResult) {
         switch result {
         case .moved, .showTransition:
+            note(.turnPage)
             progressChanged()
         case .leaveChapter(let edge):
             guard chapter(across: edge) != nil else { return }
@@ -343,9 +380,11 @@ final class ReaderSession {
         progressChanged()
     }
 
-    /// Opens the page scrubber in place of the menu.
-    func openScrubber() {
+    /// Opens the page scrubber: in place of the menu (its Pages button), or
+    /// straight from the page (paged reader, Down at the bottom).
+    func openScrubber(fromMenu: Bool = true) {
         guard loadState == .loaded, pageCount > 0 else { return }
+        scrubberFromMenu = fromMenu && isMenuPresented
         overlay = .scrubber
         isMenuPresented = true
     }
@@ -385,15 +424,168 @@ final class ReaderSession {
         guard newSettings != settings else { return }
         settings = newSettings
         navigator.updateSettings(newSettings)
+        guard !isTutorial else { return }
         model.setReaderSettings(newSettings, for: series.ref)
     }
 
-    /// Sets the auto-scroll speed and saves it for the profile.
+    /// Sets the auto-scroll / page-turn speed and saves it for the profile.
+    /// Only named steps are used (`WebtoonAutoScroll.steps`).
     func setAutoScrollLevel(_ level: Int) {
-        let level = WebtoonAutoScroll.clamped(level)
+        let level = WebtoonAutoScroll.nearestStep(level)
         guard level != autoScrollLevel else { return }
         autoScrollLevel = level
         model.setAutoScrollLevel(level)
+        note(.changeSpeed)
+    }
+
+    // MARK: Remote: Play/Pause, HUD, Back
+
+    /// Play/Pause pressed (`ReaderRemoteCatcher`): closes the options if
+    /// they're open, otherwise plays.
+    func playPausePressed() {
+        if isMenuPresented {
+            isMenuPresented = false
+        } else {
+            togglePlay()
+        }
+    }
+
+    /// Play/Pause held: the one route to the reader options.
+    func playPauseHeld() {
+        guard !(isMenuPresented && overlay == .scrubber && scrubberFromMenu) else {
+            overlay = .menu
+            scrubberFromMenu = false
+            return
+        }
+        isMenuPresented.toggle()
+    }
+
+    /// The reader's "play": auto-scroll in the vertical reader, the
+    /// page-turn timer in the page reader.
+    func togglePlay() {
+        guard loadState == .loaded else { return }
+        // One controller press can arrive both as X and as a Play/Pause
+        // press; the second toggle is dropped.
+        let now = CACurrentMediaTime()
+        guard now - lastPlayToggle > 0.3 else { return }
+        lastPlayToggle = now
+        if settings.mode == .webtoon {
+            webtoonInput?.toggleAutoScroll()
+        } else if isAutoTurning {
+            stopAutoTurn()
+        } else {
+            startAutoTurn()
+        }
+    }
+
+    /// Paged reader: turns forward every `WebtoonAutoScroll.secondsPerPage`
+    /// at the profile's speed, and stops at the end of the chapter (the
+    /// transition card), when the options open, or on Play/Pause.
+    func startAutoTurn() {
+        guard settings.mode == .paged, loadState == .loaded, edge == nil, !isAutoTurning else { return }
+        isAutoTurning = true
+        note(.startPlay)
+        autoTurnTask = Task { [weak self] in
+            while let self, self.isAutoTurning {
+                let seconds = WebtoonAutoScroll.secondsPerPage(self.autoScrollLevel)
+                try? await Task.sleep(for: .seconds(seconds))
+                guard !Task.isCancelled, self.isAutoTurning else { return }
+                self.forward()
+                if self.edge != nil { self.stopAutoTurn() }
+            }
+        }
+    }
+
+    func stopAutoTurn() {
+        autoTurnTask?.cancel()
+        autoTurnTask = nil
+        if isAutoTurning {
+            isAutoTurning = false
+            note(.stopPlay)
+        }
+    }
+
+    /// A tap on the touch surface: shows the page number (or hides it).
+    func toggleHUD() {
+        if isHUDVisible { hideHUD() } else { showHUD() }
+    }
+
+    /// Shows the page number and reading info for `hudDuration`.
+    func showHUD() {
+        guard !isMenuPresented else { return }
+        isHUDVisible = true
+        note(.showPageNumber)
+        hudTask?.cancel()
+        let duration = hudDuration
+        hudTask = Task { [weak self] in
+            try? await Task.sleep(for: duration)
+            guard !Task.isCancelled else { return }
+            self?.isHUDVisible = false
+        }
+    }
+
+    func hideHUD() {
+        hudTask?.cancel()
+        hudTask = nil
+        if isHUDVisible { isHUDVisible = false }
+    }
+
+    /// Menu (Back): closes the top layer. Returns false when nothing was
+    /// open, so the caller closes the reader. Order (docs/READER_CONTROLS.md
+    /// section 5): scrubber (back to the options if it came from them),
+    /// options, page number, then auto-scroll or the page-turn timer. The
+    /// paged reader zooms out before asking here.
+    @discardableResult
+    func back() -> Bool {
+        if CACurrentMediaTime() - lastGamepadMenu < 0.35 { return true }
+        if isMenuPresented {
+            if overlay == .scrubber, scrubberFromMenu {
+                overlay = .menu
+                scrubberFromMenu = false
+            } else {
+                isMenuPresented = false
+            }
+            return true
+        }
+        if isHUDVisible {
+            hideHUD()
+            return true
+        }
+        if isAutoScrolling {
+            isAutoScrolling = false
+            return true
+        }
+        if isAutoTurning {
+            stopAutoTurn()
+            return true
+        }
+        return false
+    }
+
+    // MARK: Tutorial
+
+    /// Something the person did, for the tutorial's current step.
+    func note(_ goal: ReaderTutorial.Goal) {
+        guard tutorial != nil else { return }
+        tutorial?.record(goal)
+    }
+
+    /// Paged reader: the page was zoomed in or out (the view owns zoom).
+    func noteZoom(_ zoomed: Bool) {
+        note(zoomed ? .zoomIn : .zoomOut)
+    }
+
+    /// Tutorial only: bookmarks the page on screen in memory.
+    func toggleTutorialBookmark() {
+        let page = min(currentPage, max(0, pageCount - 1))
+        if tutorialBookmarks.contains(page) {
+            tutorialBookmarks.remove(page)
+            show(ReaderNotice(text: "Bookmark removed", systemImage: "bookmark.slash"))
+        } else {
+            tutorialBookmarks.insert(page)
+            show(ReaderNotice(text: "Bookmarked page \(page + 1)", systemImage: "bookmark.fill"))
+        }
+        note(.bookmark)
     }
 
     // MARK: Game controller
@@ -408,6 +600,7 @@ final class ReaderSession {
                                                  menuOpen: isMenuPresented) else { return }
         switch action {
         case .toggleMenu:
+            lastGamepadMenu = CACurrentMediaTime()
             isMenuPresented.toggle()
         case .jumpChapter(let forward):
             jumpChapter(forward: forward)
@@ -417,8 +610,12 @@ final class ReaderSession {
             } else {
                 turn(direction)
             }
-        case .toggleAutoScroll:
-            webtoonInput?.toggleAutoScroll()
+        case .togglePlay:
+            togglePlay()
+        case .toggleBookmark:
+            toggleBookmark()
+        case .toggleHUD:
+            toggleHUD()
         }
     }
 
@@ -446,7 +643,7 @@ final class ReaderSession {
     /// Writes the position to this profile's saved state if it moved. Cheap
     /// enough for every page turn; survives the app being killed.
     private func writeLocalProgress() {
-        guard let progress = pendingProgress else { return }
+        guard !isTutorial, let progress = pendingProgress else { return }
         visitedPages[progress.chapterID] = progress.page
         guard progress != lastLocal else { return }
         lastLocal = progress
@@ -468,7 +665,7 @@ final class ReaderSession {
         saveTask?.cancel()
         saveTask = nil
         writeLocalProgress()
-        guard let progress = pendingProgress, progress != lastSaved else { return }
+        guard !isTutorial, let progress = pendingProgress, progress != lastSaved else { return }
         // Never move a finished chapter back to unread.
         if let last = lastSaved, last.chapterID == progress.chapterID, last.completed, !progress.completed { return }
         lastSaved = progress
@@ -486,8 +683,10 @@ final class ReaderSession {
     func close() {
         flushProgress()
         loadTask?.cancel()
+        stopAutoTurn()
+        hudTask?.cancel()
         // The view closes it on Menu and again on disappear.
-        if !refreshedOnClose {
+        if !refreshedOnClose, !isTutorial {
             refreshedOnClose = true
             model.refreshSeriesProgress(series.ref)
         }

@@ -3,9 +3,9 @@ import GameController
 import QuartzCore
 import MangaCore
 
-/// Listens to connected game controllers (Xbox, PlayStation, MFi) and hands
-/// the buttons tvOS doesn't already map to whoever is on top: the open
-/// reader. The d-pad, A and B (and the Siri Remote) keep working through
+/// Listens to connected game controllers (Xbox, PlayStation, MFi, 8BitDo)
+/// and hands the buttons tvOS doesn't already map to whoever is on top: the
+/// open reader. Mapping: `GamepadMapping`. The d-pad, A and B (and the Siri Remote) keep working through
 /// the focus engine as arrow, select and Menu presses, so browsing needs
 /// nothing from here.
 ///
@@ -26,6 +26,8 @@ final class GameControllerHub {
     private var sticks: [ObjectIdentifier: (left: (Double, Double), right: (Double, Double))] = [:]
     /// When a stick was last pushed past the dead zone.
     private(set) var lastStickActivity: CFTimeInterval = 0
+    /// When a controller's d-pad was last pressed.
+    fileprivate(set) var lastDpadActivity: CFTimeInterval = 0
 
     /// Whether any controller with sticks and shoulder buttons is connected.
     var hasExtendedGamepad: Bool { GCController.controllers().contains { $0.extendedGamepad != nil } }
@@ -34,6 +36,11 @@ final class GameControllerHub {
     /// reader ignores arrow presses then, in case tvOS turns the stick into
     /// arrow presses as well as reporting it to us.
     var stickRecentlyActive: Bool { CACurrentMediaTime() - lastStickActivity < 0.2 }
+
+    /// True when the arrow press just received came from a controller's
+    /// d-pad, not the Siri Remote. On a controller the d-pad only
+    /// navigates (no bookmark or page thumbnails from up/down).
+    var dpadRecentlyActive: Bool { CACurrentMediaTime() - lastDpadActivity < 0.3 }
 
     func start() {
         guard !started else { return }
@@ -76,6 +83,7 @@ final class GameControllerHub {
             (pad.buttonX, .buttonX),
             (pad.buttonY, .buttonY),
         ]
+        buttons.append((pad.buttonMenu, .menu))
         if let options = pad.buttonOptions { buttons.append((options, .options)) }
         for (input, button) in buttons {
             input.pressedChangedHandler = { _, _, pressed in
@@ -84,6 +92,10 @@ final class GameControllerHub {
             }
         }
         let id = ObjectIdentifier(controller)
+        pad.dpad.valueChangedHandler = { _, x, y in
+            guard x != 0 || y != 0 else { return }
+            MainActor.assumeIsolated { GameControllerHub.shared.lastDpadActivity = CACurrentMediaTime() }
+        }
         pad.leftThumbstick.valueChangedHandler = { _, x, y in
             MainActor.assumeIsolated { GameControllerHub.shared.stick(id, left: (Double(x), Double(y))) }
         }

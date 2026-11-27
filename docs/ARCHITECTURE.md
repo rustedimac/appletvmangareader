@@ -333,16 +333,17 @@ the image arrives.
 - **Remote.** `WebtoonScrollView` (UIKit, focusable; its own scrolling is off so tvOS does not add a half-screen jump per click) follows touch-surface
   swipes; click up/down glides `webtoonScrollStep` of a screen; holding
   scrolls continuously and speeds up; left/right snaps to the previous/next
-  page; select opens the menu (acted on at release, so holding Select for
-  0.5 s can open it too, even while auto-scroll runs); Play/Pause toggles
-  auto-scroll; Menu passes through to `ReaderView`. The full button map
+  page; a click retries a failed page on screen; Play/Pause (caught for
+  every reader by `ReaderRemoteCatcher`) toggles auto-scroll; Menu passes
+  through to `ReaderView`. The full button map
   is `ReaderControls` (MangaCore), shown in Settings > Remote and
   Controller and in docs/CONTROLS.md.
 - **Auto-scroll.** `WebtoonScrollDriver` moves the strip at
-  `WebtoonAutoScroll.speed(level:viewport:)` (ten levels, fractions of a
-  screen per second), tracking the position below a pixel so slow speeds
-  stay smooth. While it runs a click stops it and up/down (clicks or
-  swipes) change the level. It stops when the menu opens, a chapter loads
+  `WebtoonAutoScroll.speed(level:viewport:)` (five named steps, Very Slow
+  to Very Fast, on the old 1–10 level scale so saved levels still work),
+  tracking the position below a pixel so slow speeds stay smooth. While it
+  runs up/down (clicks or swipes) change the step; Play/Pause or Menu stops
+  it. It stops when the menu opens, a chapter loads
   or the series ends, and waits at the bottom while the next chapter
   joins. The level is saved per profile (`ProfileData.autoScrollLevel`),
   not per series, and the menu has a speed row and a Start button. The
@@ -365,25 +366,41 @@ tested in `ReaderInputTests`):
 
 | Input | Paged | Vertical |
 | --- | --- | --- |
-| L1 / R1 (LB / RB) | Page toward the left / right | Previous / next page |
-| L2 / R2 (LT / RT) | Previous / next chapter | Previous / next chapter |
+| ☰ Menu (Options / Start) | Open / close options | Open / close options |
+| D-pad | Turn pages (left / right) only | Scroll (up / down) only |
+| Y | Bookmark | Bookmark |
+| X | Page timer | Auto-scroll |
+| L1 / R1 (LB / RB) | Previous / next chapter | Previous / next chapter |
+| L2 / R2 (LT / RT) | (unused, so small controllers lose nothing) | (unused) |
+| View / Share | Show the page number | Show the page number |
 | Either stick | (focus) | Smooth scroll, quadratic past a 15% dead zone |
-| X | | Toggle auto-scroll |
-| Y or Options | Open / close menu | Open / close menu |
-| B | Close menu, then the reader | Close menu, then the reader |
+| B | Close options, then the reader | Close options, then the reader |
+
+The d-pad's up/down extras on the remote (bookmark, thumbnails) are skipped
+when the press came from a controller d-pad (`GameControllerHub.dpadRecentlyActive`),
+and a Back that arrives within 0.35 s of ☰ is dropped in case tvOS also
+turns ☰ into Menu.
 
 The strip ignores arrow presses while a stick is pushed in case tvOS also
 turns the stick into presses, and drops a second auto-scroll toggle within
-0.3 s in case one press arrives as both X and Play/Pause. XCUITest can't
+0.3 s (`ReaderSession.togglePlay`) in case one press arrives as both X and
+Play/Pause. XCUITest can't
 press controller buttons, so only the mapping is unit tested; check on a
 device with a controller.
 
 ## Reader menu
 
 `Reader/Menu/ReaderMenu` is a drawer on the right, so the page stays in
-view and changes show behind it as they're made. A click or holding Select
-(every reader), swipe down or Play/Pause (paged and book), or Y on a
-controller opens it; Menu or Play/Pause closes it. The first few times
+view and changes show behind it as they're made. Holding Play/Pause
+(every reader; `ReaderRemoteCatcher` adds window-level recognizers so it
+works whatever has focus) or ☰ on a controller opens it; Menu or a
+Play/Pause press closes it. Menu closes one layer at a time
+(`ReaderSession.back()`: thumbnails opened from the options go back to the
+options, then the options, the page number, zoom, auto-scroll or the page
+timer) and only then closes the reader. A tap on the touch surface (an
+indirect touch with no click) shows `ReaderHUD`: the page number, the
+title, and a Play/Pause icon with "Hold for options", for 3 s. The bottom
+of the Settings tab lists the button map (`ReaderControlsLegend`). The first few times
 each mode opens, `ReaderControlsHint` names the route at the top of the
 screen (`ReaderHintTracker`; off in UI tests unless `-readerHints`). While it's open the reader under it
 is disabled so focus can't leave the drawer. Two tabs:

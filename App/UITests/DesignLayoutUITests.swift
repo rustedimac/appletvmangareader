@@ -212,7 +212,7 @@ final class DesignLayoutUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.element("reader.paged").waitForExistence(timeout: 15))
         audit(app, "reader-paged", checkSafeArea: false)
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.8)
         audit(app, "reader-menu-settings")
@@ -238,7 +238,7 @@ final class DesignLayoutUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-readerDemo"]
         app.launch()
         XCTAssertTrue(app.element("reader.paged").waitForExistence(timeout: 15))
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(app.element("reader.menu").waitForExistence(timeout: 5))
         // Pages sits beside Bookmark This Page at the top of the menu.
         focus(app.element("reader.menu.bookmark"), .up)

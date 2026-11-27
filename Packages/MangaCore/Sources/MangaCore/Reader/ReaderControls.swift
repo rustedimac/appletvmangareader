@@ -1,15 +1,16 @@
 import Foundation
 
 /// The reader's button map, in one place, so the Settings "Remote and
-/// Controller" screen, the first-use hint and docs/CONTROLS.md all say the
-/// same thing as the readers do.
+/// Controller" screen, the Controls list at the bottom of the reader
+/// options, the first-use hint and docs/CONTROLS.md all say the same thing
+/// as the readers do.
 ///
-/// The scheme follows tvOS's own media apps: a click (Select) brings up the
-/// controls, Play/Pause plays, and Menu goes back. In every reader holding
-/// Select opens the reader options; a click does too, except in the page
-/// reader, where a click zooms. Play/Pause opens them in the page and book
-/// readers; in the vertical reader it starts and stops auto-scroll. The
-/// scheme is under review in docs/READER_CONTROLS.md.
+/// The scheme John chose (docs/READER_CONTROLS.md section 10): one input
+/// per action. Play/Pause plays (auto-scroll, or the page-turn timer) and
+/// **holding Play/Pause opens the reader options**, which are deliberately
+/// not one easy press away. A tap on the touch surface (not a click) shows
+/// the page number for a few seconds. Holding Select zooms in, a click
+/// zooms out. Menu (Back) closes one layer at a time before leaving.
 public enum ReaderControls {
     public struct Entry: Hashable, Sendable, Identifiable {
         /// "Click", "Play/Pause", "Swipe left or right".
@@ -24,50 +25,56 @@ public enum ReaderControls {
         }
     }
 
+    /// "Hold Play/Pause": the route to the reader options everywhere.
+    public static let optionsInput = "Hold Play/Pause"
+
     /// Siri Remote controls for a reading mode.
     public static func remote(for mode: ReadingMode) -> [Entry] {
         switch mode {
         case .paged:
             return [
-                Entry("Hold Select", "Reader options"),
-                Entry("Play/Pause", "Reader options"),
-                Entry("Swipe or click down", "Reader options (pans down first when zoomed)"),
-                Entry("Click", "Zoom in or out (retries a page that didn't load)"),
-                Entry("Swipe or click left or right", "Turn the page (follows the reading direction); pans first when zoomed"),
-                Entry("Swipe or click up", "Bookmark the page, or remove the bookmark (pans up first when zoomed)"),
-                Entry("Menu (Back)", "Zoom out, close the options, then close the reader"),
+                Entry(optionsInput, "Reader options"),
+                Entry("Play/Pause", "Turn pages on a timer (start or stop)"),
+                Entry("Tap the touch surface", "Show the page number"),
+                Entry("Swipe or click left or right", "Turn the page (follows the reading direction)"),
+                Entry("Swipe or click up", "Bookmark the page, or remove the bookmark"),
+                Entry("Swipe or click down", "Page thumbnails"),
+                Entry("Hold Select", "Zoom in"),
+                Entry("Click", "Zoom out, or retry a page that didn't load"),
+                Entry("Menu (Back)", "Close what's open, zoom out, then close the reader"),
             ]
         case .webtoon:
             return [
-                Entry("Click or hold Select", "Reader options (a click first stops auto-scroll)"),
+                Entry(optionsInput, "Reader options"),
                 Entry("Play/Pause", "Start or stop auto-scroll"),
-                Entry("Swipe up or down", "Scroll, with momentum"),
-                Entry("Click up or down", "Scroll a step (hold to keep scrolling); faster or slower while auto-scrolling"),
+                Entry("Tap the touch surface", "Show the page number"),
+                Entry("Swipe up or down", "Scroll, with momentum; while auto-scrolling, faster or slower"),
+                Entry("Click up or down", "Scroll a step (hold to keep scrolling); while auto-scrolling, faster or slower"),
                 Entry("Click left or right", "Previous or next page"),
-                Entry("Menu (Back)", "Close the options, then close the reader"),
+                Entry("Click", "Retry a page that didn't load"),
+                Entry("Menu (Back)", "Close what's open, stop auto-scroll, then close the reader"),
             ]
         }
     }
 
     /// Book reader (EPUB and text) remote controls.
     public static let bookRemote: [Entry] = [
-        Entry("Click or hold Select", "Reader options"),
-        Entry("Play/Pause", "Reader options"),
-        Entry("Swipe or click down", "Reader options"),
+        Entry(optionsInput, "Reader options"),
         Entry("Swipe or click left or right", "Turn the page"),
-        Entry("Menu (Back)", "Close the options, then close the reader"),
+        Entry("Menu (Back)", "Close the options, then close the book"),
     ]
 
-    /// Game controller buttons (Xbox, PlayStation, MFi). Matches
-    /// `GamepadMapping`.
+    /// Game controller buttons (Xbox, PlayStation, MFi, 8BitDo and other
+    /// small controllers). Matches `GamepadMapping`.
     public static let gamepad: [Entry] = [
-        Entry("Y, or Options / View / Share", "Reader options"),
-        Entry("A", "Same as a click"),
+        Entry("☰ Menu / Options / Start", "Reader options"),
+        Entry("D-pad", "Navigate: turn pages (page reader) or scroll (vertical reader)"),
+        Entry("A", "Same as a click; hold to zoom in"),
         Entry("B", "Same as Menu (Back)"),
-        Entry("D-pad", "Same as the remote's arrows"),
-        Entry("L1 / R1 (LB / RB)", "Turn the page left or right"),
-        Entry("L2 / R2 (LT / RT)", "Previous or next chapter"),
-        Entry("X", "Start or stop auto-scroll (vertical reader)"),
+        Entry("Y", "Bookmark the page"),
+        Entry("X", "Auto-scroll, or turn pages on a timer"),
+        Entry("L1 / R1 (LB / RB)", "Previous or next chapter"),
+        Entry("View / Share / Select", "Show the page number"),
         Entry("Either stick", "Scroll smoothly (vertical reader)"),
     ]
 
@@ -82,10 +89,13 @@ public enum ReaderControls {
     /// The one-line hint shown the first few times a reader opens.
     public static func hint(for mode: ReadingMode) -> String {
         switch mode {
-        case .paged: return "Hold Select or press Play/Pause for reader options · Click zooms · Menu closes the reader"
-        case .webtoon: return "Click for reader options · Play/Pause auto-scrolls · Menu closes the reader"
+        case .paged: return "Hold Play/Pause for reader options · Tap to show the page number · Menu closes the reader"
+        case .webtoon: return "Hold Play/Pause for reader options · Play/Pause auto-scrolls · Menu closes the reader"
         }
     }
+
+    /// The corner hint shown with the page number: next to a Play/Pause icon.
+    public static let hudHint = "Hold for options"
 
     /// How many reader opens show the hint, unless the reader options are
     /// opened sooner (then it stops showing).

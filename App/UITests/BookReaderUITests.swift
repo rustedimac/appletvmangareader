@@ -62,7 +62,7 @@ final class BookReaderUITests: XCTestCase {
     }
 
     private func openMenu() {
-        remote.press(.playPause)
+        remote.holdPlayPause()
         XCTAssertTrue(element("book.menu").waitForExistence(timeout: 5))
         wait(element("book.menu.size.larger"), "hasFocus == true")
     }

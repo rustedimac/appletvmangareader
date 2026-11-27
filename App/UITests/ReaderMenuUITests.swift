@@ -42,7 +42,7 @@ final class ReaderMenuUITests: XCTestCase {
     private var menu: MenuRowDriver { MenuRowDriver(app: app, prefix: "reader.menu") }
 
     private func openMenu() {
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(menuItem("mode"), "hasFocus == true")
     }

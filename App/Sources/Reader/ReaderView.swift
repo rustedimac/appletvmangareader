@@ -8,13 +8,19 @@ import MangaCore
 ///     }
 ///
 /// It switches on `settings.mode` between the paged and webtoon readers and
-/// overlays the in-reader menu. The Menu button closes the menu if it is
-/// open, otherwise it saves progress and closes the reader.
+/// overlays the in-reader menu.
+///
+/// Controls (docs/READER_CONTROLS.md section 10, `ReaderControls`):
+/// Play/Pause plays (auto-scroll or the page-turn timer) and holding it
+/// opens the reader options; a tap on the touch surface shows the page
+/// number (`ReaderRemoteCatcher` catches both, whatever has focus). Menu
+/// closes one layer at a time (`ReaderSession.back()`) and only then saves
+/// progress and closes the reader.
 ///
 /// Game controllers (`GameControllerHub`, mapping in `GamepadMapping`):
-/// shoulders turn pages, triggers jump chapters, Y or Options toggles the
-/// menu, X toggles webtoon auto-scroll, either stick scrolls the webtoon.
-/// B and the d-pad act like the remote's Menu and arrows.
+/// ☰ toggles the options, Y bookmarks, X plays, L1/R1 jump chapters, View
+/// shows the page number, either stick scrolls the webtoon. B and the
+/// d-pad act like the remote's Menu and arrows.
 struct ReaderView: View {
     let series: SeriesSummary
     let chapters: [Chapter]
@@ -23,11 +29,17 @@ struct ReaderView: View {
     var startPage: Int? = nil
     /// Overrides the server client (UI tests and previews).
     var server: MangaServer? = nil
+    /// Runs the controls tutorial in this mode (`ReaderTutorialView`).
+    var tutorial: ReadingMode? = nil
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: ReaderSession?
+    /// The first-open "Learn the controls?" question is showing.
+    @State private var offeringTutorial = false
+    /// The tutorial is open over this reader.
+    @State private var tutorialMode: ReadingMode?
 
     var body: some View {
         if start.format?.isText == true {
@@ -48,20 +60,30 @@ struct ReaderView: View {
             }
         }
         .ignoresSafeArea()
-        .onExitCommand {
-            if let session, session.isMenuPresented {
-                session.isMenuPresented = false
-            } else {
-                session?.close()
-                dismiss()
+        .background {
+            if let session {
+                // While the tutorial or its question is over this reader,
+                // the remote belongs to them.
+                ReaderRemoteCatcher(onPlayPause: { if remoteIsOurs { session.playPausePressed() } },
+                                    onPlayPauseHold: { if remoteIsOurs { session.playPauseHeld() } },
+                                    onTap: { if remoteIsOurs { session.toggleHUD() } })
             }
+        }
+        .onExitCommand {
+            if let session, session.back() { return }
+            session?.close()
+            dismiss()
         }
         .task {
             guard session == nil else { return }
             guard let client = server ?? model.client(for: series.ref) else { return }
             let s = ReaderSession(model: model, server: client, series: series, chapters: chapters,
-                                  start: start, startPage: startPage)
+                                  start: start, startPage: startPage, tutorial: tutorial)
             session = s
+            if tutorial == nil, TutorialRecord.shouldOffer {
+                TutorialRecord.markOffered()
+                offeringTutorial = true
+            }
             GameControllerHub.shared.push(owner: s, onButton: { [weak s] button in
                 s?.handleController(button)
             }, onStick: { [weak s] x, y in
@@ -79,7 +101,20 @@ struct ReaderView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { session?.flushProgress() }
         }
+        .alert("Learn the Controls?", isPresented: $offeringTutorial) {
+            Button("Show Me") { tutorialMode = session?.settings.mode ?? .paged }
+                .accessibilityIdentifier("reader.tutorialOffer.start")
+            Button("Not Now", role: .cancel) {}
+                .accessibilityIdentifier("reader.tutorialOffer.skip")
+        } message: {
+            Text("Try each button on a short sample comic, in about a minute. You can replay it any time in Settings > Remote and Controller.")
+        }
+        .fullScreenCover(item: $tutorialMode) { mode in
+            ReaderTutorialView(mode: mode)
+        }
     }
+
+    private var remoteIsOurs: Bool { !offeringTutorial && tutorialMode == nil }
 }
 
 private struct ReaderContent: View {
@@ -100,7 +135,13 @@ private struct ReaderContent: View {
             .disabled(session.isMenuPresented)
             ReaderLoadStateView(session: session)
             ReaderBookmarkOverlay(session: session)
-            ReaderControlsHint(session: session)
+            ReaderHUD(session: session)
+            ReaderPageTimerBadge(session: session)
+            if session.isTutorial {
+                ReaderTutorialOverlay(session: session)
+            } else {
+                ReaderControlsHint(session: session)
+            }
             if session.isMenuPresented {
                 switch session.overlay {
                 case .menu:
@@ -115,6 +156,95 @@ private struct ReaderContent: View {
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)
         .animation(.easeInOut(duration: 0.2), value: session.overlay)
         .animation(.easeInOut(duration: 0.2), value: session.notice)
+        .animation(.easeInOut(duration: 0.2), value: session.isHUDVisible)
+        .animation(.easeInOut(duration: 0.2), value: session.isAutoTurning)
+    }
+}
+
+/// "Page timer · Slow" at the bottom while the page reader turns pages on
+/// its own (Play/Pause), so it's clear why pages move.
+struct ReaderPageTimerBadge: View {
+    let session: ReaderSession
+
+    var body: some View {
+        ZStack {
+            if session.isAutoTurning, !session.isMenuPresented {
+                let text = "Page timer · \(WebtoonAutoScroll.label(session.autoScrollLevel))"
+                Label(text, systemImage: "play.fill")
+                    .font(.caption)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(.black.opacity(0.45), in: Capsule())
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.bottom, 80)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(.opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("reader.paged.pageTimer")
+                    .accessibilityLabel(text)
+            }
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+    }
+}
+
+/// When the page number shows. It hides by default and a tap on the touch
+/// surface shows it for a few seconds (John, 2026-11-26). UI tests read the
+/// page number constantly, so under `-uiTesting` it stays on unless a test
+/// passes `-readerHUDOnTap`.
+enum ReaderHUDPolicy {
+    static let alwaysShowPageNumber: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-uiTesting") && !args.contains("-readerHUDOnTap")
+    }()
+
+    @MainActor
+    static func showsPageNumber(_ session: ReaderSession) -> Bool {
+        alwaysShowPageNumber || session.isHUDVisible
+    }
+}
+
+/// What a tap shows besides the page number: the series and chapter at the
+/// top, and in the corner a Play/Pause icon with "Hold for options", so the
+/// route to the options is always one glance away.
+struct ReaderHUD: View {
+    let session: ReaderSession
+
+    var body: some View {
+        ZStack {
+            if session.isHUDVisible, !session.isMenuPresented {
+                Text("\(session.series.title) · \(session.chapter.title)")
+                    .font(.callout)
+                    .lineLimit(1)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 12)
+                    .background(.black.opacity(0.55), in: Capsule())
+                    .foregroundStyle(.white)
+                    .padding(.top, 40)
+                    .padding(.horizontal, 200)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .accessibilityIdentifier("reader.hud.title")
+                HStack(spacing: 12) {
+                    Image(systemName: "playpause.fill")
+                    Text(ReaderControls.hudHint)
+                }
+                .font(.callout)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .background(.black.opacity(0.55), in: Capsule())
+                .foregroundStyle(.white)
+                .padding(.bottom, 24)
+                .padding(.trailing, 60)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Hold Play/Pause for options")
+                .accessibilityIdentifier("reader.hud.hint")
+            }
+        }
+        .transition(.opacity)
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
     }
 }
 
@@ -155,7 +285,7 @@ struct ReaderBookmarkOverlay: View {
     }
 }
 
-/// "Click for reader options · …" at the top of the screen the first few
+/// "Hold Play/Pause for reader options · …" at the top of the screen the first few
 /// times a reader mode opens (`ReaderHintTracker`), so the route to the
 /// options is never a secret. It fades after a few seconds and stops
 /// showing once the options have been opened in that mode.

@@ -39,15 +39,23 @@ final class LibraryBrowsingUITests: XCTestCase {
     private func moveFocus(to element: XCUIElement, maxPresses: Int = 40,
                            file: StaticString = #filePath, line: UInt = #line) -> Bool {
         XCTAssertTrue(element.waitForExistence(timeout: 10), "\(element) doesn't exist", file: file, line: line)
+        var last: CGRect?
+        var stuck = 0
         for _ in 0..<maxPresses {
             Thread.sleep(forTimeInterval: 0.3)
             if isFocused(element) { return true }
             let current = focused
             guard current.exists else { continue }
             let a = current.frame, b = element.frame
+            // A row below the visible part of a List can report a stale
+            // frame level with the focused row, so sideways presses go
+            // nowhere. When focus hasn't moved, scroll down instead.
+            stuck = a == last ? stuck + 1 : 0
+            last = a
             // A List row that isn't on screen yet reports an empty frame;
             // keep scrolling down to it.
             if b.width == 0 || b.height == 0 { remote.press(.down) }
+            else if stuck >= 2 { remote.press(.down) }
             else if b.midY > a.maxY { remote.press(.down) }
             else if b.midY < a.minY { remote.press(.up) }
             else if b.midX > a.midX { remote.press(.right) }
@@ -453,7 +461,7 @@ final class LibraryBrowsingUITests: XCTestCase {
         moveFocus(to: start)
         remote.press(.select)
         XCTAssertTrue(app.descendants(matching: .any)["reader.paged"].waitForExistence(timeout: 15))
-        remote.press(.down)
+        remote.holdPlayPause()
         let direction = app.descendants(matching: .any)["reader.menu.direction"]
         XCTAssertTrue(direction.waitForExistence(timeout: 10), "reader menu didn't open")
         XCTAssertEqual(direction.value as? String, "Left to Right", "series opened with the library's direction")

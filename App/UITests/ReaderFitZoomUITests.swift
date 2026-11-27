@@ -1,6 +1,6 @@
 import XCTest
 
-/// Fit modes, click-to-zoom and border cropping in the paged reader, on the
+/// Fit modes, hold-to-zoom and border cropping in the paged reader, on the
 /// demo series (`-readerDemo`). Chapter 1 reads 1 | 2–3 | 4 | 5–6 in
 /// right-to-left two-page layout; its pages are 400×600 (page 4 is 800×600).
 ///
@@ -51,7 +51,7 @@ final class ReaderFitZoomUITests: XCTestCase {
     }
 
     private func openMenu() {
-        remote.press(.playPause)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(menuItem("mode"), "hasFocus == true", timeout: 5)
     }
@@ -140,12 +140,22 @@ final class ReaderFitZoomUITests: XCTestCase {
 
     // MARK: Zoom
 
-    func testClickZoomsInAndMenuZoomsOut() {
+    /// Holding Select zooms in (docs/READER_CONTROLS.md section 10).
+    private func holdToZoom() {
+        remote.press(.select, forDuration: 1.0)
+    }
+
+    func testHoldingSelectZoomsInAndMenuZoomsOut() {
         launch()
         XCTAssertFalse(element("reader.zoom").exists)
+        // A plain click doesn't zoom.
         remote.press(.select)
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(element("reader.zoom").exists)
+        holdToZoom()
         XCTAssertTrue(element("reader.zoom").waitForExistence(timeout: 5))
         expectViewport("zoom 2.00 x 0.50 y 0.50")
+        XCTAssertFalse(element("reader.menu").exists, "holding Select no longer opens the options")
         // Forward pans across the zoomed page instead of turning.
         remote.press(.left)
         expectViewport("x 0.00 y 0.50")
@@ -157,9 +167,19 @@ final class ReaderFitZoomUITests: XCTestCase {
         XCTAssertTrue(element("reader.paged").exists)
     }
 
+    func testClickZoomsOut() {
+        launch()
+        holdToZoom()
+        expectViewport("zoom 2.00")
+        remote.press(.select)
+        wait(element("reader.zoom"), "exists == false", timeout: 5)
+        expectViewport("zoom 1.00")
+        expectIndicator("1 / 6")
+    }
+
     func testZoomedPageTurnsAtTheEdgeWithoutDroppingARow() {
         launch()
-        remote.press(.select)
+        holdToZoom()
         expectViewport("zoom 2.00 x 0.50 y 0.50")
         // Up to the top half, then left to the left edge.
         remote.press(.up)
@@ -181,7 +201,7 @@ final class ReaderFitZoomUITests: XCTestCase {
         menu.pick("zoom.3x")
         menu.expectValue("zoom", "3×")
         closeMenu()
-        remote.press(.select)
+        holdToZoom()
         expectViewport("zoom 3.00")
     }
 

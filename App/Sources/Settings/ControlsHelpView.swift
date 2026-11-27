@@ -2,16 +2,19 @@ import SwiftUI
 import MangaCore
 
 /// Settings > "Remote and Controller": what every button does, from
-/// `ReaderControls`, so the screen always matches the readers.
+/// `ReaderControls`, so the screen always matches the readers. The Paged
+/// and Vertical tabs also replay the controls tutorial.
 ///
 /// A legend, not a list of rows: the only things that take focus are the
 /// tabs that pick which reader (or the game controller, or the chapter
-/// list) the legend shows. The entries themselves are plain text, so
+/// list) the legend shows, and the tutorial button. The entries themselves are plain text, so
 /// nothing on the page looks like a button that does nothing, and each
 /// legend fits on screen without scrolling.
 struct ControlsHelpView: View {
     @State private var tab: ControlsTab = .paged
     @FocusState private var focus: String?
+    /// The controls tutorial being replayed (`ReaderTutorialView`).
+    @State private var tutorial: ReadingMode?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
@@ -25,12 +28,32 @@ struct ControlsHelpView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let mode = tab.tutorialMode {
+                // Replays the controls tutorial on the bundled sample.
+                VStack(alignment: .leading, spacing: Space.s) {
+                    Button {
+                        tutorial = mode
+                    } label: {
+                        Label("Learn the Controls", systemImage: "hand.point.up.left")
+                            .lineLimit(1)
+                    }
+                    .focused($focus, equals: "tutorial")
+                    .accessibilityIdentifier("controls.tutorial.\(mode.rawValue)")
+                    Text("Try each button on a short sample comic. \(ReaderTutorial.sampleCredit)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Spacer(minLength: 0)
         }
         .padding(.top, Space.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .defaultFocus($focus, "tab.\(ControlsTab.paged.rawValue)")
         .settingsPage("Remote and Controller", systemImage: "appletvremote.gen4")
+        .fullScreenCover(item: $tutorial) { mode in
+            ReaderTutorialView(mode: mode)
+        }
     }
 }
 
@@ -60,6 +83,15 @@ enum ControlsTab: String, CaseIterable, Identifiable {
         case .book: return ReaderControls.bookRemote
         case .gamepad: return ReaderControls.gamepad
         case .chapters: return ReaderControls.chapterList
+        }
+    }
+
+    /// The tutorial this tab offers (the two image readers).
+    var tutorialMode: ReadingMode? {
+        switch self {
+        case .paged: return .paged
+        case .webtoon: return .webtoon
+        case .book, .gamepad, .chapters: return nil
         }
     }
 

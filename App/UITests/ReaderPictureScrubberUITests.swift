@@ -61,7 +61,7 @@ final class ReaderPictureScrubberUITests: XCTestCase {
     }
 
     private func openMenu() {
-        remote.press(.down)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(menuItem("mode"), "hasFocus == true")
     }
@@ -162,8 +162,7 @@ final class ReaderPictureScrubberUITests: XCTestCase {
 
     func testVerticalReaderOffersColorButNotSharpen() {
         launchVertical()
-        // The vertical reader opens its menu with a click.
-        remote.press(.select)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         XCTAssertTrue(menuItem("picture.brightness.value").waitForExistence(timeout: 5))
         XCTAssertTrue(menuItem("picture.color").exists)
@@ -208,16 +207,35 @@ final class ReaderPictureScrubberUITests: XCTestCase {
         // Left moves forward, like turning a page.
         remote.press(.left)
         wait(thumb(1), "hasFocus == true")
-        // Menu closes it without moving.
+        // Menu goes back to the options it came from, without moving, and
+        // a second Menu closes them.
         remote.press(.menu)
         wait(element("reader.scrubber"), "exists == false")
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        remote.press(.menu)
+        wait(element("reader.menu"), "exists == false")
         XCTAssertTrue(element("reader.paged").exists)
         expectIndicator("1 / 6")
     }
 
+    func testDownOnThePageOpensTheScrubberAndMenuClosesIt() {
+        launch(["-readerLayout", "single", "-readerDirection", "leftToRight"])
+        // Down with nothing below to pan to: page thumbnails, no options.
+        remote.press(.down)
+        XCTAssertTrue(element("reader.scrubber").waitForExistence(timeout: 5))
+        XCTAssertFalse(element("reader.menu").exists)
+        wait(thumb(0), "hasFocus == true")
+        remote.press(.menu)
+        wait(element("reader.scrubber"), "exists == false")
+        XCTAssertFalse(element("reader.menu").exists)
+        XCTAssertTrue(element("reader.paged").exists, "Menu closes the scrubber, not the reader")
+        remote.press(.right)
+        expectIndicator("2 / 6")
+    }
+
     func testScrubberInVerticalReader() {
         launchVertical(["-readerDirection", "leftToRight"])
-        remote.press(.select)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         choose("browsePages")
         XCTAssertTrue(element("reader.scrubber").waitForExistence(timeout: 5))

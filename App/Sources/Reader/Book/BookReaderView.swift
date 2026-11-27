@@ -6,8 +6,9 @@ import MangaCore
 /// opens this instead of the image readers when the chapter's format is
 /// text.
 ///
-/// Siri Remote: left/right (click or swipe) turns the page. A click (or
-/// holding Select), swipe down or Play/Pause opens the settings drawer. Menu closes the drawer, or saves
+/// Siri Remote (`ReaderControls.bookRemote`): left/right (click or swipe)
+/// turns the page. Holding Play/Pause opens the settings drawer, as in the
+/// image readers (`ReaderRemoteCatcher`). Menu closes the drawer, or saves
 /// progress and closes the book.
 struct BookReaderView: View {
     let series: SeriesSummary
@@ -40,6 +41,14 @@ struct BookReaderView: View {
             }
         }
         .ignoresSafeArea()
+        .background {
+            if let session {
+                ReaderRemoteCatcher(onPlayPause: {
+                    // Nothing plays in a book; a press only closes the drawer.
+                    if session.isMenuPresented { session.isMenuPresented = false }
+                }, onPlayPauseHold: { session.isMenuPresented.toggle() })
+            }
+        }
         .onExitCommand {
             if let session, session.isMenuPresented {
                 session.isMenuPresented = false
@@ -77,11 +86,6 @@ private struct BookReaderContent: View {
                 .focusEffectDisabled()
                 .focused($focused)
                 .onMoveCommand(perform: handleMove)
-                .onPlayPauseCommand { session.isMenuPresented = true }
-                // A click, or holding Select, opens the menu, as in the
-                // image readers (`ReaderControls.bookRemote`).
-                .onLongPressGesture(minimumDuration: 0.5) { session.isMenuPresented = true }
-                .onTapGesture { session.isMenuPresented = true }
                 .onAppear { focused = true }
                 .onChange(of: session.isMenuPresented) { _, presented in
                     if !presented { focused = true }
@@ -100,7 +104,6 @@ private struct BookReaderContent: View {
         switch direction {
         case .left: Task { await session.turn(forward: false) }
         case .right: Task { await session.turn(forward: true) }
-        case .down: session.isMenuPresented = true
         default: break
         }
     }

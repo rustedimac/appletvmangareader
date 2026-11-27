@@ -43,7 +43,6 @@ struct BookReaderMenu: View {
         .focusSection()
         .defaultFocus($focus, "size.larger")
         .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
-        .onPlayPauseCommand { session.isMenuPresented = false }
         // Menu closes an open list of choices first, then the drawer.
         .onExitCommand {
             if openPicker != nil {

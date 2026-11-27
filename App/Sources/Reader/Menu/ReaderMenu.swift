@@ -5,12 +5,13 @@ import MangaCore
 /// over the page while `session.isMenuPresented` is true, so the page stays
 /// visible and every change shows up behind it straight away.
 ///
-/// Siri Remote: in the paged reader swipe down or Play/Pause opens it, in
-/// the vertical reader a click does (the readers handle that).
+/// Siri Remote: holding Play/Pause opens it in every reader (and closes
+/// it), caught by `ReaderRemoteCatcher`; a Play/Pause press also closes it.
 /// Every setting is one row (name left, value right). A click on a row with
 /// a chevron opens its choices in place of the rows; a click on an On/Off
-/// row flips it. Menu closes the choices, then the drawer; Play/Pause
-/// closes the drawer.
+/// row flips it. Menu closes the choices, then the drawer
+/// (`ReaderSession.back()`). The bottom of the settings tab lists every
+/// control for the reader on screen (`ReaderControls`).
 ///
 /// Changes apply live through `session.updateSettings(_:)`, which saves them
 /// for this series. "Set as Default" copies them to the profile default that
@@ -54,13 +55,14 @@ struct ReaderMenu: View {
         .focusSection()
         .defaultFocus($focus, initialFocus)
         .onAppear { setFocus(initialFocus) }
-        .onPlayPauseCommand { session.isMenuPresented = false }
-        // Menu closes an open list of choices first, then the drawer.
+        // Menu closes an open list of choices first, then the drawer
+        // (`ReaderSession.back()`, so Back works whatever has focus).
+        // Play/Pause is `ReaderRemoteCatcher`'s.
         .onExitCommand {
             if session.menuPicker != nil {
                 closePicker()
             } else {
-                session.isMenuPresented = false
+                session.back()
             }
         }
         .accessibilityElement(children: .contain)
@@ -202,10 +204,18 @@ struct ReaderMenu: View {
                 ForEach(ReaderMenuOptions.items(for: settings)) { item in
                     row(item)
                 }
+                if settings.mode == .paged {
+                    stepperSection("Page Timer") { playControls }
+                }
                 Divider().padding(.vertical, Space.s)
                 picturePane
+                // The tutorial saves no settings, so no Set as Default there.
+                if !session.isTutorial {
+                    Divider().padding(.vertical, Space.s)
+                    defaultsSection
+                }
                 Divider().padding(.vertical, Space.s)
-                defaultsSection
+                ReaderControlsLegend(mode: settings.mode)
             }
             .padding(.top, 20)
         }
@@ -233,7 +243,7 @@ struct ReaderMenu: View {
         case .webtoonWidth:
             stepperSection(item.title) { widthStepper }
         case .autoScroll:
-            stepperSection(item.title) { autoScrollControls }
+            stepperSection(item.title) { playControls }
         }
     }
 
@@ -390,15 +400,17 @@ struct ReaderMenu: View {
         }
     }
 
-    /// Auto-scroll speed (saved for the profile, not the series) and a
-    /// button that closes the menu and starts it.
-    private var autoScrollControls: some View {
+    /// Auto-scroll (vertical) or page-timer (paged) speed, as a named step
+    /// (saved for the profile, not the series), and a button that closes the
+    /// menu and starts it. The same speed drives both.
+    private var playControls: some View {
         let level = session.autoScrollLevel
+        let webtoon = settings.mode == .webtoon
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 28) {
                 Button {
                     session.isMenuPresented = false
-                    session.webtoonInput?.toggleAutoScroll()
+                    session.togglePlay()
                 } label: {
                     Label("Start", systemImage: "play.fill")
                         .lineLimit(1)
@@ -418,7 +430,7 @@ struct ReaderMenu: View {
                 .accessibilityIdentifier("reader.menu.autoScroll.slower")
 
                 Text(WebtoonAutoScroll.label(level))
-                    .font(.callout.monospacedDigit())
+                    .font(.callout)
                     .frame(minWidth: 180)
                     .accessibilityIdentifier("reader.menu.autoScroll.value")
 
@@ -433,7 +445,9 @@ struct ReaderMenu: View {
                 .accessibilityIdentifier("reader.menu.autoScroll.faster")
             }
             .font(.callout)
-            Text("Play/Pause starts and stops it. While it runs, swipe up or down to change speed.")
+            Text(webtoon
+                 ? "Play/Pause starts and stops it. While it runs, swipe up or down to change speed."
+                 : "Play/Pause starts and stops it. It stops at the end of the chapter.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -694,5 +708,41 @@ extension AppModel {
     func setMenuDefaultReaderSettings(_ settings: ReaderSettings) {
         let profile = activeProfile.id
         update { $0.setDefaultReaderSettings(settings, profile: profile) }
+    }
+}
+
+
+/// "Controls" at the bottom of the settings tab: every Siri Remote control
+/// for the reader on screen, plus the game controller's when one is
+/// connected, as the same plain-text legend as Settings > Remote and
+/// Controller (`ControlsLegend`), so it always matches the readers. The
+/// whole legend is one focus stop with no action, only so the drawer can
+/// scroll down to it.
+struct ReaderControlsLegend: View {
+    let mode: ReadingMode
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            Text("Controls")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("reader.menu.controls")
+            Text("Siri Remote")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ControlsLegend(entries: ReaderControls.remote(for: mode), id: "reader.remote")
+            if GameControllerHub.shared.hasExtendedGamepad {
+                Text("Game Controller")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ControlsLegend(entries: ReaderControls.gamepad, id: "reader.gamepad")
+            }
+        }
+        .padding(Space.s)
+        .background(focused ? Color.white.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: Radius.card))
+        .focusable()
+        .focused($focused)
+        .focusEffectDisabled()
     }
 }

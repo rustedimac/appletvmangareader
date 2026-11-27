@@ -316,6 +316,14 @@ Notes:
 
 ## 8. Teaching the controls
 
+> **Built (PR #67):** option A (guided tutorial on three bundled
+> Pepper&Carrot pages, docs/TUTORIAL_SAMPLE.md) plus the legend at the
+> bottom of the reader options. The tutorial is offered once with a
+> "Learn the Controls?" alert on the first reader open and replays from
+> Settings > Remote and Controller. Captions sit bottom left; the card
+> doesn't take focus, and Menu with nothing open leaves the tutorial.
+> Remote drawings and a controller-specific run are not built yet.
+
 John wants new users shown how to control the reader, with captions on a
 sample manga, a way to replay it from Settings, and maybe a button legend
 from the reader options. Today there is only the one-line first-use hint

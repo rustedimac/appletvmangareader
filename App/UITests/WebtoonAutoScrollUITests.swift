@@ -1,8 +1,9 @@
 import XCTest
 
 /// Webtoon auto-scroll on the demo series (`-readerDemo -readerMode
-/// webtoon`): Play/Pause starts and stops it, a click stops it, up/down
-/// change its speed while it runs, and the speed is in the reader menu.
+/// webtoon`): Play/Pause starts and stops it (Menu stops it too), up/down
+/// change its named speed while it runs, and the speed is in the reader
+/// options, which a Play/Pause hold opens.
 /// Game controller buttons can't be pressed from XCUITest; their mapping is
 /// covered by `GamepadMappingTests` in MangaCore.
 final class WebtoonAutoScrollUITests: XCTestCase {
@@ -74,36 +75,37 @@ final class WebtoonAutoScrollUITests: XCTestCase {
 
     // MARK: Tests
 
-    func testPlayPauseStartsAutoScrollAndAClickStopsIt() {
+    func testPlayPauseStartsAndStopsAutoScroll() {
         XCTAssertFalse(badge.exists)
         let start = offset
         XCTAssertEqual(start, 0)
         remote.press(.playPause)
         XCTAssertTrue(badge.waitForExistence(timeout: 5), "auto-scroll badge should show")
-        XCTAssertEqual(badge.label, "Auto-scroll · Speed 3 of 10")
-        XCTAssertFalse(element("reader.menu").exists, "Play/Pause no longer opens the menu here")
+        XCTAssertEqual(badge.label, "Auto-scroll · Slow")
+        XCTAssertFalse(element("reader.menu").exists, "a press plays; only a hold opens the options")
         Thread.sleep(forTimeInterval: 2)
         let moved = offset
         XCTAssertGreaterThan(moved, start + 40, "the strip should move on its own")
 
-        // A click stops it and does not open the menu.
+        // A click doesn't stop it (Play/Pause does) and doesn't open the menu.
         remote.press(.select)
-        wait(badge, "exists == false")
+        Thread.sleep(forTimeInterval: 0.6)
+        XCTAssertTrue(badge.exists, "a click leaves auto-scroll running")
         XCTAssertFalse(element("reader.menu").exists)
+
+        remote.press(.playPause)
+        wait(badge, "exists == false")
         let stopped = offset
         Thread.sleep(forTimeInterval: 1.5)
         XCTAssertLessThanOrEqual(abs(offset - stopped), 1, "the strip stays put once stopped")
 
-        // Play/Pause again starts it, and again stops it.
+        // Menu (Back) stops it too, without closing the reader.
         remote.press(.playPause)
         XCTAssertTrue(badge.waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.5)
-        remote.press(.playPause)
+        remote.press(.menu)
         wait(badge, "exists == false")
-
-        // With auto-scroll off, a click opens the menu as before.
-        remote.press(.select)
-        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("reader.webtoon").exists)
     }
 
     func testUpAndDownChangeTheSpeedWhileItRuns() {
@@ -111,31 +113,31 @@ final class WebtoonAutoScrollUITests: XCTestCase {
         XCTAssertTrue(badge.waitForExistence(timeout: 5))
         let before = offset
         remote.press(.down)
-        wait(badge, "label == 'Auto-scroll · Speed 4 of 10'")
+        wait(badge, "label == 'Auto-scroll · Medium'")
         remote.press(.up)
         Thread.sleep(forTimeInterval: 0.4)
         remote.press(.up)
-        wait(badge, "label == 'Auto-scroll · Speed 2 of 10'")
+        wait(badge, "label == 'Auto-scroll · Very Slow'")
         // Speed clicks change the speed; they don't step a screen at a time.
         XCTAssertLessThan(offset - before, 700, "clicks while auto-scrolling should not jump a screen")
     }
 
     func testMenuShowsAndChangesTheSpeedAndCanStartIt() {
-        remote.press(.select)
+        remote.holdPlayPause()
         XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        XCTAssertEqual(menuItem("autoScroll.value").label, "Speed 3 of 10")
+        XCTAssertEqual(menuItem("autoScroll.value").label, "Slow")
         choose("autoScroll.faster")
-        wait(menuItem("autoScroll.value"), "label == 'Speed 4 of 10'")
+        wait(menuItem("autoScroll.value"), "label == 'Medium'")
         remote.press(.select)
-        wait(menuItem("autoScroll.value"), "label == 'Speed 5 of 10'")
+        wait(menuItem("autoScroll.value"), "label == 'Fast'")
         choose("autoScroll.slower")
-        wait(menuItem("autoScroll.value"), "label == 'Speed 4 of 10'")
+        wait(menuItem("autoScroll.value"), "label == 'Medium'")
 
         let before = offset
         choose("autoScroll.start")
         wait(element("reader.menu"), "exists == false")
         XCTAssertTrue(badge.waitForExistence(timeout: 5), "Start closes the menu and starts auto-scroll")
-        XCTAssertEqual(badge.label, "Auto-scroll · Speed 4 of 10", "the menu's speed is used")
+        XCTAssertEqual(badge.label, "Auto-scroll · Medium", "the menu's speed is used")
         Thread.sleep(forTimeInterval: 1.5)
         XCTAssertGreaterThan(offset, before + 40)
     }
@@ -144,12 +146,12 @@ final class WebtoonAutoScrollUITests: XCTestCase {
         remote.press(.playPause)
         XCTAssertTrue(badge.waitForExistence(timeout: 5))
         remote.press(.down)
-        wait(badge, "label == 'Auto-scroll · Speed 4 of 10'")
-        remote.press(.select)
+        wait(badge, "label == 'Auto-scroll · Medium'")
+        // Opening the options stops auto-scroll.
+        remote.holdPlayPause()
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
         wait(badge, "exists == false")
         // The menu shows the speed just set (saved for the profile).
-        remote.press(.select)
-        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
-        XCTAssertEqual(menuItem("autoScroll.value").label, "Speed 4 of 10")
+        XCTAssertEqual(menuItem("autoScroll.value").label, "Medium")
     }
 }

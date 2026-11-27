@@ -21,7 +21,7 @@ extension XCUIApplication {
 /// Moves focus with the Siri Remote until `element` has it. Tries `direction`
 /// first, then the opposite way, so tests don't depend on where focus starts.
 @discardableResult
-func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPresses: Int = 10,
+func focus(_ element: XCUIElement, _ direction: XCUIRemote.Button = .down, maxPresses: Int = 16,
            file: StaticString = #filePath, line: UInt = #line) -> Bool {
     XCTAssertTrue(element.waitForExistence(timeout: 10), "\(element) doesn't exist", file: file, line: line)
     let opposite: XCUIRemote.Button
@@ -96,4 +96,12 @@ func openFocusedPoster(_ app: XCUIApplication, maxPresses: Int = 6,
     XCUIRemote.shared.press(.select)
     XCTAssertTrue(app.staticTexts["series.title"].waitForExistence(timeout: 10), file: file, line: line)
     return id
+}
+
+extension XCUIRemote {
+    /// Holds Play/Pause, the route to the reader options in every reader
+    /// (docs/READER_CONTROLS.md section 10, `ReaderRemoteCatcher`).
+    func holdPlayPause() {
+        press(.playPause, forDuration: 1.0)
+    }
 }

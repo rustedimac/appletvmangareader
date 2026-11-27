@@ -69,8 +69,8 @@ final class WebtoonPageRetryUITests: XCTestCase {
                                               object: indicator)
         XCTAssertEqual(XCTWaiter().wait(for: [moved], timeout: 10), .completed, "indicator: \(indicator.label)")
         wait(page(1, 1), value: "loaded")
-        // With the failed page scrolled away, Select opens the menu as usual.
-        remote.press(.select)
+        // Holding Play/Pause opens the options as usual.
+        remote.holdPlayPause()
         XCTAssertTrue(app.descendants(matching: .any)["reader.menu"].waitForExistence(timeout: 5))
     }
 }
