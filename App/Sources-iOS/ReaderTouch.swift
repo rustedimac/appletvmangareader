@@ -159,8 +159,57 @@ struct ReaderPageBar: View {
         .padding(.horizontal, Space.l)
         .padding(.vertical, Space.s)
         .background(.ultraThinMaterial)
+        // While the slider moves, the page it would open.
+        .overlay(alignment: .top) {
+            if let dragging {
+                PageThumbnail(session: session, index: Int(dragging.rounded()))
+                    .offset(y: -(PageThumbnail.height + Space.m))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: dragging == nil)
         .opacity(session.loadState == .loaded && session.edge == nil ? 1 : 0)
     }
 
     private var playing: Bool { session.isAutoScrolling || session.isAutoTurning }
+}
+
+/// A small preview of one page, above the page slider.
+private struct PageThumbnail: View {
+    static let height: CGFloat = 150
+    let session: ReaderSession
+    let index: Int
+    @Environment(\.imagePipeline) private var pipeline
+    @State private var image: UIImage?
+
+    var body: some View {
+        VStack(spacing: Space.xs) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Radius.small).fill(.black.opacity(0.6))
+                if let image {
+                    Image(uiImage: image).resizable().scaledToFit()
+                } else {
+                    ProgressView()
+                }
+            }
+            .frame(width: Self.height * 0.7, height: Self.height)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.small))
+            Text("\(index + 1)")
+                .font(.caption.monospacedDigit().weight(.semibold))
+        }
+        .padding(Space.xs)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Radius.card))
+        .accessibilityIdentifier("reader.chrome.thumbnail")
+        .task(id: index) {
+            image = nil
+            guard let url = session.page(index)?.url else { return }
+            let images = PageImages(pipeline: pipeline, server: session.server,
+                                    targetSize: CGSize(width: 300, height: 450))
+            if let cached = images.cached(url) { image = UIImage(cgImage: cached.cgImage); return }
+            // Wait a moment so a fast drag doesn't load every page it passes.
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled, let loaded = try? await images.load(url), !Task.isCancelled else { return }
+            image = UIImage(cgImage: loaded.cgImage)
+        }
+    }
 }

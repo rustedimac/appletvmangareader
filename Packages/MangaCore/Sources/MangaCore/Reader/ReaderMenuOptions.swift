@@ -15,6 +15,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case autoScroll
     /// Touch screens only (`items(for:touch:)`).
     case tapZones
+    case orientationLock
 
     public var id: String { rawValue }
 
@@ -32,6 +33,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .webtoonWidth: return "Column Width"
         case .autoScroll: return "Auto-Scroll"
         case .tapZones: return "Tap Zones"
+        case .orientationLock: return "Orientation"
         }
     }
 }
@@ -77,7 +79,7 @@ public enum ReaderMenuOptions {
         case .webtoon:
             items = [.mode, .webtoonWidth, .autoScroll, .background]
         }
-        if touch { items.append(.tapZones) }
+        if touch { items += [.tapZones, .orientationLock] }
         return items
     }
 

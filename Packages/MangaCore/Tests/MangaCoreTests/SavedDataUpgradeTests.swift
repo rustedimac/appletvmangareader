@@ -42,6 +42,8 @@ enum SavedFormats {
         // Adds `tapZones` to reader settings (iPhone/iPad touch reader), on
         // top of every field above.
         "appstate-v1-2026-11-27-tapzones",
+        // Adds `orientationLock` to reader settings (touch reader).
+        "appstate-v1-2026-11-27-orientation",
     ]
     static var newestAppState: String { appStateFixtures.last! }
 

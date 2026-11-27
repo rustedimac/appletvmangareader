@@ -17,6 +17,14 @@ final class SyncAppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    #if os(iOS)
+    /// The reader's Orientation setting (OrientationGate).
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        MainActor.assumeIsolated { OrientationGate.mask }
+    }
+    #endif
+
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         Task { @MainActor in

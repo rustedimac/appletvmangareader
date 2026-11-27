@@ -90,9 +90,6 @@ struct PagedReaderView: View {
             }
             .onChange(of: geo.size, initial: true) { _, size in
                 container = size
-                #if os(iOS)
-                session.isPortrait = size.height > size.width
-                #endif
             }
         }
         .ignoresSafeArea()

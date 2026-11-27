@@ -65,7 +65,9 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         self.session = session
         self.loader = WebtoonImageLoader(server: session.server,
                                          retryPolicy: ReaderDemo.isEnabled ? ReaderDemo.retryPolicy : .images)
-        self.settings = session.settings
+        // Layout settings: on a portrait iPhone/iPad the column fills the
+        // width (ReaderTouch.effectiveWebtoonWidth). Same as settings on tvOS.
+        self.settings = session.layoutSettings
         super.init()
         let sv = scrollView
         sv.delegate = self
@@ -121,7 +123,7 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
                 driver.autoLevel = session.autoScrollLevel
             }
         }
-        let newSettings = session.settings
+        let newSettings = session.layoutSettings
         if newSettings != settings {
             let widthChanged = newSettings.clampedWebtoonWidth != settings.clampedWebtoonWidth
             settings = newSettings

@@ -72,6 +72,11 @@ final class ReaderTouchTests: XCTestCase {
         XCTAssertEqual(ReaderTouch.effectiveLayout(.single, portrait: false), .single)
     }
 
+    func testPortraitColumnFillsTheWidth() {
+        XCTAssertEqual(ReaderTouch.effectiveWebtoonWidth(0.6, portrait: true), 1.0)
+        XCTAssertEqual(ReaderTouch.effectiveWebtoonWidth(0.6, portrait: false), 0.6)
+    }
+
     func testTapZonesDecodeTolerantly() throws {
         let old = try JSONDecoder().decode(ReaderSettings.self, from: Data(#"{"mode":"paged"}"#.utf8))
         XCTAssertEqual(old.tapZones, .edges)
@@ -79,8 +84,16 @@ final class ReaderTouchTests: XCTestCase {
         XCTAssertEqual(unknown.tapZones, .edges)
     }
 
+    func testOrientationLockDecodesTolerantly() throws {
+        let old = try JSONDecoder().decode(ReaderSettings.self, from: Data(#"{"tapZones":"off"}"#.utf8))
+        XCTAssertEqual(old.orientationLock, .auto)
+        let unknown = try JSONDecoder().decode(ReaderSettings.self, from: Data(#"{"orientationLock":"sideways"}"#.utf8))
+        XCTAssertEqual(unknown.orientationLock, .auto)
+    }
+
     func testMenuShowsTapZonesOnlyOnTouch() {
         XCTAssertFalse(ReaderMenuOptions.items(for: .default).contains(.tapZones))
-        XCTAssertEqual(ReaderMenuOptions.items(for: .default, touch: true).last, .tapZones)
+        XCTAssertEqual(ReaderMenuOptions.items(for: .default, touch: true).suffix(2), [.tapZones, .orientationLock])
+        XCTAssertFalse(ReaderMenuOptions.items(for: .default).contains(.orientationLock))
     }
 }

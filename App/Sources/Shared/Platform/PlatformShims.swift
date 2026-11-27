@@ -57,6 +57,16 @@ enum Platform {
         #endif
     }
 
+    /// iPhone only: an iPad app that supports Split View can't lock its
+    /// orientation, so the reader's Orientation setting isn't offered there.
+    static var canLockOrientation: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
+
     /// How to retry a page that didn't load.
     static var retryHint: String { isTV ? "Press Select to retry" : "Tap to retry" }
 }

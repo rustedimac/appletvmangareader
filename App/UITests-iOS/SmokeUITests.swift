@@ -48,6 +48,26 @@ final class SmokeUITests: XCTestCase {
         }
     }
 
+    /// iPad: the sidebar lists the servers and opens a server's library.
+    func testSidebarListsServers() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .pad, "The sidebar is iPad only")
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-demoServers"]
+        app.launch()
+        XCTAssertTrue(tabButton("Home", in: app).waitForExistence(timeout: 15))
+        // The servers aren't in the tab bar, only in the sidebar.
+        XCTAssertFalse(app.buttons["Demo Kavita"].exists)
+        let toggle = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No sidebar button:\n\(app.debugDescription)")
+        toggle.tap()
+        let server = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Demo Kavita'")).firstMatch
+        XCTAssertTrue(server.waitForExistence(timeout: 5), "No server in the sidebar:\n\(app.debugDescription)")
+        server.tap()
+        XCTAssertTrue(app.navigationBars["Demo Kavita"].waitForExistence(timeout: 10)
+                      || app.staticTexts["Demo Kavita"].waitForExistence(timeout: 2),
+                      "Server library didn't open")
+    }
+
     func testDemoReaderTapZones() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-readerDemo"]

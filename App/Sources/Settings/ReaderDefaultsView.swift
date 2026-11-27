@@ -32,10 +32,15 @@ struct ReaderDefaultsView: View {
                 SettingsPicker(ReaderMenuItem.tapZones.title, selection: settings.tapZones, options: TapZones.allCases,
                                systemImage: "hand.tap") { $0.title }
                     .accessibilityIdentifier("readerDefaults.tapZones")
+                if Platform.canLockOrientation {
+                    SettingsPicker(ReaderMenuItem.orientationLock.title, selection: settings.orientationLock,
+                                   options: OrientationLock.allCases, systemImage: "rectangle.portrait.rotate") { $0.title }
+                        .accessibilityIdentifier("readerDefaults.orientationLock")
+                }
             } header: {
                 SettingsHeader("Touch")
             } footer: {
-                Text("A tap in the middle of the page shows or hides the controls. Left and Right turns back and forward with the sides; Both Sides Forward turns forward with either side.")
+                Text("A tap in the middle of the page shows or hides the controls. Left and Right turns back and forward with the sides; Both Sides Forward turns forward with either side. Orientation keeps the reader upright or sideways while it's open.")
             }
             #endif
 

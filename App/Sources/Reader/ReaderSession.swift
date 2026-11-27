@@ -609,6 +609,7 @@ final class ReaderSession {
     var layoutSettings: ReaderSettings {
         var s = settings
         s.layout = ReaderTouch.effectiveLayout(s.layout, portrait: isPortrait)
+        s.webtoonWidth = ReaderTouch.effectiveWebtoonWidth(s.webtoonWidth, portrait: isPortrait)
         return s
     }
 
