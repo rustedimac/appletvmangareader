@@ -193,13 +193,14 @@ final class ImagePipelineRetryTests: XCTestCase {
     }
 
     func testQueueingForASlotDoesNotCountAsTimeout() async throws {
-        // One slot and three downloads of 0.2 s each: the last one waits
-        // about 0.4 s for its turn, longer than the 0.3 s limit, and must
-        // still succeed because only its own download is timed.
+        // One slot and three downloads of 1 s each: the last one waits
+        // about 2 s for its turn, longer than the 1.5 s limit, and must
+        // still succeed because only its own download is timed. (With
+        // 0.2 s / 0.3 s a busy CI runner overran the limit on its own.)
         let transport = ScriptedImageTransport(png: png)
-        for name in ["a", "b", "c"] { transport.script("http://stub/q\(name)", [.delay(0.2)]) }
+        for name in ["a", "b", "c"] { transport.script("http://stub/q\(name)", [.delay(1.0)]) }
         let pipeline = ImagePipeline(transport: transport, diskDirectory: nil, maxConcurrentDownloads: 1,
-                                     retryPolicy: RetryPolicy(maxAttempts: 1, attemptTimeout: 0.3), sleep: noWait)
+                                     retryPolicy: RetryPolicy(maxAttempts: 1, attemptTimeout: 1.5), sleep: noWait)
         let server = ImageStubServer()
         async let a = pipeline.load(URL(string: "http://stub/qa")!, server: server, targetSize: nil)
         async let b = pipeline.load(URL(string: "http://stub/qb")!, server: server, targetSize: nil)
