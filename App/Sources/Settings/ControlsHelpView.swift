@@ -8,8 +8,10 @@ import MangaCore
 /// A legend, not a list of rows: the only things that take focus are the
 /// tabs that pick which reader (or the game controller, or the chapter
 /// list) the legend shows, and the tutorial button. The entries themselves are plain text, so
-/// nothing on the page looks like a button that does nothing, and each
-/// legend fits on screen without scrolling.
+/// nothing on the page looks like a button that does nothing. Tabs without
+/// a tutorial must fit under the tab bar without scrolling (nothing below
+/// the tabs takes focus); `DesignLayoutUITests.testControlsPageNeverClips`
+/// checks every tab.
 struct ControlsHelpView: View {
     @State private var tab: ControlsTab = .paged
     @FocusState private var focus: String?
@@ -17,38 +19,52 @@ struct ControlsHelpView: View {
     @State private var tutorial: ReadingMode?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.l) {
-            SectionTabBar(tabs: ControlsTab.allCases, selection: $tab, title: \.title,
-                          identifier: { "controls.tab.\($0.rawValue)" }, focus: $focus,
-                          focusKey: { "tab.\($0.rawValue)" }, trackIdentifier: "controls.tabs")
-            ControlsLegend(entries: tab.entries, id: tab.rawValue)
-            if let footnote = tab.footnote {
-                Text(footnote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let mode = tab.tutorialMode {
-                // Replays the controls tutorial on the bundled sample.
-                VStack(alignment: .leading, spacing: Space.s) {
-                    Button {
-                        tutorial = mode
-                    } label: {
-                        Label("Learn the Controls", systemImage: "hand.point.up.left")
-                            .lineLimit(1)
-                    }
-                    .focused($focus, equals: "tutorial")
-                    .accessibilityIdentifier("controls.tutorial.\(mode.rawValue)")
-                    Text("Try each button on a short sample comic. \(ReaderTutorial.sampleCredit)")
+        // A scroll view, like Customize Home: on a 1080p TV the Paged legend
+        // plus the tutorial row is taller than the space under the tab bar,
+        // and a plain VStack that overflows gets centered, pushing the tabs
+        // under the tab bar and the last lines off the bottom with no way
+        // to reach them. The tutorial button is the last thing on the page,
+        // with its caption beside it, so focusing it scrolls everything in.
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: Space.m) {
+                SectionTabBar(tabs: ControlsTab.allCases, selection: $tab, title: \.title,
+                              identifier: { "controls.tab.\($0.rawValue)" }, focus: $focus,
+                              focusKey: { "tab.\($0.rawValue)" }, trackIdentifier: "controls.tabs")
+                    .padding(.bottom, Space.xs)
+                if let footnote = tab.footnote {
+                    Text(footnote)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("controls.footnote")
+                }
+                ControlsLegend(entries: tab.entries, id: tab.rawValue)
+                if let mode = tab.tutorialMode {
+                    // Replays the controls tutorial on the bundled sample.
+                    // The caption sits beside the button, so the button is
+                    // the page's last row and focusing it shows the caption.
+                    HStack(alignment: .center, spacing: Space.l) {
+                        Button {
+                            tutorial = mode
+                        } label: {
+                            Label("Learn the Controls", systemImage: "hand.point.up.left")
+                                .lineLimit(1)
+                        }
+                        .fixedSize()
+                        .focused($focus, equals: "tutorial")
+                        .accessibilityIdentifier("controls.tutorial.\(mode.rawValue)")
+                        Text("Try each button on a short sample comic. \(ReaderTutorial.shortCredit)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("controls.tutorial.caption")
+                    }
+                    .padding(.top, Space.s)
                 }
             }
-            Spacer(minLength: 0)
+            .padding(.vertical, Space.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.top, Space.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .defaultFocus($focus, "tab.\(ControlsTab.paged.rawValue)")
         .settingsPage("Remote and Controller", systemImage: "appletvremote.gen4")
         .fullScreenCover(item: $tutorial) { mode in

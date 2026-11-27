@@ -203,6 +203,7 @@ server behaviour is worth a look.
 | ID | Lvl | Check | Pass when | Covered by |
 | --- | --- | --- | --- | --- |
 | DES-01 | A | Layout rules | Every reachable screen: targets at least 60 pt, inside the safe area, form width, no overlaps, uniform row heights, value next to chevron | `DesignLayoutUITests`, `tools/check_design_tokens.py`, `tools/check_pinned_headers.py`, `tools/check_option_chips.py`, `tools/check_save_buttons.py`, `tools/check_secure_fields.py` |
+| DES-04 | A | Remote and Controller fits | Every tab: section tabs below the tab bar; legend, footnote, Learn the Controls and its caption inside the bottom safe area (tutorial tabs once the button has focus) | `DesignLayoutUITests.testControlsPageNeverClips` |
 | DES-02 | A | Section tabs | Reader and book tabs look like the top bar | `ReaderMenuUITests`, `BookReaderUITests` |
 | DES-03 | S | Themes | All five themes: text on every plate, focused, open and plain, passes 4.5:1 as drawn (library server list, category bar, Choose Libraries, Settings); token pairs pass in light and dark; each theme looks like its Theme Lab tvOS sample (glazed plates / ink plates, themed focus) | `ThemeScreensUITests`, `tools/check_theme_contrast.py`, manual look |
 | A11Y-01 | S | Large text and Bold Text | Largest Dynamic Type and Bold Text: no clipped labels, nothing off screen | manual |
