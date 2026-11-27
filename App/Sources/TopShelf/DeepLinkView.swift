@@ -110,6 +110,7 @@ struct DeepLinkView: View {
                            startPage: chapter.id == chapterID ? page : nil)
                     // Dark whatever the app theme, like ReaderHost.
                     .preferredColorScheme(.dark)
+                    .unthemed()
             } else {
                 NavigationStack { SeriesDetailView(series: summary(detail)) }
             }
