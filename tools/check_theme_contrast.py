@@ -78,8 +78,12 @@ def theme_blocks(source):
     return blocks
 
 
-def roles(body):
+def roles(body, case):
+    """role -> token for one theme case. `role: theme == .x ? p.a : p.b`
+    picks per case."""
     found = {name: token for name, token in re.findall(r"(\w+): p\.(\w+)", body)}
+    for name, when, yes, no in re.findall(r"(\w+): theme == \.(\w+) \? p\.(\w+) : p\.(\w+)", body):
+        found[name] = yes if case == when else no
     text = re.search(r"text: \(p\.(\w+), p\.(\w+)\)", body)
     if text:
         found["text.primary"], found["text.secondary"] = text.groups()
@@ -104,8 +108,8 @@ def main():
     for cases, module, body in blocks:
         palette_file = THEMES / f"{module}Theme" / "Sources" / f"{module}Theme" / f"{module}Theme.swift"
         palette = parse_palette(palette_file)
-        picked = roles(body)
         for case in cases:
+            picked = roles(body, case)
             variant = "light" if case in light else "dark"
             def color(role):
                 token = picked.get(role)

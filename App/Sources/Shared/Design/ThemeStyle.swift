@@ -47,28 +47,33 @@ struct ThemeStyle {
         case .celadon, .tenmoku:
             let p = CeladonTheme.palette()
             // Theme Lab tvOS: glazed plates on the clay body; the focused
-            // tile pools into focus-surface with a wet glaze-rim and lifts.
+            // tile pools into focus-surface with a wet glaze-rim and lifts;
+            // the open item is the cobalt-tinged selection glaze, so it never
+            // looks like the focused one.
             return ThemeStyle(colorScheme: theme.isLight ? .light : .dark, background: p.bg, tint: p.tint,
                               text: (p.ink, p.inkMuted),
                               heading: p.ink, sectionLabel: p.inkMuted, headingEcho: nil,
                               brushStroke: p.brush, headingFace: "AlegreyaRoman-Bold",
                               controls: ThemeControls(plate: p.glaze, plateText: p.ink, plateSecondary: p.inkMuted,
                                                       focus: p.focusSurface, focusText: p.onFocusSurface,
-                                                      selected: p.accent, selectedText: p.onAccent,
+                                                      selected: p.selection, selectedText: p.selectionInk,
                                                       rim: p.glazeRim, foot: p.ironFoot, echo: nil,
                                                       shape: .glazed))
         case .newsprint, .blackStock:
             let p = RisographTheme.palette()
             // Theme Lab tvOS: square plates in a key-ink wash; the focused
             // tile prints as a solid key plate with the flare drum's second
-            // pass misregistered behind it; the open item is a sun plate.
+            // pass misregistered behind it; the open item is a highlighter
+            // plate (yellow sun on newsprint, gold flare on black stock, where
+            // the white sun plate would look like the system focus).
             return ThemeStyle(colorScheme: theme.isLight ? .light : .dark, background: p.paper, tint: p.tint,
                               text: (p.ink, p.inkSoft),
                               heading: p.key, sectionLabel: p.inkSoft, headingEcho: p.flare,
                               brushStroke: nil, headingFace: "LondrinaSolid-Black",
                               controls: ThemeControls(plate: p.washKey, plateText: p.ink, plateSecondary: p.inkSoft,
                                                       focus: p.focusSurface, focusText: p.onFocusSurface,
-                                                      selected: p.sun, selectedText: p.onSun,
+                                                      selected: theme == .blackStock ? p.flare : p.sun,
+                                                      selectedText: theme == .blackStock ? p.onFlare : p.onSun,
                                                       rim: nil, foot: nil, echo: p.flare,
                                                       shape: .square))
         }
@@ -269,12 +274,24 @@ private struct ControlSelectedKey: EnvironmentKey {
     static let defaultValue = false
 }
 
+private struct ControlFillsRowKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
     /// The button stands for the open item of a group (the category on
     /// screen, the current choice). Themes draw it in their selected color.
     var controlIsSelected: Bool {
         get { self[ControlSelectedKey.self] }
         set { self[ControlSelectedKey.self] = newValue }
+    }
+
+    /// Buttons are rows of a settings form (`SettingsPage`): a theme's plate
+    /// spans the row and replaces the row's own platter, so there is one
+    /// plate per row, not a small one inside a big one.
+    var controlFillsRow: Bool {
+        get { self[ControlFillsRowKey.self] }
+        set { self[ControlFillsRowKey.self] = newValue }
     }
 }
 
@@ -284,6 +301,13 @@ extension View {
     func controlSelected(_ isSelected: Bool) -> some View {
         environment(\.controlIsSelected, isSelected)
             .tint(isSelected ? Color.accentColor : nil)
+    }
+
+    /// A check mark or similar "this one is on" glyph: the accent color
+    /// without a theme; with one, the label's own color, because a theme's
+    /// focused plate is often the accent color itself.
+    func themedMark(_ isOn: Bool) -> some View {
+        modifier(ThemedMark(isOn: isOn))
     }
 
     /// Screens that keep the system look whatever the theme (the reader).
@@ -301,14 +325,30 @@ struct ThemedButtonStyle: PrimitiveButtonStyle {
     }
 }
 
+private struct ThemedMark: ViewModifier {
+    let isOn: Bool
+    @Environment(\.themeStyle) private var theme
+
+    func body(content: Content) -> some View {
+        if theme.controls != nil {
+            content.foregroundStyle(isOn ? .primary : .secondary)
+        } else {
+            content.foregroundStyle(isOn ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+        }
+    }
+}
+
 private struct ThemedButton: View {
     let configuration: PrimitiveButtonStyleConfiguration
     @Environment(\.themeStyle) private var theme
+    @Environment(\.controlFillsRow) private var fillsRow
 
     var body: some View {
         if let controls = theme.controls {
             Button(configuration)
-                .buttonStyle(ThemePlateStyle(controls: controls))
+                .buttonStyle(ThemePlateStyle(controls: controls, fillsRow: fillsRow))
+                // One plate per row: the theme's, not the form's as well.
+                .listRowBackground(fillsRow ? Color.clear : nil)
         } else {
             Button(configuration)
                 .buttonStyle(.automatic)
@@ -319,15 +359,17 @@ private struct ThemedButton: View {
 /// One plate: fill, text colors, focus lift and the theme's marks.
 private struct ThemePlateStyle: ButtonStyle {
     let controls: ThemeControls
+    let fillsRow: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        ThemePlate(configuration: configuration, controls: controls)
+        ThemePlate(configuration: configuration, controls: controls, fillsRow: fillsRow)
     }
 }
 
 private struct ThemePlate: View {
     let configuration: ButtonStyleConfiguration
     let controls: ThemeControls
+    let fillsRow: Bool
     @Environment(\.isFocused) private var isFocused
     @Environment(\.controlIsSelected) private var isSelected
     @Environment(\.isEnabled) private var isEnabled
@@ -352,8 +394,9 @@ private struct ThemePlate: View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         configuration.label
             .foregroundStyle(text.0, text.1)
+            .frame(maxWidth: fillsRow ? .infinity : nil, alignment: .leading)
             .padding(.horizontal, Space.m + Space.xs)
-            .padding(.vertical, Space.s)
+            .padding(.vertical, fillsRow ? Space.xs : Space.s)
             .frame(minHeight: Size.minTarget)
             .background {
                 ZStack {
