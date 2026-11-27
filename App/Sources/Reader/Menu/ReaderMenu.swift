@@ -228,8 +228,12 @@ struct ReaderMenu: View {
                     Divider().padding(.vertical, Space.s)
                     defaultsSection
                 }
-                Divider().padding(.vertical, Space.s)
-                ReaderControlsLegend(mode: settings.mode)
+                // Touch screens list nothing here unless a game controller
+                // is connected; their controls are on screen.
+                if Platform.isTV || GameControllerHub.shared.hasExtendedGamepad {
+                    Divider().padding(.vertical, Space.s)
+                    ReaderControlsLegend(mode: settings.mode)
+                }
             }
             .padding(.top, 20)
         }
@@ -463,8 +467,10 @@ struct ReaderMenu: View {
             }
             .font(.callout)
             Text(webtoon
-                 ? "Play/Pause starts and stops it. While it runs, swipe up or down to change speed."
-                 : "Play/Pause starts and stops it. It stops at the end of the chapter.")
+                 ? (Platform.isTV ? "Play/Pause starts and stops it. While it runs, swipe up or down to change speed."
+                                  : "The Play button starts and stops it. While it runs, tap the sides to change speed.")
+                 : (Platform.isTV ? "Play/Pause starts and stops it. It stops at the end of the chapter."
+                                  : "The Play button starts and stops it. It stops at the end of the chapter."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -679,7 +685,8 @@ private struct BookmarkListPane: View {
         let bookmarks = session.seriesBookmarks
         LazyVStack(alignment: .leading, spacing: 16) {
             if bookmarks.isEmpty {
-                Text("No bookmarks in this series yet. Choose Bookmark This Page, or in the page reader press up on the remote.")
+                Text(Platform.isTV ? "No bookmarks in this series yet. Choose Bookmark This Page, or in the page reader press up on the remote."
+                                   : "No bookmarks in this series yet. Choose Bookmark This Page, or tap the bookmark at the top of the reader.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -745,10 +752,12 @@ struct ReaderControlsLegend: View {
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("reader.menu.controls")
-            Text("Siri Remote")
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
-            ControlsLegend(entries: ReaderControls.remote(for: mode), id: "reader.remote")
+            if Platform.isTV {
+                Text("Siri Remote")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ControlsLegend(entries: ReaderControls.remote(for: mode), id: "reader.remote")
+            }
             if GameControllerHub.shared.hasExtendedGamepad {
                 Text("Game Controller")
                     .font(.callout.weight(.semibold))

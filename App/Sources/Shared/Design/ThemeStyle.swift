@@ -119,7 +119,18 @@ extension View {
         let style = ThemeStyle.of(theme)
         return environment(\.themeStyle, style)
             .modifier(ThemedScreen(style: style))
-            .preferredColorScheme(style.colorScheme)
+            .preferredColorScheme(Self.scheme(for: theme, style: style))
+    }
+
+    /// The standard theme follows the system's light/dark setting on iPhone
+    /// and iPad (docs/IOS.md §1); the tvOS app and the Theme Lab themes keep
+    /// their own appearance.
+    private static func scheme(for theme: AppTheme, style: ThemeStyle) -> ColorScheme? {
+        #if os(tvOS)
+        style.colorScheme
+        #else
+        theme == .standard ? nil : style.colorScheme
+        #endif
     }
 
     /// The theme's ground and text colors behind a screen. Pushed and

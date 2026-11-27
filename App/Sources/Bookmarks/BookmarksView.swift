@@ -17,7 +17,9 @@ struct BookmarksView: View {
                 let groups = BookmarkGroup.make(model.visibleBookmarks)
                 if groups.isEmpty {
                     BrowseMessage(title: "No bookmarks yet",
-                                  message: "While reading, open the menu and choose Bookmark This Page. In the page reader you can also press up on the remote.",
+                                  message: Platform.isTV
+                                      ? "While reading, open the menu and choose Bookmark This Page. In the page reader you can also press up on the remote."
+                                      : "While reading, tap the middle of the page and then the bookmark at the top.",
                                   systemImage: "bookmark")
                 } else {
                     LazyVStack(alignment: .leading, spacing: 50) {

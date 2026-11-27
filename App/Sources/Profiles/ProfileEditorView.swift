@@ -102,7 +102,7 @@ struct ProfileEditorView: View {
             }
             .accessibilityIdentifier("profileEditor.confirmDelete")
         } message: {
-            Text("Their favorites, local reading progress and server logins on this Apple TV are removed.")
+            Text("Their favorites, local reading progress and server logins on this \(Platform.deviceName) are removed.")
         }
     }
 

@@ -36,7 +36,8 @@ struct ICloudSyncView: View {
 
             Section {
                 Text("Profiles, server addresses, favorites, reading progress, library choices and reader settings.")
-                Text("Logins and API keys stay on this Apple TV. Enter them once on each device.")
+                Text(Platform.isTV ? "Logins and API keys stay on this Apple TV. Enter them once on each device."
+                                   : "Logins and API keys stay on this device. Enter them once on each device.")
                     .foregroundStyle(.secondary)
             } header: {
                 SettingsHeader("What Syncs")
@@ -44,16 +45,28 @@ struct ICloudSyncView: View {
 
             Section {
                 NavigationLink {
+                    #if os(tvOS)
                     WiFiBackupView()
                         .themedScreen()
+                    #else
+                    FilesBackupView()
+                    #endif
                 } label: {
+                    #if os(tvOS)
                     Label("Back Up and Restore over Wi‑Fi", systemImage: "arrow.up.arrow.down.circle")
+                    #else
+                    Label("Back Up and Restore", systemImage: "arrow.up.arrow.down.circle")
+                    #endif
                 }
                 .accessibilityIdentifier("icloud.backup")
             } header: {
                 SettingsHeader("Backup")
             } footer: {
+                #if os(tvOS)
                 Text("Works without iCloud. Download a backup file from a phone or computer on the same network, or restore one.")
+                #else
+                Text("Works without iCloud. Save a backup file to Files, or restore one, including backups from the Apple TV.")
+                #endif
             }
         }
         .settingsPage("iCloud Sync and Backup", systemImage: "icloud")
@@ -78,13 +91,13 @@ struct ICloudSyncView: View {
         case .notConfigured:
             return "This copy of the app isn't signed with iCloud turned on, so sync is off. It needs an Apple Developer Program membership; until then, use Wi‑Fi backup below."
         case .noAccount:
-            return "Sign in to iCloud in the Apple TV's Settings app under Users and Accounts."
+            return Platform.isTV ? "Sign in to iCloud in the Apple TV's Settings app under Users and Accounts." : "Sign in to iCloud in the Settings app."
         case .restricted:
-            return "iCloud is restricted on this Apple TV, for example by Screen Time."
+            return "iCloud is restricted on this \(Platform.deviceName), for example by Screen Time."
         case .waiting(let message), .failed(let message):
             return message
         default:
-            return "Keeps everything below the same on every device signed in to your iCloud account. Each Apple TV user syncs with their own iCloud account."
+            return "Keeps everything below the same on every device signed in to your iCloud account.\(Platform.isTV ? " Each Apple TV user syncs with their own iCloud account." : "")"
         }
     }
 }

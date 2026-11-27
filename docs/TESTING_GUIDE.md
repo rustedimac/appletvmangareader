@@ -223,6 +223,7 @@ real device before a release. iOS UI tests live in `App/UITests-iOS`.
 | IOS-04 | A | Swipe and zoom | A swipe turns (page follows the finger); pinch zooms up to 4x and pans; double-tap zooms to 2x and back; zoomed, side taps don't turn | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-05 | A | Orientation | Portrait shows single pages, landscape pairs spreads per Page Layout; rotating keeps the page | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-07 | S | Layouts | iPhone: three poster columns in a library, posters inset from the edges, series page with cover beside title and full-width Continue; iPad: more columns, regular series layout; Split View switches to the iPhone layout; Bookmarks opens from Favorites on iPhone | iOS `SmokeUITests`, manual look |
+| IOS-08 | A | System pieces | Settings > iCloud Sync and Backup > Back Up and Restore exports a backup to Files and restores one (an Apple TV backup too); no "Set Up from Your Phone" in the server editor; no Remote and Controller page; light and dark follow the system with the Default theme | iOS `SystemUITests`, manual look |
 | IOS-06 | S | Options | The options open as a sheet on iPhone, a popover on iPad, readable over any page, with Tap Zones; Done closes them | iOS `ReaderTouchUITests` |
 
 ## 4. A test pass, step by step

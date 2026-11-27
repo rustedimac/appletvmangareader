@@ -78,7 +78,8 @@ enum TutorialRecord {
 
     /// True the first time any image reader opens.
     static var shouldOffer: Bool {
-        guard let defaults else { return false }
+        // The tutorial teaches the Siri Remote.
+        guard Platform.isTV, let defaults else { return false }
         return !defaults.bool(forKey: offeredKey)
     }
 

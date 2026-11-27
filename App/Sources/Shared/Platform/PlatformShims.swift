@@ -47,6 +47,18 @@ enum Platform {
     #else
     static let isTV = false
     #endif
+
+    /// "Apple TV", "iPhone" or "iPad", for text like "kept on this iPhone".
+    static var deviceName: String {
+        #if os(tvOS)
+        "Apple TV"
+        #else
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        #endif
+    }
+
+    /// How to retry a page that didn't load.
+    static var retryHint: String { isTV ? "Press Select to retry" : "Tap to retry" }
 }
 
 extension View {

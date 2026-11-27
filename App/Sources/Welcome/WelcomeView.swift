@@ -65,7 +65,12 @@ struct WelcomeView: View {
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .addServer: ServerEditorView(editing: nil)
-                case .backup: WiFiBackupView()
+                case .backup:
+                    #if os(tvOS)
+                    WiFiBackupView()
+                    #else
+                    FilesBackupView()
+                    #endif
                 }
             }
         }

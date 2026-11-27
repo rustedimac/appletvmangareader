@@ -368,7 +368,8 @@ struct ReaderControlsHint: View {
 
     var body: some View {
         ZStack {
-            if visible, !session.isMenuPresented, session.notice == nil {
+            // Remote hints; touch screens show their controls at open instead.
+            if Platform.isTV, visible, !session.isMenuPresented, session.notice == nil {
                 Label(ReaderControls.hint(for: session.settings.mode), systemImage: "appletvremote.gen4")
                     .font(.callout)
                     .padding(.horizontal, 28)

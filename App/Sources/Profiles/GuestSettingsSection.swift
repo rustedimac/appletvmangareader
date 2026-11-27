@@ -42,7 +42,7 @@ struct GuestSessionSection: View {
         } header: {
             SettingsHeader("Profile")
         } footer: {
-            Text("You're reading as a guest. Progress, favorites and bookmarks stay on this Apple TV until the session ends, and nothing is saved to the servers.")
+            Text("You're reading as a guest. Progress, favorites and bookmarks stay on this \(Platform.deviceName) until the session ends, and nothing is saved to the servers.")
         }
     }
 }

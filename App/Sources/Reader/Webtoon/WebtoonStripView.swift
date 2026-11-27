@@ -159,7 +159,7 @@ final class WebtoonPageView: UIView {
         failureView.isHidden = false
         accessibilityValue = "failed"
         accessibilityLabel = "\(pageLabel) didn't load"
-        accessibilityHint = "Press Select to retry"
+        accessibilityHint = Platform.retryHint
         setNeedsLayout()
     }
 
@@ -246,7 +246,7 @@ final class WebtoonPageFailureView: UIView {
         retryLabel.layer.masksToBounds = true
         retryLabel.textAlignment = .center
         let hint = UILabel()
-        hint.text = "Press Select to retry"
+        hint.text = Platform.retryHint
         hint.font = .preferredFont(forTextStyle: .caption1)
         hint.textColor = .secondaryLabel
         stack.axis = .vertical
