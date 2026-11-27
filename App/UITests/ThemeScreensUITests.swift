@@ -47,21 +47,25 @@ final class ThemeScreensUITests: XCTestCase {
                 focus(app.element(ids[1]), .right)
                 checkContrast(theme, "categories-other-focused", app, ids: ids + ["library.options"])
             }
-            // Down into the grid: no category focused, the open one still marked.
-            remote.press(.down)
-            Thread.sleep(forTimeInterval: 0.8)
-            checkContrast(theme, "categories-unfocused", app, ids: ids)
-
-            // The picker for which libraries this profile imports.
+            // The picker for which libraries this profile imports, at the
+            // end of the category bar.
             let choose = app.element("library.chooseCategories")
-            if choose.exists {
-                select(choose, .right)
+            if choose.exists, focus(choose, .right) {
+                checkContrast(theme, "categories-choose-focused", app, ids: ids + ["library.options"])
+                remote.press(.select)
                 let item = app.element("categories.item.all")
                 if item.waitForExistence(timeout: 5) {
                     focus(item)
                     checkContrast(theme, "choose-libraries", app, ids: ["categories.item.all", "categories.item.short"])
                 }
+                remote.press(.menu)
+                Thread.sleep(forTimeInterval: 1)
             }
+            // Down into the grid: no category focused, the open one still marked.
+            if let first = ids.first { focus(app.element(first), .left) }
+            remote.press(.down)
+            Thread.sleep(forTimeInterval: 0.8)
+            checkContrast(theme, "categories-unfocused", app, ids: ids)
             app.terminate()
         }
     }
