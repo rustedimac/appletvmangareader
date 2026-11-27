@@ -156,7 +156,7 @@ struct ServerLibraryView: View {
                         Text(category.name)
                             .fontWeight(isSelected ? .bold : .regular)
                     }
-                    .tint(isSelected ? Color.accentColor : nil)
+                    .controlSelected(isSelected)
                     .accessibilityIdentifier("category.\(category.id)")
                     .accessibilityValue(isSelected ? "selected" : "")
                 }

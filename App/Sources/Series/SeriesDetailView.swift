@@ -306,7 +306,7 @@ private struct ChapterRow: View {
             Button(action: open) {
                 HStack(spacing: 24) {
                     Image(systemName: icon)
-                        .foregroundStyle(chapter.isRead ? Color.secondary : Color.accentColor)
+                        .themedMark(!chapter.isRead)
                         .frame(width: 40)
                     Text(chapter.title)
                         .lineLimit(1)

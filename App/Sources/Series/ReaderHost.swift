@@ -21,5 +21,6 @@ struct ReaderHost: View {
             // the app theme (Settings > Theme). This cover is its own
             // presentation, so it doesn't change the screens behind it.
             .preferredColorScheme(.dark)
+            .unthemed()
     }
 }

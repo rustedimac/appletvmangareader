@@ -60,7 +60,7 @@ struct CategoryChecklist: View {
                             }
                             Spacer()
                             Image(systemName: isOn ? "checkmark.circle.fill" : "circle") // option-chip-ok: full-width checklist row
-                                .foregroundStyle(isOn ? Color.accentColor : .secondary)
+                                .themedMark(isOn)
                         }
                     }
                     .accessibilityIdentifier("categories.item.\(category.id)")

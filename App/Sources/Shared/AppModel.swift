@@ -110,6 +110,10 @@ final class AppModel {
             }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             model.applyUITestingHomeLayout()
+            // `-uiTestingTheme celadon` opens the app in that theme (ThemeScreensUITests).
+            if let raw = UITestingSeed.value(after: "-uiTestingTheme"), let theme = AppTheme(rawValue: raw) {
+                model.updateBrowse { $0.theme = theme }
+            }
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),

@@ -48,6 +48,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
 
             content
                 .labelStyle(.settingsRow)
+                .environment(\.controlFillsRow, true)
                 // A focused row grows about 10 %; the list would clip it at
                 // its own edges. The mask below does the clipping instead.
                 .scrollClipDisabled() // pinned-header-ok: nothing sits above the form (title is in the side column) and the mask below fades rows at the top
