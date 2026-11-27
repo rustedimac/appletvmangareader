@@ -16,7 +16,7 @@ struct ActionRow<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .focusSection()
+        .tvFocusSection()
     }
 }
 
@@ -34,7 +34,7 @@ extension View {
     /// the nearest item in the direction pressed, so without this a centered
     /// button is only reachable from the items directly above or below it.
     func centeredFocusRow() -> some View {
-        frame(maxWidth: .infinity).focusSection()
+        frame(maxWidth: .infinity).tvFocusSection()
     }
 
     /// A section label on a custom (non-Form) page.

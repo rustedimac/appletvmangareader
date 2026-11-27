@@ -22,6 +22,9 @@ struct BookReaderView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: BookReaderSession?
     @State private var unsupported = false
+    #if os(iOS)
+    @State private var chromeVisible = true
+    #endif
 
     var body: some View {
         ZStack {
@@ -29,6 +32,16 @@ struct BookReaderView: View {
                 .ignoresSafeArea()
             if let session {
                 BookReaderContent(session: session)
+                    #if os(iOS)
+                    .readerTapZones { zone in
+                        guard !session.isMenuPresented else { return }
+                        switch zone {
+                        case .center: chromeVisible.toggle()
+                        case .leading: Task { await session.turn(forward: false) }
+                        case .trailing: Task { await session.turn(forward: true) }
+                        }
+                    }
+                    #endif
             } else if unsupported {
                 VStack(spacing: 20) {
                     Text("This server can't open books yet").font(.title3)
@@ -39,9 +52,22 @@ struct BookReaderView: View {
             } else {
                 ProgressView()
             }
+            #if os(iOS)
+            if chromeVisible {
+                ReaderTouchChrome(title: series.title, subtitle: session?.chapter.title,
+                                  onClose: { session?.close(); dismiss() },
+                                  onOptions: { session?.isMenuPresented.toggle() })
+            }
+            #endif
         }
+        #if os(iOS)
+        .animation(.easeInOut(duration: 0.2), value: chromeVisible)
+        .readerSystemOverlays(visible: chromeVisible)
+        #else
         .ignoresSafeArea()
+        #endif
         .background {
+            #if os(tvOS)
             if let session {
                 ReaderRemoteCatcher(onPlayPause: {
                     // Nothing plays in a book; a press only closes the drawer.
@@ -52,8 +78,9 @@ struct BookReaderView: View {
                 takesMenu: { session.isMenuPresented },
                 onMenu: { _ = session.back() })
             }
+            #endif
         }
-        .onExitCommand {
+        .onRemoteExit {
             if let session, session.back() {
                 return
             } else {
@@ -89,7 +116,7 @@ private struct BookReaderContent: View {
                 .focusable()
                 .focusEffectDisabled()
                 .focused($focused)
-                .onMoveCommand(perform: handleMove)
+                .onRemoteMove(perform: handleMove)
                 .onAppear { focused = true }
                 .onChange(of: session.isMenuPresented) { _, presented in
                     if !presented { focused = true }
@@ -104,7 +131,7 @@ private struct BookReaderContent: View {
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)
     }
 
-    private func handleMove(_ direction: MoveCommandDirection) {
+    private func handleMove(_ direction: RemoteMoveDirection) {
         switch direction {
         case .left: Task { await session.turn(forward: false) }
         case .right: Task { await session.turn(forward: true) }

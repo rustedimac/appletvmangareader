@@ -35,8 +35,8 @@ struct PageScrubberView: View {
                 .background(.thickMaterial)
         }
         .ignoresSafeArea()
-        .focusSection()
-        .onExitCommand { session.back() }
+        .tvFocusSection()
+        .onRemoteExit { session.back() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.scrubber")
     }
@@ -105,9 +105,9 @@ struct PageScrubberView: View {
                                                      height: Self.thumbnailHeight * displayScale))
                     .frame(width: width, height: Self.thumbnailHeight)
             }
-            .buttonStyle(.card)
+            .posterButtonStyle()
             .focused($focusedPage, equals: page)
-            .onMoveCommand { move($0, proxy: proxy) }
+            .onRemoteMove { move($0, proxy: proxy) }
             .accessibilityLabel("Page \(page + 1)")
             .accessibilityAddTraits(isCurrent ? .isSelected : [])
             .accessibilityIdentifier("reader.scrubber.page.\(page)")
@@ -119,7 +119,7 @@ struct PageScrubberView: View {
     }
 
     /// Up and down jump 10 pages. Left and right are the focus engine's.
-    private func move(_ direction: MoveCommandDirection, proxy: ScrollViewProxy) {
+    private func move(_ direction: RemoteMoveDirection, proxy: ScrollViewProxy) {
         guard let from = focusedPage else { return }
         let forward: Bool
         switch direction {

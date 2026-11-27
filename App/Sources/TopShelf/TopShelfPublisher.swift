@@ -1,8 +1,12 @@
 import Foundation
+#if os(tvOS)
 import TVServices
+#endif
 import UIKit
 import MangaCore
 
+// The Top Shelf is tvOS only (docs/IOS.md §1); `noteReading` is shared.
+#if os(tvOS)
 /// Keeps the Top Shelf in step with the active profile. After any saved
 /// change it rebuilds `TopShelfSnapshot` (Continue Reading and Favorites),
 /// leaving out what the profile's content filter hides, writes it and
@@ -77,11 +81,14 @@ extension AppModel {
         publisher.schedule()
     }
 
+    private static var topShelfStarted = false
+}
+#endif
+
+extension AppModel {
     /// Remembers the series being read, for Continue Reading.
     func noteReading(_ series: SeriesSummary) {
         let profile = activeProfile.id
         update { $0.noteRecentSeries(series, profile: profile) }
     }
-
-    private static var topShelfStarted = false
 }

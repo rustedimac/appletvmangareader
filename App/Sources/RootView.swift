@@ -22,8 +22,10 @@ struct RootView: View {
                 if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
             }
             .task {
+                #if os(tvOS)
                 TabBarScrollReset.install()
                 model.startTopShelf()
+                #endif
                 if let test = UITestingSeed.openLink(in: model) { link = model.route(for: test) }
             }
             .onChange(of: scenePhase) { _, phase in
@@ -48,6 +50,20 @@ struct RootView: View {
             WelcomeView()
                 .id(model.activeProfile.id)
         } else {
+            mainTabs
+                .environment(navigationReset)
+                .onChange(of: tab) { old, new in navigationReset.tabChanged(from: old, to: new) }
+                // Rebuild every tab for the newly picked profile.
+                .id(model.activeProfile.id)
+        }
+    }
+
+    #if os(iOS)
+    /// iPhone tab bar / iPad sidebar-adaptable tabs (App/Sources-iOS).
+    private var mainTabs: some View { IOSMainTabs(tab: $tab) }
+    #else
+    @ViewBuilder
+    private var mainTabs: some View {
             // Titles only, like Apple's own tvOS apps: with a symbol next to
             // every title the six tabs no longer fit the bar and it scrolls
             // sideways (Settings ends up cut off). TabBarLayoutUITests checks
@@ -78,10 +94,6 @@ struct RootView: View {
                     .tag("settings")
                     .navigationResetTab("settings")
             }
-            .environment(navigationReset)
-            .onChange(of: tab) { old, new in navigationReset.tabChanged(from: old, to: new) }
-            // Rebuild every tab for the newly picked profile.
-            .id(model.activeProfile.id)
-        }
     }
+    #endif
 }

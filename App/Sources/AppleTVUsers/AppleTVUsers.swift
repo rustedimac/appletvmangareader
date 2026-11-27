@@ -1,5 +1,7 @@
 import Foundation
+#if os(tvOS)
 import TVServices
+#endif
 import MangaCore
 
 /// tvOS user management. With the `com.apple.developer.user-management`
@@ -19,9 +21,11 @@ import MangaCore
 /// with "Who's reading?" at launch.
 ///
 /// The tvOS `DeviceUserIdentity`, and the only use of `TVUserManager`.
+#if os(tvOS)
 struct AppleTVUserIdentity: DeviceUserIdentity {
     let separatesAppDataPerUser = TVUserManager().shouldStorePreferencesForCurrentUser
 }
+#endif
 
 extension AppModel {
     /// Activates a profile chosen on "Who's reading?". When running as the

@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+// Siri Remote input; tvOS only (docs/IOS.md §1).
+#if os(tvOS)
 /// Siri Remote input the readers need that SwiftUI can't tell apart:
 ///
 /// - **Play/Pause pressed** vs **Play/Pause held** (0.5 s). SwiftUI's
@@ -192,3 +194,4 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
         }
     }
 }
+#endif

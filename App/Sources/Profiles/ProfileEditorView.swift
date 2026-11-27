@@ -62,7 +62,7 @@ struct ProfileEditorView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
+                .tvFocusSection()
                 }
 
                 // ActionRow is a focus section, so focus moves down into the

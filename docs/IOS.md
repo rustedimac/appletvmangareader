@@ -99,7 +99,7 @@ The first test build uses the Personal Team route: the maintainer's Mac builds t
 
 | Step | State |
 | --- | --- |
-| 1 Foundation | in progress |
+| 1 Foundation | built; iPhone + iPad smoke tests pass on simulators |
 | 2 Touch reader | |
 | 3 Layouts | |
 | 4 System pieces | |

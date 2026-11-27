@@ -5,7 +5,7 @@ enum PosterMetrics {
     static let width: CGFloat = 230
     static var height: CGFloat { width * 1.5 }
     static let spacing: CGFloat = 48
-    /// How much `.buttonStyle(.card)` scales a focused poster (measured
+    /// How much `.posterButtonStyle()` scales a focused poster (measured
     /// on tvOS 26: about 1.1).
     static let focusScale: CGFloat = 1.1
 
@@ -199,7 +199,7 @@ struct SeriesPoster: View {
                     }
                 }
         }
-        .buttonStyle(.card)
+        .posterButtonStyle()
         .focused($isPosterFocused)
         // VoiceOver hears the server wherever the poster shows it.
         .accessibilityLabel(serverName.map { "\(series.title), \($0)" } ?? series.title)
@@ -393,7 +393,7 @@ struct SeriesShelf: View {
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
         }
-        .focusSection()
+        .tvFocusSection()
         // Lets UI tests find a poster within one shelf: the same series id
         // can be on two servers' shelves.
         .accessibilityElement(children: .contain)
@@ -430,7 +430,7 @@ struct SeriesGrid: View {
         .environment(\.posterWidth, width)
         .environment(\.layoutDirection, rightToLeft ? .rightToLeft : .leftToRight)
         .padding(.vertical, 30)
-        .focusSection()
+        .tvFocusSection()
     }
 }
 

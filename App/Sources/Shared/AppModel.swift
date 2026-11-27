@@ -118,10 +118,20 @@ final class AppModel {
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
                              pins: KeychainPINStore(),
-                             identity: AppleTVUserIdentity(),
+                             identity: Self.deviceIdentity,
                              sharedServers: KeychainSharedServerStore())
         model.installFreeLibraryIfNeeded()
         return model
+    }
+
+    /// tvOS: each Apple TV user can be the profile. iPhone/iPad are
+    /// single-user devices, so in-app profiles are the profiles.
+    private static var deviceIdentity: DeviceUserIdentity {
+        #if os(tvOS)
+        AppleTVUserIdentity()
+        #else
+        SingleUserDevice()
+        #endif
     }
 
     // MARK: State

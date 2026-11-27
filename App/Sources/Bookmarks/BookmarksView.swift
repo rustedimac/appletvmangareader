@@ -57,7 +57,7 @@ struct BookmarksView: View {
                 row(bookmark)
             }
         }
-        .focusSection()
+        .tvFocusSection()
     }
 
     private func row(_ bookmark: Bookmark) -> some View {

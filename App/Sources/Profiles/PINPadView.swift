@@ -74,7 +74,7 @@ struct PINPadView: View {
                     .focused($focusedKey, equals: "delete")
                 }
             }
-            .focusSection()
+            .tvFocusSection()
         }
         .padding(60)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

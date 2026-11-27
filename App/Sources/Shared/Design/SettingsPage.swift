@@ -26,6 +26,23 @@ struct SettingsPage<Hero: View, Content: View>: View {
     }
 
     var body: some View {
+        #if os(tvOS)
+        tvBody
+        #else
+        // iOS: a plain inset-grouped form under a large navigation title
+        // that collapses into the bar (docs/IOS.md §1). No hero column.
+        content
+            .formStyle(.grouped)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.large)
+            .accessibilityIdentifier("settingsPage.form")
+            .themedScreen()
+            .settingsNavigation(navigator)
+        #endif
+    }
+
+    #if os(tvOS)
+    private var tvBody: some View {
         HStack(alignment: .center, spacing: Space.xxl) {
             VStack(spacing: Space.l) {
                 // Bottom-aligned so the gap to the title is the same whatever
@@ -72,6 +89,7 @@ struct SettingsPage<Hero: View, Content: View>: View {
         .themedScreen()
         .settingsNavigation(navigator)
     }
+    #endif
 }
 
 extension SettingsPage where Hero == SettingsHeroSymbol {

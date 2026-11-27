@@ -138,6 +138,6 @@ private struct HomeRowEditor: View {
             .accessibilityLabel("Move \(kind.title) Down")
             .accessibilityIdentifier("homeLayout.down.\(kind.rawValue)")
         }
-        .focusSection()
+        .tvFocusSection()
     }
 }

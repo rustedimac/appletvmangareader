@@ -40,6 +40,10 @@ struct ReaderView: View {
     @State private var offeringTutorial = false
     /// The tutorial is open over this reader.
     @State private var tutorialMode: ReadingMode?
+    #if os(iOS)
+    /// The touch chrome (top bar with Close) is showing.
+    @State private var chromeVisible = true
+    #endif
 
     var body: some View {
         if start.format?.isText == true {
@@ -55,12 +59,29 @@ struct ReaderView: View {
             (session?.settings.background.color ?? .black).ignoresSafeArea()
             if let session {
                 ReaderContent(session: session)
+                    #if os(iOS)
+                    .readerTapZones { zone in handleTap(zone, session: session) }
+                    #endif
             } else {
                 ProgressView()
             }
+            #if os(iOS)
+            if chromeVisible {
+                ReaderTouchChrome(title: session?.series.title ?? series.title,
+                                  subtitle: session?.chapter.title,
+                                  onClose: closeReader,
+                                  onOptions: { session?.isMenuPresented.toggle() })
+            }
+            #endif
         }
+        #if os(iOS)
+        .animation(.easeInOut(duration: 0.2), value: chromeVisible)
+        .readerSystemOverlays(visible: chromeVisible)
+        #else
         .ignoresSafeArea()
+        #endif
         .background {
+            #if os(tvOS)
             if let session {
                 // While the tutorial or its question is over this reader,
                 // the remote belongs to them.
@@ -73,8 +94,9 @@ struct ReaderView: View {
                                     takesMenu: { remoteIsOurs && session.menuTakesBack },
                                     onMenu: { _ = session.back() })
             }
+            #endif
         }
-        .onExitCommand {
+        .onRemoteExit {
             if let session, session.back() { return }
             session?.close()
             dismiss()
@@ -120,6 +142,29 @@ struct ReaderView: View {
     }
 
     private var remoteIsOurs: Bool { !offeringTutorial && tutorialMode == nil }
+
+    #if os(iOS)
+    private func closeReader() {
+        session?.close()
+        dismiss()
+    }
+
+    /// Centre: chrome. Sides: page turn (paged) or one screen of scroll
+    /// (vertical; finger scrolling works natively there).
+    private func handleTap(_ zone: ReaderTapZone, session: ReaderSession) {
+        guard !session.isMenuPresented else { return }
+        // A tap on a page that failed to load retries it first.
+        if session.retryVisibleFailedPages() { return }
+        switch zone {
+        case .center:
+            chromeVisible.toggle()
+        case .leading, .trailing:
+            if chromeVisible { chromeVisible = false }
+            guard session.settings.mode == .paged else { return }
+            session.turn(zone == .leading ? .left : .right)
+        }
+    }
+    #endif
 }
 
 private struct ReaderContent: View {

@@ -44,13 +44,13 @@ struct BookReaderMenu: View {
                 .background(.thickMaterial)
         }
         .ignoresSafeArea()
-        .focusSection()
+        .tvFocusSection()
         .defaultFocus($focus, "size.larger")
         .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
         // Menu closes an open list of choices first, then the drawer
         // (`BookReaderSession.back()`). `ReaderRemoteCatcher` takes Menu
         // while the drawer is open, so this is only a fallback.
-        .onExitCommand { session.back() }
+        .onRemoteExit { session.back() }
         .onChange(of: session.menuPicker) { old, new in
             guard new == nil, let old, tab == .settings else { return }
             DispatchQueue.main.async { focus = old }
@@ -141,7 +141,7 @@ struct BookReaderMenu: View {
             Text(title).font(.callout.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
             HStack(spacing: 20) { content() }
         }
-        .focusSection()
+        .tvFocusSection()
     }
 
     // MARK: Rows with choices

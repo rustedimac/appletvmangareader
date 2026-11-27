@@ -84,7 +84,7 @@ struct FavoritesSortBar: View {
             .padding(.vertical, 20)
         }
         .scrollClipDisabled()
-        .focusSection()
+        .tvFocusSection()
     }
 
     /// Writes the new sort after the press's own update pass. Written during

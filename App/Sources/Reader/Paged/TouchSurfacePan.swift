@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+// Siri Remote input; tvOS only (docs/IOS.md §1).
+#if os(tvOS)
 /// Free panning with a finger on the Siri Remote's touch surface.
 ///
 /// SwiftUI on tvOS only reports a swipe as one arrow step
@@ -92,3 +94,4 @@ struct TouchSurfacePan: UIViewRepresentable {
         }
     }
 }
+#endif
