@@ -49,7 +49,7 @@ struct BookReaderMenu: View {
         .ignoresSafeArea()
         #else
         panel
-            .padding(.horizontal, Space.l)
+            .padding(.horizontal, Space.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         #endif
     }

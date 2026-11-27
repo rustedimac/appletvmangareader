@@ -78,7 +78,7 @@ struct ReaderMenu: View {
         .ignoresSafeArea()
         #else
         panel
-            .padding(.horizontal, Space.l)
+            .padding(.horizontal, Space.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         #endif
     }
@@ -367,7 +367,13 @@ struct ReaderMenu: View {
 
     private func spec<V: Hashable>(_ item: ReaderMenuItem, _ options: [(V, String, String)], selected: V,
                                    select: @escaping (V) -> Void) -> PickerSpec {
-        spec(item.rawValue, item.title, options, selected: selected, select: select)
+        spec(item.rawValue, Self.title(item), options, selected: selected, select: select)
+    }
+
+    /// The row's name on this device: touch screens zoom with a double-tap.
+    static func title(_ item: ReaderMenuItem) -> String {
+        if item == .zoom, !Platform.isTV { return "Double-Tap Zoom" }
+        return item.title
     }
 
     private func spec<V: Hashable>(_ key: String, _ title: String, _ options: [(V, String, String)], selected: V,

@@ -80,6 +80,10 @@ struct ReaderTouchChrome<Options: View, Bottom: View>: View {
                         .frame(minWidth: 380, idealWidth: 420, minHeight: 420, idealHeight: 640)
                         // Solid, so the page behind doesn't show through the rows.
                         .presentationBackground(Color(uiColor: .systemGroupedBackground))
+                        // The reader is dark-backed whatever the system
+                        // setting; a popover doesn't inherit the chrome's
+                        // scheme, so set it on the presentation.
+                        .preferredColorScheme(.dark)
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                         .presentationCompactAdaptation(.sheet)

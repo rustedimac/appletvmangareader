@@ -345,7 +345,7 @@ struct PagedReaderView: View {
 
     private func doubleTapZoom() {
         guard session.edge == nil, session.currentSpread != nil, !session.isMenuPresented else { return }
-        setZoom(ReaderTouch.doubleTapTarget(currentZoom: viewport.zoom))
+        setZoom(ReaderTouch.doubleTapTarget(currentZoom: viewport.zoom, zoomScale: settings.clampedZoomScale))
     }
     #endif
 
