@@ -14,6 +14,8 @@ Rules for App/Sources (see docs/DESIGN_GUIDE.md and docs/CONSISTENCY_AUDIT.md):
 4. section-header: no `Section("Title")` in a form. Use
    `Section(settingsHeader:)` so every settings header looks the same.
 5. retry-label: a retry button says "Try Again", not "Retry".
+6. header-text: a `header: { Text(…) }` section header. Use `SettingsHeader`
+   so every settings header has the same size, color and case.
 
 To allow one line anyway, end it with `// design-ok: <reason>`.
 
@@ -43,6 +45,9 @@ RULES = {
                        "Section(\"…\") header; use Section(settingsHeader:)"),
     "retry-label": (re.compile(r"Button\(\s*\"Retry\""),
                     "retry buttons say \"Try Again\""),
+    # Checked on the line after `header: {` (see below).
+    "header-text": (re.compile(r"^\s*Text\("),
+                    "plain Text section header; use SettingsHeader(…)"),
 }
 
 # (file, rule) -> problems allowed. Only for files open PRs are changing;
@@ -52,7 +57,6 @@ BASELINE = {
     ("App/Sources/Reader/ReaderView.swift", "retry-label"): 1,
     ("App/Sources/Reader/Book/BookReaderView.swift", "radius"): 1,
     ("App/Sources/Reader/Book/BookReaderView.swift", "retry-label"): 1,
-    ("App/Sources/Series/SeriesPoster.swift", "radius"): 1,
     ("App/Sources/Reader/Menu/ReaderMenu.swift", "text-style"): 3,
 }
 
@@ -66,6 +70,10 @@ for path in sorted(ROOT.rglob("*.swift")):
             continue
         code = line.split("//", 1)[0]
         for rule, (pattern, _) in RULES.items():
+            if rule == "header-text":
+                prev = next((l for l in reversed(lines[:i]) if l.strip()), "")
+                if not prev.rstrip().endswith("header: {"):
+                    continue
             if not pattern.search(code):
                 continue
             if rule in ("font-size", "text-style") and any("Image(systemName" in l for l in lines[max(0, i - 3):i + 1]):
