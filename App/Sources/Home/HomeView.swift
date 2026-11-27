@@ -10,12 +10,6 @@ import MangaCore
 /// removes it from that row.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var sections: [HomeServerSection] = []
-    @State private var loadedKey: String?
-    /// The `contentKey` that `sections` belong to.
-    @State private var sectionsKey: String?
-    /// Only the newest reload may change the rows.
-    @State private var generation = 0
     @State private var path = NavigationPath()
 
     enum Route: Hashable { case customize }
@@ -54,11 +48,13 @@ struct HomeView: View {
     /// Rows loaded for the current servers, libraries and profile. Rows
     /// from before a change in Settings aren't shown while the new ones
     /// load, so Home never mixes in a removed server or unticked library.
+    /// They live in the model (`AppModel.home`), so a Home rebuilt by a
+    /// theme change shows them at once instead of starting empty.
     private var currentSections: [HomeServerSection] {
-        sectionsKey == model.contentKey ? sections : []
+        model.home.sections(for: model.contentKey)
     }
     private var isLoading: Bool {
-        !model.servers.isEmpty && currentSections.isEmpty && loadedKey != model.contentKey
+        !model.servers.isEmpty && currentSections.isEmpty && !model.home.isLoaded(model.contentKey)
     }
 
     @ViewBuilder
@@ -157,35 +153,26 @@ struct HomeView: View {
     /// (same servers, libraries and logins only).
     private func reload() async {
         let key = model.contentKey
-        generation += 1
-        let mine = generation
+        let servers = model.servers
+        var reload = model.home.beginReload(key: key, order: servers.map(\.id))
         // Queued progress goes up first so Continue Reading is current.
         await model.syncPendingProgress()
-        guard !Task.isCancelled, mine == generation else { return }
+        guard !Task.isCancelled, model.home.isCurrent(reload) else { return }
         // Filtered clients cache the hidden ids, so the feeds reuse them.
         await model.refreshHiddenSeries()
-        guard !Task.isCancelled, mine == generation else { return }
-        let servers = model.servers
+        guard !Task.isCancelled, model.home.isCurrent(reload) else { return }
         let sources = servers.map { server in
             let syncs = model.syncsProgress(to: server.id)
             return HomeSource(server: model.client(for: server), includeContinueReading: syncs,
                               localContinueReading: syncs ? [] : model.localContinueReading(for: server))
         }
-        let previous = sectionsKey == key ? Dictionary(sections.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) : [:]
-        var fresh: [UUID: HomeServerSection] = [:]
-        if previous.isEmpty {
-            sections = []
-            sectionsKey = key
-        }
         for await (_, section) in HomeLoader.each(sources) {
-            guard !Task.isCancelled, mine == generation else { return }
-            fresh[section.id] = section
-            sections = servers.compactMap { fresh[$0.id] ?? previous[$0.id] }
-            sectionsKey = key
+            guard !Task.isCancelled, model.home.isCurrent(reload) else { return }
+            model.home.receive(section, in: &reload)
         }
-        guard !Task.isCancelled, mine == generation else { return }
-        loadedKey = key
+        guard !Task.isCancelled, model.home.isCurrent(reload) else { return }
+        model.home.finish(reload)
         // A Caught Up series that shows up with unread chapters isn't anymore.
-        model.pruneCaughtUp(seenIn: sections.flatMap { $0.rows.flatMap(\.series) })
+        model.pruneCaughtUp(seenIn: model.home.sections.flatMap { $0.rows.flatMap(\.series) })
     }
 }

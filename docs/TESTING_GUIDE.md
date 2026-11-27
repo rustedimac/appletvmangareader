@@ -111,6 +111,7 @@ server behaviour is worth a look.
 | HOM-02 | A | Customize Home | Rows hide and reorder; Remove from Continue Reading works; Customize Home is reachable with Down from any poster in the last row | `LibraryBrowsingUITests` |
 | HOM-03 | A | Changes show without a relaunch | New server, unticked library, poster size change update Home at once | `ContentRefreshUITests` |
 | HOM-04 | A | Caught Up shelf | Finished series show there | `LibraryBrowsingUITests` |
+| HOM-05 | A | Theme change keeps Home | After switching theme (to a theme and back to Default), every server's rows are still on Home at once, not only Free Library while the servers load again | `HomeThemeSwitchUITests`, `HomeSnapshotTests` |
 | LIB-01 | A | Library grid | Categories as tabs, pages load as you scroll; jump bar loads later pages and focuses the letter | `BrowseUITests`, `LibraryBrowsingUITests`, `BrowseTests` |
 | LIB-02 | A | Sort, filter, defaults | Title A-Z/Z-A, recently added; status/read/genre filters; Library Defaults apply to every library | `LibraryBrowsingUITests`, `LibraryFilterTests`, `LibraryBrowsingTests` |
 | LIB-03 | A | Posters | Title moves clear of the focused cover; long titles wrap to two lines; captions (chapters, pages, progress bar, %, off) line up across a row; progress updates after reading | `PosterLayoutUITests`, `LibraryBrowsingUITests`, `ProgressPercentTests` |
