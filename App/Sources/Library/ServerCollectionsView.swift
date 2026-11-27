@@ -61,10 +61,10 @@ struct ServerCollectionsView: View {
 
     private var grid: some View {
         let density = model.gridDensity
-        let width = CGFloat(density.posterWidth)
+        let width = density.points
         let columns = [GridItem(.adaptive(minimum: width, maximum: width + 20),
-                                spacing: CGFloat(density.spacing), alignment: .top)]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: CGFloat(density.spacing) + 8) {
+                                spacing: density.spacingPoints, alignment: .top)]
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: density.spacingPoints + 8) {
             ForEach(items) { item in
                 CollectionPoster(collection: item, server: server, width: width)
             }

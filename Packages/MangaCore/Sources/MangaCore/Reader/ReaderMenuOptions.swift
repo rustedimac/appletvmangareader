@@ -13,6 +13,8 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
     case background
     case webtoonWidth
     case autoScroll
+    /// Touch screens only (`items(for:touch:)`).
+    case tapZones
 
     public var id: String { rawValue }
 
@@ -29,6 +31,7 @@ public enum ReaderMenuItem: String, CaseIterable, Sendable, Identifiable {
         case .background: return "Background"
         case .webtoonWidth: return "Column Width"
         case .autoScroll: return "Auto-Scroll"
+        case .tapZones: return "Tap Zones"
         }
     }
 }
@@ -61,18 +64,21 @@ public enum ReaderMenuOptions {
     /// can't affect what's on screen are hidden (pairing in single-page
     /// layout, column width in paged mode, and so on), the way Mihon swaps
     /// its reading-mode sheet per mode.
-    public static func items(for settings: ReaderSettings) -> [ReaderMenuItem] {
+    /// `touch` adds the touch-screen rows (iPhone, iPad).
+    public static func items(for settings: ReaderSettings, touch: Bool = false) -> [ReaderMenuItem] {
+        var items: [ReaderMenuItem]
         switch settings.mode {
         case .paged:
-            var items: [ReaderMenuItem] = [.mode, .layout, .direction]
+            items = [.mode, .layout, .direction]
             if settings.layout == .double { items.append(.firstPageAlone) }
             items += [.fit, .cropBorders, .zoom]
             if settings.layout == .single { items.append(.splitWidePages) }
             items.append(.background)
-            return items
         case .webtoon:
-            return [.mode, .webtoonWidth, .autoScroll, .background]
+            items = [.mode, .webtoonWidth, .autoScroll, .background]
         }
+        if touch { items.append(.tapZones) }
+        return items
     }
 
     /// Magnifications offered for click-to-zoom in the paged reader.

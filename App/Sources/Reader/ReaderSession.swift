@@ -23,6 +23,8 @@ protocol WebtoonInputTarget: AnyObject {
     func jumpPage(forward: Bool)
     func toggleAutoScroll()
     func stickMoved(y: Double)
+    /// Scrolls one step (`webtoonScrollStep` of a screen), like a remote click.
+    func scrollStep(forward: Bool)
 }
 
 /// State shared by every reader mode for one reading session: the series,
@@ -254,7 +256,7 @@ final class ReaderSession {
         sizes = [:]
         crops = [:]
         pageFailures = [:]
-        navigator = ReaderNavigator(pageCount: 0, settings: settings)
+        navigator = ReaderNavigator(pageCount: 0, settings: layoutSettings)
         lastSaved = nil
         lastLocal = nil
         let task = Task { [server] in
@@ -288,7 +290,7 @@ final class ReaderSession {
         sizes = known
         let resume = startPage ?? model.resumePage(for: chapter, sessionPage: visitedPages[chapter.id])
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
-        navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: resume)
+        navigator = ReaderNavigator(sizes: sizeList, settings: layoutSettings, startPage: resume)
         loadState = .loaded
     }
 
@@ -306,7 +308,7 @@ final class ReaderSession {
         crops = [:]
         pageFailures = [:]
         let sizeList: [PageSize?] = (0..<ordered.count).map { known[$0] }
-        navigator = ReaderNavigator(sizes: sizeList, settings: settings, startPage: page)
+        navigator = ReaderNavigator(sizes: sizeList, settings: layoutSettings, startPage: page)
         lastSaved = nil
         lastLocal = nil
         loadState = .loaded
@@ -423,7 +425,7 @@ final class ReaderSession {
     func updateSettings(_ newSettings: ReaderSettings) {
         guard newSettings != settings else { return }
         settings = newSettings
-        navigator.updateSettings(newSettings)
+        navigator.updateSettings(layoutSettings)
         guard !isTutorial else { return }
         model.setReaderSettings(newSettings, for: series.ref)
     }
@@ -584,7 +586,42 @@ final class ReaderSession {
 
     /// Paged reader: the page was zoomed in or out (the view owns zoom).
     func noteZoom(_ zoomed: Bool) {
+        isZoomed = zoomed
         note(zoomed ? .zoomIn : .zoomOut)
+    }
+
+    // MARK: Touch screens
+
+    /// The paged reader is zoomed in (side taps then don't turn).
+    private(set) var isZoomed = false
+
+    /// The reader's window is taller than wide. Portrait shows single pages
+    /// (`ReaderTouch.effectiveLayout`); the saved layout isn't changed.
+    /// Always false on Apple TV.
+    var isPortrait = false {
+        didSet {
+            guard isPortrait != oldValue else { return }
+            navigator.updateSettings(layoutSettings)
+        }
+    }
+
+    /// `settings` as the navigator pairs pages with them.
+    var layoutSettings: ReaderSettings {
+        var s = settings
+        s.layout = ReaderTouch.effectiveLayout(s.layout, portrait: isPortrait)
+        return s
+    }
+
+    /// Vertical reader: one step down or up (touch tap zones).
+    func scrollStep(forward: Bool) {
+        guard loadState == .loaded else { return }
+        webtoonInput?.scrollStep(forward: forward)
+    }
+
+    /// Vertical reader: the next or previous page's top to the top (keyboard).
+    func jumpWebtoonPage(forward: Bool) {
+        guard loadState == .loaded else { return }
+        webtoonInput?.jumpPage(forward: forward)
     }
 
     /// Tutorial only: bookmarks the page on screen in memory.

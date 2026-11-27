@@ -17,7 +17,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView(.vertical) {
-                LazyVStack(alignment: .leading, spacing: 40) {
+                LazyVStack(alignment: .leading, spacing: platformValue(tv: 40, touch: Space.xl)) {
                     content
                     NavigationLink(value: Route.customize) {
                         Label("Customize Home", systemImage: "slider.horizontal.3")
@@ -29,6 +29,8 @@ struct HomeView: View {
                 }
                 .padding(.bottom, 60)
             }
+            .browseMargins()
+            .browseTitle("Home")
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
             .themedScreen()

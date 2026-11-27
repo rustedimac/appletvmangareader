@@ -33,14 +33,20 @@ struct BookReaderView: View {
             if let session {
                 BookReaderContent(session: session)
                     #if os(iOS)
-                    .readerTapZones { zone in
+                    .readerTapRegions { region in
                         guard !session.isMenuPresented else { return }
-                        switch zone {
-                        case .center: chromeVisible.toggle()
-                        case .leading: Task { await session.turn(forward: false) }
-                        case .trailing: Task { await session.turn(forward: true) }
+                        // Books read left to right; the profile's reader
+                        // Tap Zones apply.
+                        switch ReaderTouch.tap(region, zones: model.defaultReaderSettings.tapZones,
+                                               mode: .paged, direction: .leftToRight) {
+                        case .turn(let direction):
+                            chromeVisible = false
+                            Task { await session.turn(forward: direction == .right) }
+                        case .toggleChrome: chromeVisible.toggle()
+                        case .scroll, .none: break
                         }
                     }
+                    .ignoresSafeArea()
                     #endif
             } else if unsupported {
                 VStack(spacing: 20) {
@@ -53,16 +59,21 @@ struct BookReaderView: View {
                 ProgressView()
             }
             #if os(iOS)
-            if chromeVisible {
-                ReaderTouchChrome(title: series.title, subtitle: session?.chapter.title,
-                                  onClose: { session?.close(); dismiss() },
-                                  onOptions: { session?.isMenuPresented.toggle() })
+            if let session, chromeVisible || session.isMenuPresented {
+                ReaderTouchChrome(title: series.title, subtitle: session.chapter.title,
+                                  onClose: { session.close(); dismiss() },
+                                  optionsPresented: Binding(get: { session.isMenuPresented },
+                                                            set: { session.isMenuPresented = $0 }),
+                                  options: { BookReaderMenu(session: session).environment(model) },
+                                  bottom: { EmptyView() })
             }
             #endif
         }
         #if os(iOS)
         .animation(.easeInOut(duration: 0.2), value: chromeVisible)
         .readerSystemOverlays(visible: chromeVisible)
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         #else
         .ignoresSafeArea()
         #endif
@@ -123,10 +134,12 @@ private struct BookReaderContent: View {
                 }
                 // Keep focus inside the drawer while it's open.
                 .disabled(session.isMenuPresented)
+            #if os(tvOS)
             if session.isMenuPresented {
                 BookReaderMenu(session: session)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+            #endif
         }
         .animation(.easeInOut(duration: 0.2), value: session.isMenuPresented)
     }

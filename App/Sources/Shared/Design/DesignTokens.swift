@@ -1,4 +1,5 @@
 import SwiftUI
+import MangaCore
 
 // Design tokens. See docs/DESIGN_GUIDE.md for when to use each one.
 // tvOS values are points on the 1920 × 1080 tvOS canvas; iPhone and iPad
@@ -130,7 +131,7 @@ enum Size {
 /// Adaptive poster grid: `posterWidth` is the minimum column width
 /// (wider on iPad), columns fill the window.
 enum Grid {
-    static var posterWidth: CGFloat { UIDevice.current.userInterfaceIdiom == .pad ? 150 : 110 }
+    static var posterWidth: CGFloat { GridDensity.standard.points }
     static var posterHeight: CGFloat { posterWidth * 1.5 }
     static let columnSpacing: CGFloat = 12
     static let rowSpacing: CGFloat = 20

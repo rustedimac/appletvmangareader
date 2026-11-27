@@ -2,9 +2,10 @@ import SwiftUI
 import MangaCore
 
 enum PosterMetrics {
-    static let width: CGFloat = 230
+    /// The standard poster width on this device (`GridDensity.points`).
+    static var width: CGFloat { GridDensity.standard.points }
     static var height: CGFloat { width * 1.5 }
-    static let spacing: CGFloat = 48
+    static var spacing: CGFloat { GridDensity.standard.spacingPoints }
     /// How much `.posterButtonStyle()` scales a focused poster (measured
     /// on tvOS 26: about 1.1).
     static let focusScale: CGFloat = 1.1
@@ -51,7 +52,7 @@ struct SeriesPoster: View {
         let style = model.posterCaption
         let badges = PosterBadges(series: badgeSeries, caption: style)
         let showsPercent = model.browsePreferences.showsProgressPercent
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: platformValue(tv: 14, touch: Space.xs)) {
             link(badges, showsPercent: showsPercent)
                 .alert("Couldn't mark as unread", isPresented: Binding(get: { markError != nil }, set: { if !$0 { markError = nil } })) {
                     Button("OK", role: .cancel) {}
@@ -379,7 +380,7 @@ struct SeriesShelf: View {
                 .themedSectionLabel(.headline, fallback: .headline)
                 .accessibilityIdentifier("shelf.\(identifier ?? title)")
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: CGFloat(density.spacing)) {
+                LazyHStack(alignment: .top, spacing: density.spacingPoints) {
                     ForEach(series) { item in
                         SeriesPoster(series: item, showsServer: showsServer,
                                      onRemoveFromContinueReading: onRemove == nil ? nil : { onRemove?(item) })
@@ -387,8 +388,8 @@ struct SeriesShelf: View {
                 }
                 // Lazy stacks can keep cells at their old size; rebuild.
                 .id(density)
-                .environment(\.posterWidth, CGFloat(density.posterWidth))
-                .padding(.vertical, 30)
+                .environment(\.posterWidth, density.points)
+                .padding(.vertical, platformValue(tv: 30, touch: Space.s))
             }
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
@@ -415,10 +416,10 @@ struct SeriesGrid: View {
 
     var body: some View {
         let density = model.gridDensity
-        let width = CGFloat(density.posterWidth)
+        let width = density.points
         let columns = [GridItem(.adaptive(minimum: width, maximum: width + 20),
-                                spacing: CGFloat(density.spacing), alignment: .top)]
-        LazyVGrid(columns: columns, alignment: .leading, spacing: CGFloat(density.spacing) + 8) {
+                                spacing: density.spacingPoints, alignment: .top)]
+        LazyVGrid(columns: columns, alignment: .leading, spacing: density.spacingPoints + 8) {
             ForEach(Array(series.enumerated()), id: \.element.id) { index, item in
                 SeriesPoster(series: item, showsServer: showsServer, focus: focus)
                     .id(item.ref)
@@ -429,7 +430,7 @@ struct SeriesGrid: View {
         .id(density)
         .environment(\.posterWidth, width)
         .environment(\.layoutDirection, rightToLeft ? .rightToLeft : .leftToRight)
-        .padding(.vertical, 30)
+        .padding(.vertical, platformValue(tv: 30, touch: Space.s))
         .tvFocusSection()
     }
 }

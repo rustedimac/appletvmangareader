@@ -35,7 +35,10 @@ struct BookReaderMenu: View {
 
     private var settings: BookSettings { session.settings }
 
-    var body: some View {
+    /// tvOS: a drawer on the right. iPhone/iPad: the options popover/sheet.
+    @ViewBuilder
+    private var layout: some View {
+        #if os(tvOS)
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             panel
@@ -44,20 +47,29 @@ struct BookReaderMenu: View {
                 .background(.thickMaterial)
         }
         .ignoresSafeArea()
-        .tvFocusSection()
-        .defaultFocus($focus, "size.larger")
-        .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
-        // Menu closes an open list of choices first, then the drawer
-        // (`BookReaderSession.back()`). `ReaderRemoteCatcher` takes Menu
-        // while the drawer is open, so this is only a fallback.
-        .onRemoteExit { session.back() }
-        .onChange(of: session.menuPicker) { old, new in
-            guard new == nil, let old, tab == .settings else { return }
-            DispatchQueue.main.async { focus = old }
-        }
-        .onChange(of: tab) { _, _ in openPicker = nil }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("book.menu")
+        #else
+        panel
+            .padding(.horizontal, Space.l)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        #endif
+    }
+
+    var body: some View {
+        layout
+            .tvFocusSection()
+            .defaultFocus($focus, "size.larger")
+            .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
+            // Menu closes an open list of choices first, then the drawer
+            // (`BookReaderSession.back()`). `ReaderRemoteCatcher` takes Menu
+            // while the drawer is open, so this is only a fallback.
+            .onRemoteExit { session.back() }
+            .onChange(of: session.menuPicker) { old, new in
+                guard new == nil, let old, tab == .settings else { return }
+                DispatchQueue.main.async { focus = old }
+            }
+            .onChange(of: tab) { _, _ in openPicker = nil }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("book.menu")
     }
 
     private var panel: some View {

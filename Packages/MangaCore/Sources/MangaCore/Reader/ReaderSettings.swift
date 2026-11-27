@@ -50,6 +50,27 @@ public enum ReaderBackground: String, Codable, CaseIterable, Sendable, Identifia
     public var title: String { rawValue.capitalized }
 }
 
+/// What taps on the sides of the page do on a touch screen (iPhone, iPad).
+/// A tap in the middle always shows or hides the reader's controls.
+public enum TapZones: String, Codable, CaseIterable, Sendable, Identifiable {
+    /// The left and right thirds turn back and forward, following the
+    /// reading direction (the default).
+    case edges
+    /// Both side thirds go forward, for reading one-handed.
+    case leftHanded
+    /// Side taps only show or hide the controls; turn by swiping.
+    case off
+
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .edges: return "Left and Right"
+        case .leftHanded: return "Both Sides Forward"
+        case .off: return "Off"
+        }
+    }
+}
+
 /// How the paged reader sizes a spread against the screen.
 public enum PageFit: String, Codable, CaseIterable, Sendable, Identifiable {
     /// The whole spread is visible (the default).
@@ -97,6 +118,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
     public var splitWidePages: Bool
     /// Brightness, contrast, color mode, sharpening and upscaling.
     public var picture: PictureSettings
+    /// Touch screens: what side taps do. Ignored on Apple TV.
+    public var tapZones: TapZones
 
     public init(mode: ReadingMode = .paged,
                 direction: ReadingDirection = .rightToLeft,
@@ -110,7 +133,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
                 fit: PageFit = .screen,
                 zoomScale: Double = 2.0,
                 splitWidePages: Bool = false,
-                picture: PictureSettings = .default) {
+                picture: PictureSettings = .default,
+                tapZones: TapZones = .edges) {
         self.mode = mode
         self.direction = direction
         self.layout = layout
@@ -124,11 +148,13 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         self.zoomScale = zoomScale
         self.splitWidePages = splitWidePages
         self.picture = picture
+        self.tapZones = tapZones
     }
 
     private enum CodingKeys: String, CodingKey {
         case mode, direction, layout, firstPageAlone, shiftPairing, background
         case webtoonWidth, webtoonScrollStep, cropBorders, fit, zoomScale, splitWidePages, picture
+        case tapZones
     }
 
     /// Missing or unknown values fall back to the defaults, so settings
@@ -153,6 +179,7 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         zoomScale = value(.zoomScale, d.zoomScale)
         splitWidePages = value(.splitWidePages, d.splitWidePages)
         picture = value(.picture, d.picture)
+        tapZones = value(.tapZones, d.tapZones)
     }
 
     public static let `default` = ReaderSettings()

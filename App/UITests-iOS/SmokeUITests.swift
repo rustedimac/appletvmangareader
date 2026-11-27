@@ -33,6 +33,21 @@ final class SmokeUITests: XCTestCase {
         }
     }
 
+    /// iPhone has no Bookmarks tab; Favorites opens it. iPad has the tab.
+    func testBookmarksReachableOnEveryDevice() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-uiTestingTab", "favorites"]
+        app.launch()
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCTAssertTrue(tabButton("Bookmarks", in: app).waitForExistence(timeout: 10))
+        } else {
+            let button = app.buttons["favorites.bookmarks"]
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "No Bookmarks button in Favorites:\n\(app.debugDescription)")
+            button.tap()
+            XCTAssertTrue(app.staticTexts["No bookmarks yet"].waitForExistence(timeout: 5), "Bookmarks didn't open")
+        }
+    }
+
     func testDemoReaderTapZones() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-readerDemo"]

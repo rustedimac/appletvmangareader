@@ -55,6 +55,16 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - Idle timer stays off while the reader is open (already done for auto-scroll).
 - Play / auto-advance stays (Play button in the chrome) for the vertical auto-scroll and the paged page timer.
 
+### As built (step 2)
+
+- Rules live in MangaCore `ReaderTouch` (unit tested): `tap(_:zones:mode:direction:zoomed:)`, `swipeTurn`, zoom clamp (1x to 4x), double-tap target, `effectiveLayout` (portrait = single pages; the saved layout is untouched, `ReaderSession.layoutSettings`).
+- `ReaderSettings.tapZones` (`TapZones`: edges, leftHanded, off), saved per series with its row in Default Reader Settings (iOS only) and in the reader options (`ReaderMenuOptions.items(for:touch:)`). Snapshot `appstate-v1-2026-11-27-tapzones.json`.
+- While zoomed, side taps only toggle the chrome. Two taps within the double-tap interval count as a double-tap (zoom), so a side tap waits that long before turning; swipes don't.
+- Books use the profile's default Tap Zones (books have no per-series reader settings).
+- The vertical reader scrolls with a finger (its pan recognizer takes direct touches on iOS, gain 1); side taps scroll `webtoonScrollStep` of a screen.
+- Options: the same `ReaderMenu` / `BookReaderMenu` panels in a popover from the chrome's options button, a sheet (medium / large) on iPhone, with a Done button.
+- Not yet: long-press page menu (bookmark / share), the slider's thumbnails, orientation lock. Pinch in the vertical and book readers.
+
 ## 4. Layout
 
 - Poster grids use `GridItem(.adaptive(minimum:))` with a minimum from the token (`Grid.posterWidth`: 110 pt iPhone, 150 pt iPad, 217 tvOS) so the column count follows the window, including Split View and Stage Manager resizing.
@@ -62,6 +72,16 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - Series page: compact width stacks cover over details; regular width puts the cover on the leading side and the chapter list on the trailing side.
 - Settings: inset-grouped `Form`, standard iOS rows (`LabeledContent`, `Picker` with `.menu` / `.navigationLink` styles). `SettingsPicker` on iOS is a system `Picker` in navigation-link style.
 - Dynamic Type: every text uses text styles already (lint `check_design_tokens.py`); layouts must survive the accessibility sizes (rows wrap, grids drop columns).
+
+### As built (step 3)
+
+- Poster sizes per device: `GridDensity.points` / `spacingPoints` (iPhone 80 / 100 / 150, iPad 120 / 150 / 190; tvOS unchanged). `PosterMetrics` and `Grid.posterWidth` follow them.
+- Browse tabs get side margins (`browseMargins()`, safe-area padding so shelves still run to the screen edge) and large titles (`browseTitle(_:)`); a server's library page shows its name in the bar instead of a heading.
+- Series page: compact width puts a 120 pt cover beside the title and the rest below, with Continue as a full-width prominent button and bordered Favorite / sort / More under it; chapter rows put pages and date under the title. Regular width keeps the TV layout at 220 pt.
+- A–Z jump bar: a narrow iOS-style index.
+- iPhone: Bookmarks opens as a sheet from a button in Favorites.
+- `platformValue(tv:touch:)` for one-off spacings; the tvOS numbers are the old ones.
+- Not yet: servers and libraries listed in the iPad sidebar.
 
 ## 5. Files and local content
 
@@ -100,8 +120,8 @@ The first test build uses the Personal Team route: the maintainer's Mac builds t
 | Step | State |
 | --- | --- |
 | 1 Foundation | built; iPhone + iPad smoke tests pass on simulators |
-| 2 Touch reader | |
-| 3 Layouts | |
+| 2 Touch reader | built; iPhone + iPad touch UI tests pass on simulators |
+| 3 Layouts | built; browse screens, series page and library grid checked on iPhone and iPad simulators |
 | 4 System pieces | |
 | 5 Tests | |
 | 6 Device build | |

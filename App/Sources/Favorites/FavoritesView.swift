@@ -10,6 +10,12 @@ extension AppModel {
 
 struct FavoritesView: View {
     @Environment(AppModel.self) private var model
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// iPhone: Bookmarks has no tab of its own (IOSMainTabs), so it opens
+    /// from here.
+    @State private var showsBookmarks = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -25,6 +31,21 @@ struct FavoritesView: View {
                     }
                 }
             }
+            .browseMargins()
+            .browseTitle("Favorites")
+            #if os(iOS)
+            .toolbar {
+                if sizeClass == .compact {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showsBookmarks = true } label: {
+                            Label("Bookmarks", systemImage: "bookmark")
+                        }
+                        .accessibilityIdentifier("favorites.bookmarks")
+                    }
+                }
+            }
+            .sheet(isPresented: $showsBookmarks) { BookmarksView() }
+            #endif
             .seriesNavigation()
             .task(id: model.contentKey) { await model.refreshStaleFavorites() }
             .themedScreen()

@@ -34,6 +34,8 @@ struct BookmarksView: View {
                     .padding(.vertical, 30)
                 }
             }
+            .browseMargins()
+            .browseTitle("Bookmarks")
             .seriesNavigation()
             .themedScreen()
         }

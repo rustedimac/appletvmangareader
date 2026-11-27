@@ -41,6 +41,15 @@ struct PagedReaderView: View {
     /// move command arrives around then and is ignored.
     @State private var lastDragMove: Date = .distantPast
     @FocusState private var focused: Bool
+    #if os(iOS)
+    /// How far the spread follows a finger swiping to turn.
+    @State private var swipeOffset: CGFloat = 0
+    /// The viewport when a pinch began.
+    @State private var pinchStart: PagedViewport?
+    /// A one-finger drag is panning a zoomed (or bigger than the screen)
+    /// spread rather than swiping to turn.
+    @State private var touchPanning = false
+    #endif
     @Environment(\.displayScale) private var displayScale
     @Environment(\.imagePipeline) private var pipeline
 
@@ -69,6 +78,9 @@ struct PagedReaderView: View {
                         .transition(.opacity)
                 }
             }
+            #if os(iOS)
+            .offset(x: swipeOffset)
+            #endif
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
             .background {
@@ -76,7 +88,12 @@ struct PagedReaderView: View {
                 TouchSurfacePan(isEnabled: canDrag, onChanged: drag, onEnded: { dragStart = nil })
                 #endif
             }
-            .onChange(of: geo.size, initial: true) { _, size in container = size }
+            .onChange(of: geo.size, initial: true) { _, size in
+                container = size
+                #if os(iOS)
+                session.isPortrait = size.height > size.width
+                #endif
+            }
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())
@@ -86,6 +103,11 @@ struct PagedReaderView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
         .onRemoteMove(perform: handleMove)
+        #if os(iOS)
+        .gesture(touchDrag)
+        .simultaneousGesture(pinch)
+        .onTapGesture(count: 2, perform: doubleTapZoom)
+        #endif
         #if os(tvOS)
         // Holding Select zooms in.
         .onLongPressGesture(minimumDuration: 0.5) { zoomIn() }
@@ -265,6 +287,67 @@ struct PagedReaderView: View {
         let next = viewport.zoomed(to: zoom, canvas: currentCanvas, screen: screen)
         withAnimation(.easeInOut(duration: 0.25)) { viewport = next }
     }
+
+    #if os(iOS)
+    // MARK: Touch screen (docs/IOS.md §3; rules in MangaCore `ReaderTouch`)
+
+    /// One finger: pans a spread bigger than the screen (zoomed, Fit Width),
+    /// otherwise swipes to turn, with the spread following the finger.
+    private var touchDrag: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                guard session.edge == nil, !session.isMenuPresented, pinchStart == nil else { return }
+                if dragStart == nil {
+                    dragStart = viewport
+                    touchPanning = viewport.canDrag(canvas: currentCanvas, screen: screen)
+                }
+                if touchPanning, let start = dragStart {
+                    viewport = start.dragged(dx: Double(value.translation.width),
+                                             dy: Double(value.translation.height),
+                                             canvas: currentCanvas, screen: screen)
+                } else if abs(value.translation.width) > abs(value.translation.height) {
+                    swipeOffset = value.translation.width
+                }
+            }
+            .onEnded { value in
+                defer {
+                    dragStart = nil
+                    touchPanning = false
+                    withAnimation(.easeOut(duration: 0.2)) { swipeOffset = 0 }
+                }
+                if session.edge != nil {
+                    // The chapter transition card turns with a swipe too.
+                    if let turn = swipeTurn(value) { self.turn(turn) }
+                    return
+                }
+                guard !touchPanning, !viewport.isZoomed else { return }
+                if let direction = swipeTurn(value) { turn(direction) }
+            }
+    }
+
+    private func swipeTurn(_ value: DragGesture.Value) -> ScreenDirection? {
+        ReaderTouch.swipeTurn(dx: Double(value.translation.width), dy: Double(value.translation.height),
+                              velocity: Double(value.velocity.width), width: Double(container.width))
+    }
+
+    /// Two fingers: zoom 1x to `ReaderTouch.maxZoom` around the screen's middle.
+    private var pinch: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                guard session.edge == nil, session.currentSpread != nil else { return }
+                let start = pinchStart ?? viewport
+                if pinchStart == nil { pinchStart = start }
+                let zoom = ReaderTouch.clampedZoom(start.zoom * Double(value.magnification))
+                viewport = start.zoomed(to: zoom, canvas: currentCanvas, screen: screen)
+            }
+            .onEnded { _ in pinchStart = nil }
+    }
+
+    private func doubleTapZoom() {
+        guard session.edge == nil, session.currentSpread != nil, !session.isMenuPresented else { return }
+        setZoom(ReaderTouch.doubleTapTarget(currentZoom: viewport.zoom))
+    }
+    #endif
 
     // MARK: Preloading
 

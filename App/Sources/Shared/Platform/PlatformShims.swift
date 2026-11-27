@@ -1,4 +1,5 @@
 import SwiftUI
+import MangaCore
 
 // tvOS-only SwiftUI modifiers under names that also compile on iPhone/iPad.
 // On tvOS they forward to the real modifier. On iOS focus sections and the
@@ -66,5 +67,75 @@ struct PressDimButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.7 : 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+// MARK: Poster sizes per platform
+
+
+extension GridDensity {
+    /// Poster width on this device. tvOS uses MangaCore's 1080p values
+    /// unchanged; iPhone and iPad scale them to a hand-held screen (iPad a
+    /// bit larger), see docs/IOS.md §4.
+    var points: CGFloat {
+        #if os(tvOS)
+        CGFloat(posterWidth)
+        #else
+        let pad = UIDevice.current.userInterfaceIdiom == .pad
+        switch self {
+        case .compact: return pad ? 120 : 80
+        case .standard: return pad ? 150 : 100
+        case .large: return pad ? 190 : 150
+        }
+        #endif
+    }
+
+    /// Gap between posters on this device.
+    var spacingPoints: CGFloat {
+        #if os(tvOS)
+        CGFloat(spacing)
+        #else
+        switch self {
+        case .compact: return 10
+        case .standard: return 12
+        case .large: return 16
+        }
+        #endif
+    }
+}
+
+extension View {
+    /// Side margins for browse screens (Home, Library, Favorites, …). On
+    /// tvOS the safe area already gives 80 pt; an iPhone in portrait has
+    /// none, so posters would touch the glass.
+    @ViewBuilder func browseMargins() -> some View {
+        #if os(tvOS)
+        self
+        #else
+        safeAreaPadding(.horizontal, Space.l)
+        #endif
+    }
+}
+
+/// A spacing that differs between the 1080p TV canvas and a hand-held
+/// screen, for places that don't use a design token.
+func platformValue(tv: CGFloat, touch: CGFloat) -> CGFloat {
+    #if os(tvOS)
+    tv
+    #else
+    touch
+    #endif
+}
+
+extension View {
+    /// The large navigation title a browse tab has on iPhone and iPad. tvOS
+    /// tabs have no title (the tab bar names the screen).
+    @ViewBuilder func browseTitle(_ title: String) -> some View {
+        #if os(tvOS)
+        self
+        #else
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
