@@ -153,13 +153,29 @@ private struct ThemedScreen: ViewModifier {
     func body(content: Content) -> some View {
         content
             .tint(style.tint)
-            .buttonStyle(ThemedButtonStyle())
+            .modifier(ThemedButtons(themed: style.controls != nil))
             .modifier(TextColors(colors: style.text))
             .background {
                 if let ground = style.background {
                     ground.ignoresSafeArea()
                 }
             }
+    }
+}
+
+/// The theme's button style, or no style at all without a theme: even a
+/// pass-through style changes how system controls built on buttons (form
+/// Pickers) are put together, so the default theme sets none. Switching
+/// between a theme and the default rebuilds the screens below.
+private struct ThemedButtons: ViewModifier {
+    let themed: Bool
+
+    func body(content: Content) -> some View {
+        if themed {
+            content.buttonStyle(ThemedButtonStyle())
+        } else {
+            content
+        }
     }
 }
 
