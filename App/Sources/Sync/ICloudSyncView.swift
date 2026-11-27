@@ -28,7 +28,7 @@ struct ICloudSyncView: View {
                         .accessibilityIdentifier("icloud.syncNow")
                 }
             } header: {
-                Text("iCloud")
+                SettingsHeader("iCloud")
             } footer: {
                 Text(explanation)
                     .accessibilityIdentifier("icloud.explanation")
@@ -39,7 +39,7 @@ struct ICloudSyncView: View {
                 Text("Logins and API keys stay on this Apple TV. Enter them once on each device.")
                     .foregroundStyle(.secondary)
             } header: {
-                Text("What Syncs")
+                SettingsHeader("What Syncs")
             }
 
             Section {
@@ -51,7 +51,7 @@ struct ICloudSyncView: View {
                 }
                 .accessibilityIdentifier("icloud.backup")
             } header: {
-                Text("Backup")
+                SettingsHeader("Backup")
             } footer: {
                 Text("Works without iCloud. Download a backup file from a phone or computer on the same network, or restore one.")
             }

@@ -13,8 +13,7 @@ struct ContentSettingsView: View {
     private var filter: ContentFilter { model.contentFilter }
 
     var body: some View {
-        List {
-            ScreenTitle("Content & PIN")
+        Form {
             pinSection
             ageSection
             listSection(title: "Hidden Genres", names: facets?.genres, kind: "genre",
@@ -46,12 +45,13 @@ struct ContentSettingsView: View {
                         .accessibilityIdentifier("content.categories.\(server.name)")
                     }
                 } header: {
-                    Text("Libraries and Categories")
+                    SettingsHeader("Libraries and Categories")
                 } footer: {
                     Text("Untick a Kavita library or Suwayomi category to hide all of it from \(profile.name).")
                 }
             }
         }
+        .settingsPage("Content & PIN", systemImage: "lock.shield")
         .task { facets = await model.contentFacets() }
     }
 
@@ -88,7 +88,7 @@ struct ContentSettingsView: View {
                 .accessibilityIdentifier("content.setPIN")
             }
         } header: {
-            Text("PIN for \(profile.name)")
+            SettingsHeader("PIN for \(profile.name)")
         } footer: {
             Text(model.hasPIN(profile.id)
                  ? "The PIN is needed to change these settings, this profile, servers, or to add a profile. For a child's profile, leave \"Ask for PIN to Open\" off so they can still read."
@@ -124,7 +124,7 @@ struct ContentSettingsView: View {
                     }
                 }
             } header: {
-                Text("Age Limit")
+                SettingsHeader("Age Limit")
             } footer: {
                 Text("Uses Kavita's age ratings. Suwayomi has none, so hide its categories or genres instead.")
             }
@@ -164,7 +164,7 @@ struct ContentSettingsView: View {
                 }
             }
         } header: {
-            Text(title)
+            SettingsHeader(title)
         } footer: {
             Text("Series with a hidden \(kind) disappear from Home, Library, Search and Favorites.")
         }
