@@ -23,7 +23,7 @@ struct AlphabetJumpBar: View {
         }
         .padding(.vertical, 10)
         .padding(.trailing, 10)
-        .focusSection()
+        .tvFocusSection()
     }
 }
 

@@ -1,7 +1,11 @@
 import SwiftUI
 
-// Design tokens for the tvOS app. See docs/DESIGN_GUIDE.md for when to use
-// each one. Values are points on the 1920 × 1080 tvOS canvas.
+// Design tokens. See docs/DESIGN_GUIDE.md for when to use each one.
+// tvOS values are points on the 1920 × 1080 tvOS canvas; iPhone and iPad
+// values (docs/IOS.md §1) are the same names scaled for a hand-held screen.
+// The tvOS numbers must not change when iOS values do.
+
+#if os(tvOS)
 
 /// Screen margins. SwiftUI already applies the safe area; use these only in
 /// views that call `.ignoresSafeArea()`.
@@ -78,3 +82,58 @@ enum Grid {
     /// Poster bottom to the next poster's top, caption included (HIG: ≥ 100).
     static let rowSpacing: CGFloat = 100
 }
+
+#else
+
+/// Screen margins for views that call `.ignoresSafeArea()`.
+enum Layout {
+    static let safeTop: CGFloat = 16
+    static let safeBottom: CGFloat = 16
+    static let safeSide: CGFloat = 16
+    /// iOS windows resize (Split View, Stage Manager); measure instead.
+    static var safeWidth: CGFloat { 375 - 2 * safeSide }
+}
+
+/// Spacing scale on a 4 pt grid.
+enum Space {
+    static let xxs: CGFloat = 2
+    static let xs: CGFloat = 4
+    static let s: CGFloat = 8
+    static let m: CGFloat = 12
+    static let l: CGFloat = 16
+    static let xl: CGFloat = 24
+    static let xxl: CGFloat = 32
+}
+
+enum Radius {
+    static let small: CGFloat = 4
+    static let poster: CGFloat = 8
+    static let card: CGFloat = 12
+    static let panel: CGFloat = 20
+}
+
+enum Size {
+    /// HIG: 44 pt minimum touch target.
+    static let minTarget: CGFloat = 44
+    static let buttonMinWidth: CGFloat = 120
+    static let buttonMaxWidth: CGFloat = 400
+    static let formColumn: CGFloat = 700
+    static let heroColumn: CGFloat = 0
+    static let heroSymbol: CGFloat = 96
+    static let textField: CGFloat = 500
+    static let readableText: CGFloat = 640
+    static let messageText: CGFloat = 480
+    static let icon: CGFloat = 28
+    static let avatarRow: CGFloat = 32
+}
+
+/// Adaptive poster grid: `posterWidth` is the minimum column width
+/// (wider on iPad), columns fill the window.
+enum Grid {
+    static var posterWidth: CGFloat { UIDevice.current.userInterfaceIdiom == .pad ? 150 : 110 }
+    static var posterHeight: CGFloat { posterWidth * 1.5 }
+    static let columnSpacing: CGFloat = 12
+    static let rowSpacing: CGFloat = 20
+}
+
+#endif

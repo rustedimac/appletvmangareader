@@ -179,7 +179,7 @@ struct ServerLibraryView: View {
             .padding(.vertical, 20)
         }
         .scrollClipDisabled()
-        .focusSection()
+        .tvFocusSection()
     }
 
     private func load() async {

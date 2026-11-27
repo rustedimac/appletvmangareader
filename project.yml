@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.rustedimac
   deploymentTarget:
     tvOS: "17.0"
+    iOS: "18.0"
   createIntermediateGroups: true
 packages:
   MangaCore:
@@ -78,6 +79,83 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
         TARGETED_DEVICE_FAMILY: "3"
         CODE_SIGN_STYLE: Automatic
+  # iPhone and iPad. Same sources as the tvOS app; platform differences are
+  # `#if os(tvOS)` / `#if os(iOS)` in place. Same bundle id as the tvOS app
+  # so one App Store record covers both (universal purchase).
+  MangaReaderiOS:
+    type: application
+    platform: iOS
+    sources:
+      - App/Sources
+      # The tvOS brand assets (icon layers, Top Shelf) stay out; the iOS
+      # icon lives in App/Sources-iOS/Assets.xcassets.
+      - path: App/Resources
+        excludes: [Assets.xcassets]
+      - App/Sources-iOS
+    dependencies:
+      - package: MangaCore
+      - package: CeladonTheme
+      - package: RisographTheme
+    info:
+      path: App/iOS-Info.plist
+      properties:
+        CFBundleDisplayName: Manga Reader
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        # Follows the system light/dark setting (docs/IOS.md §1).
+        UIAppFonts: [Alegreya-Bold.ttf, LondrinaSolid-Black.ttf]
+        MRCloudKitContainer: $(MR_ICLOUD_CONTAINER)
+        UIApplicationSupportsIndirectInputEvents: true
+        # Split View and Slide Over on iPad.
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        ITSAppUsesNonExemptEncryption: false
+        GCSupportsControllerUserInteraction: true
+        GCSupportedGameControllers:
+          - ProfileName: ExtendedGamepad
+        CFBundleURLTypes:
+          - CFBundleURLName: com.rustedimac.MangaReader
+            CFBundleURLSchemes: [mangareader]
+        NSLocalNetworkUsageDescription: Manga Reader connects to your Kavita and Suwayomi servers on your local network.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_NAME: MangaReader
+        PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReader
+        MR_ICLOUD_CONTAINER: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        CODE_SIGN_STYLE: Automatic
+    # No entitlements: a free Personal Team profile can't hold App Groups or
+    # iCloud, and the iOS app must install without the paid membership.
+  MangaReaderiOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - App/UITests-iOS
+    dependencies:
+      - target: MangaReaderiOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rustedimac.MangaReaderiOSUITests
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
   MangaReaderTopShelf:
     type: tv-app-extension
     platform: tvOS
@@ -125,3 +203,10 @@ schemes:
     test:
       targets:
         - MangaReaderUITests
+  MangaReaderiOS:
+    build:
+      targets:
+        MangaReaderiOS: all
+    test:
+      targets:
+        - MangaReaderiOSUITests

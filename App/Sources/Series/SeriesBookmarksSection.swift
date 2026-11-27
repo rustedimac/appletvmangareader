@@ -26,7 +26,7 @@ struct SeriesBookmarksSection: View {
                 }
                 .scrollClipDisabled()
             }
-            .focusSection()
+            .tvFocusSection()
         }
     }
 

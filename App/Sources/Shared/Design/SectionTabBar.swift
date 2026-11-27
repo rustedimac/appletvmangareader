@@ -40,7 +40,7 @@ struct SectionTabBar<Tab: Hashable & Identifiable>: View {
         .padding(SectionTabMetrics.trackInset)
         .background(Capsule().fill(Color.primary.opacity(0.08)))
         .fixedSize()
-        .focusSection()
+        .tvFocusSection()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(trackIdentifier)
     }

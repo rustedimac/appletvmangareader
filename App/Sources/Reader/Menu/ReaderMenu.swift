@@ -52,14 +52,14 @@ struct ReaderMenu: View {
                 .background(.thickMaterial)
         }
         .ignoresSafeArea()
-        .focusSection()
+        .tvFocusSection()
         .defaultFocus($focus, initialFocus)
         .onAppear { setFocus(initialFocus) }
         // Menu closes an open list of choices first, then the drawer
         // (`ReaderSession.back()`). `ReaderRemoteCatcher` takes Menu while
         // the drawer is open, so this works whatever has focus, even none;
         // the handler here is only a fallback. Play/Pause is the catcher's.
-        .onExitCommand { session.back() }
+        .onRemoteExit { session.back() }
         // However the choices close (Menu, a pick), focus goes back to
         // their row. A tab switch closes them too; focus stays on the tab.
         .onChange(of: session.menuPicker) { old, new in
@@ -95,7 +95,7 @@ struct ReaderMenu: View {
                         // from the right-hand tabs, which have nothing
                         // directly above them inside the scroll view.
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .focusSection()
+                        .tvFocusSection()
                     SectionTabBar(tabs: Tab.allCases, selection: $tab, title: \.title,
                                   identifier: { "reader.menu.tab.\($0.rawValue)" },
                                   focus: $focus, focusKey: { "tab.\($0.rawValue)" },
@@ -153,7 +153,7 @@ struct ReaderMenu: View {
         // Full width and its own focus section, so pressing up from any tab
         // (even the right-most) reaches the bookmark button.
         .frame(maxWidth: .infinity, alignment: .leading)
-        .focusSection()
+        .tvFocusSection()
     }
 
     /// Bookmarks the page on screen, or removes its bookmark.
@@ -510,7 +510,7 @@ struct ReaderMenu: View {
                 // above (even the right-most) lands here rather than on
                 // the defaults buttons further down.
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
+                .tvFocusSection()
         }
     }
 

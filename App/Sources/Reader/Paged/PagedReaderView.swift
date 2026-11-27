@@ -72,7 +72,9 @@ struct PagedReaderView: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
             .background {
+                #if os(tvOS)
                 TouchSurfacePan(isEnabled: canDrag, onChanged: drag, onEnded: { dragStart = nil })
+                #endif
             }
             .onChange(of: geo.size, initial: true) { _, size in container = size }
         }
@@ -83,14 +85,16 @@ struct PagedReaderView: View {
         .focused($focused)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.paged")
-        .onMoveCommand(perform: handleMove)
+        .onRemoteMove(perform: handleMove)
+        #if os(tvOS)
         // Holding Select zooms in.
         .onLongPressGesture(minimumDuration: 0.5) { zoomIn() }
         // A click retries failed pages on screen first, otherwise zooms out.
         .onTapGesture { if !session.retryVisibleFailedPages(), viewport.isZoomed { setZoom(1) } }
+        #endif
         // Menu hides the page number, then zooms out; otherwise it falls
         // through to ReaderView (`ReaderSession.back()`, then close).
-        .onExitCommand(perform: exitAction)
+        .onRemoteExit(perform: exitAction)
         .onAppear {
             focused = true
         }
@@ -204,7 +208,7 @@ struct PagedReaderView: View {
         lastDragMove = Date()
     }
 
-    private func handleMove(_ direction: MoveCommandDirection) {
+    private func handleMove(_ direction: RemoteMoveDirection) {
         // The swipe that just dragged the page also arrives as a move
         // command; don't pan or turn a second time for it.
         if Date().timeIntervalSince(lastDragMove) < 0.35 { return }

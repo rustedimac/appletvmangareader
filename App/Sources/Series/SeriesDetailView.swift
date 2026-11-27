@@ -130,7 +130,7 @@ struct SeriesDetailView: View {
                 actions.padding(.top, 10)
             }
         }
-        .focusSection()
+        .tvFocusSection()
     }
 
     private var metaLine: String? {
@@ -218,7 +218,7 @@ struct SeriesDetailView: View {
                                markSeriesUnread: { markUnread(nil) })
                 }
             }
-            .focusSection()
+            .tvFocusSection()
         }
     }
 

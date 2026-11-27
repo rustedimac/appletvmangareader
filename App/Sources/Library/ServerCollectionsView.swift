@@ -70,7 +70,7 @@ struct ServerCollectionsView: View {
             }
         }
         .padding(.vertical, 30)
-        .focusSection()
+        .tvFocusSection()
     }
 
     private func load() async {
@@ -116,7 +116,7 @@ private struct CollectionPoster: View {
                 .frame(width: width, height: width * 1.5)
                 .clipped()
             }
-            .buttonStyle(.card)
+            .posterButtonStyle()
             .focused($isFocused)
             .accessibilityLabel(collection.title)
             .accessibilityValue(collection.caption ?? "")
@@ -267,7 +267,7 @@ struct ReadingListView: View {
                             row(entry, position: index + 1)
                         }
                     }
-                    .focusSection()
+                    .tvFocusSection()
                 }
             }
             .padding(.bottom, Space.xl)

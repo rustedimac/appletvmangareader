@@ -114,7 +114,7 @@ struct PanelChoiceList: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, Space.xs)
         }
-        .focusSection()
+        .tvFocusSection()
     }
 }
 

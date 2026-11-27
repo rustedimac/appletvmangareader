@@ -59,7 +59,7 @@ struct DeepLinkHost: View {
                 }
                 return PINGate<EmptyView>.feedback(result)
             }
-            .onExitCommand { dismiss() }
+            .onRemoteExit { dismiss() }
         } else {
             DeepLinkView(link: route.link)
         }
@@ -83,12 +83,12 @@ struct DeepLinkView: View {
             } else if let errorMessage {
                 BrowseMessage(title: "Couldn't open this series", message: errorMessage,
                               systemImage: "exclamationmark.triangle") { Task { await load() } }
-                    .onExitCommand { dismiss() }
+                    .onRemoteExit { dismiss() }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("deepLink.loading")
-                    .onExitCommand { dismiss() }
+                    .onRemoteExit { dismiss() }
             }
         }
         // No accessibilityIdentifier on this Group: it would land on each
