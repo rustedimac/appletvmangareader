@@ -85,18 +85,3 @@ struct RootView: View {
         }
     }
 }
-
-/// Shown by screens that have nothing to display yet.
-struct PlaceholderView: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text(title).font(.title2)
-            Text(message).foregroundStyle(.secondary)
-        }
-        .padding(80)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}

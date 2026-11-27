@@ -16,34 +16,34 @@ struct ReaderDefaultsView: View {
     var body: some View {
         Form {
             Section(settingsHeader: "Reading") {
-                SettingsPicker("Mode", selection: settings.mode, options: ReadingMode.allCases,
+                SettingsPicker(ReaderMenuItem.mode.title, selection: settings.mode, options: ReadingMode.allCases,
                                systemImage: "book") { $0.title }
                     .accessibilityIdentifier("readerDefaults.mode")
-                SettingsPicker("Direction", selection: settings.direction, options: ReadingDirection.allCases,
+                SettingsPicker(ReaderMenuItem.direction.title, selection: settings.direction, options: ReadingDirection.allCases,
                                systemImage: "arrow.left.arrow.right") { $0.title }
                     .accessibilityIdentifier("readerDefaults.direction")
-                SettingsPicker("Background", selection: settings.background, options: ReaderBackground.allCases,
+                SettingsPicker(ReaderMenuItem.background.title, selection: settings.background, options: ReaderBackground.allCases,
                                systemImage: "circle.lefthalf.filled") { $0.title }
                     .accessibilityIdentifier("readerDefaults.background")
             }
 
             Section {
-                SettingsPicker("Pages", selection: settings.layout, options: PageLayout.allCases,
+                SettingsPicker(ReaderMenuItem.layout.title, selection: settings.layout, options: PageLayout.allCases,
                                systemImage: "book.pages") { $0.title }
                     .accessibilityIdentifier("readerDefaults.layout")
-                Toggle("Show first page alone", isOn: settings.firstPageAlone)
+                Toggle(ReaderMenuItem.firstPageAlone.title, isOn: settings.firstPageAlone)
                     .accessibilityIdentifier("readerDefaults.firstPageAlone")
-                SettingsPicker("Page fit", selection: settings.fit, options: PageFit.allCases,
+                SettingsPicker(ReaderMenuItem.fit.title, selection: settings.fit, options: PageFit.allCases,
                                systemImage: "arrow.up.left.and.arrow.down.right") { $0.title }
                     .accessibilityIdentifier("readerDefaults.fit")
-                Toggle("Crop borders", isOn: settings.cropBorders)
+                Toggle(ReaderMenuItem.cropBorders.title, isOn: settings.cropBorders)
                     .accessibilityIdentifier("readerDefaults.cropBorders")
-                SettingsPicker("Click to zoom", selection: settings.zoomScale,
+                SettingsPicker(ReaderMenuItem.zoom.title, selection: settings.zoomScale,
                                options: Self.options(ReaderMenuOptions.zoomScales,
                                                      current: model.defaultReaderSettings.zoomScale),
                                systemImage: "plus.magnifyingglass") { ReaderMenuOptions.zoomLabel($0) }
                     .accessibilityIdentifier("readerDefaults.zoomScale")
-                Toggle("Split wide pages", isOn: settings.splitWidePages)
+                Toggle(ReaderMenuItem.splitWidePages.title, isOn: settings.splitWidePages)
                     .accessibilityIdentifier("readerDefaults.splitWidePages")
             } header: {
                 SettingsHeader("Paged")
@@ -52,26 +52,26 @@ struct ReaderDefaultsView: View {
             }
 
             Section {
-                Picker("Brightness", selection: settings.picture.brightness) {
-                    ForEach(Self.options(PictureSettings.brightnessSteps, current: model.defaultReaderSettings.picture.brightness), id: \.self) {
-                        Text(PictureSettings.brightnessLabel($0)).tag($0)
-                    }
-                }
-                .accessibilityIdentifier("readerDefaults.brightness")
-                Picker("Contrast", selection: settings.picture.contrast) {
-                    ForEach(Self.options(PictureSettings.contrastSteps, current: model.defaultReaderSettings.picture.contrast), id: \.self) {
-                        Text(PictureSettings.contrastLabel($0)).tag($0)
-                    }
-                }
-                Picker("Color", selection: settings.picture.color) {
-                    ForEach(PictureColorMode.allCases) { Text($0.title).tag($0) }
-                }
-                Picker("Sharpen", selection: settings.picture.sharpen) {
-                    ForEach(PictureSharpen.allCases) { Text($0.title).tag($0) }
-                }
-                Picker("Upscaling", selection: settings.picture.upscaling) {
-                    ForEach(PictureUpscaling.allCases) { Text($0.title).tag($0) }
-                }
+                SettingsPicker(PictureMenuItem.brightness.title, selection: settings.picture.brightness,
+                               options: Self.options(PictureSettings.brightnessSteps,
+                                                     current: model.defaultReaderSettings.picture.brightness),
+                               systemImage: "sun.max") { PictureSettings.brightnessLabel($0) }
+                    .accessibilityIdentifier("readerDefaults.brightness")
+                SettingsPicker(PictureMenuItem.contrast.title, selection: settings.picture.contrast,
+                               options: Self.options(PictureSettings.contrastSteps,
+                                                     current: model.defaultReaderSettings.picture.contrast),
+                               systemImage: "circle.righthalf.filled") { PictureSettings.contrastLabel($0) }
+                    .accessibilityIdentifier("readerDefaults.contrast")
+                SettingsPicker(PictureMenuItem.color.title, selection: settings.picture.color,
+                               options: PictureColorMode.allCases, systemImage: "paintpalette") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.color")
+                SettingsPicker(PictureMenuItem.sharpen.title, selection: settings.picture.sharpen,
+                               options: PictureSharpen.allCases, systemImage: "wand.and.stars") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.sharpen")
+                SettingsPicker(PictureMenuItem.upscaling.title, selection: settings.picture.upscaling,
+                               options: PictureUpscaling.allCases,
+                               systemImage: "arrow.up.left.and.arrow.down.right.magnifyingglass") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.upscaling")
             } header: {
                 SettingsHeader("Picture")
             } footer: {
@@ -79,11 +79,11 @@ struct ReaderDefaultsView: View {
             }
 
             Section(settingsHeader: "Vertical Scroll") {
-                SettingsPicker("Column width", selection: settings.webtoonWidth,
+                SettingsPicker(ReaderMenuItem.webtoonWidth.title, selection: settings.webtoonWidth,
                                options: Self.options(Self.widths, current: model.defaultReaderSettings.webtoonWidth),
                                systemImage: "arrow.left.and.right") { Self.percent($0) }
                     .accessibilityIdentifier("readerDefaults.webtoonWidth")
-                SettingsPicker("Scroll per click", selection: settings.webtoonScrollStep,
+                SettingsPicker("Scroll per Click", selection: settings.webtoonScrollStep,
                                options: Self.options(Self.steps, current: model.defaultReaderSettings.webtoonScrollStep),
                                systemImage: "arrow.down.to.line") { "\(Self.percent($0)) of the screen" }
                     .accessibilityIdentifier("readerDefaults.webtoonScrollStep")

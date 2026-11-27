@@ -8,7 +8,7 @@ and Free Library #32). Rules for App/Sources:
 
 1. No `.navigationTitle(`. Settings screens use `.settingsPage(title, ...)`
    (title in a side column, see docs/DESIGN_GUIDE.md); anything else puts its
-   title inside the scrolling content (`ScreenTitle` or a plain header view).
+   title inside the scrolling content (a plain header view).
 2. `.scrollClipDisabled()` only on horizontal ScrollViews (shelves, tab bars),
    where focus growth would otherwise be clipped. A vertical scroll view must
    clip, or hold its header inside its content. To allow one anyway, end the

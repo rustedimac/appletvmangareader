@@ -442,7 +442,7 @@ struct BrowseMessage: View {
     var retry: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Space.m) {
             Image(systemName: systemImage)
                 .font(.system(size: 64))
                 .foregroundStyle(.secondary)
@@ -451,13 +451,13 @@ struct BrowseMessage: View {
                 Text(message)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 900)
+                    .frame(maxWidth: Size.messageText)
             }
             if let retry {
                 Button("Try Again", action: retry)
             }
         }
-        .padding(60)
+        .padding(Space.xl)
         // Try Again is reachable from anywhere in the rows above or below.
         .centeredFocusRow()
     }
@@ -481,7 +481,7 @@ struct FormatBadge: View {
             .font(.caption2.bold())
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 6))
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: Radius.small))
             .foregroundStyle(.white)
             .accessibilityIdentifier("format.badge")
             .accessibilityLabel(text)
