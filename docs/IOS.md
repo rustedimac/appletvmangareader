@@ -64,7 +64,8 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - The vertical reader scrolls with a finger (its pan recognizer takes direct touches on iOS, gain 1); side taps scroll `webtoonScrollStep` of a screen.
 - Options: the same `ReaderMenu` / `BookReaderMenu` panels in a popover from the chrome's options button, a sheet (medium / large) on iPhone, with a Done button.
 - Polish (after step 6): long-press a page for Bookmark / Share Page (`ReaderPageMenu`, system share sheet with the page image); `ReaderSettings.orientationLock` (Follow Device / Portrait / Landscape, per series with its default in Default Reader Settings, snapshot `appstate-v1-2026-11-27-orientation`; iPhone only, since an iPad app that supports Split View can't lock its orientation; `OrientationGate` + the app delegate); the vertical reader's column fills a portrait window (`ReaderTouch.effectiveWebtoonWidth`, Column Width applies in landscape).
-- Not yet: the slider's thumbnails, pinch in the vertical and book readers.
+- iPad sidebar: a Servers section under the tabs opens each server's library (sidebar only, `TabSection` hidden from the tab bar). The page slider shows a thumbnail of the page under the finger while it moves.
+- Not yet: pinch in the vertical and book readers (the vertical reader fills the width in portrait instead).
 
 ## 4. Layout
 
@@ -82,7 +83,7 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - A–Z jump bar: a narrow iOS-style index.
 - iPhone: Bookmarks opens as a sheet from a button in Favorites.
 - `platformValue(tv:touch:)` for one-off spacings; the tvOS numbers are the old ones.
-- Not yet: servers and libraries listed in the iPad sidebar.
+- Servers are listed in the iPad sidebar (polish, see §3 "As built").
 
 ### As built (step 4)
 

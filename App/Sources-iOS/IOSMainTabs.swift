@@ -11,9 +11,13 @@ import SwiftUI
 /// into "More", so in compact width Bookmarks leaves the bar (it stays in the
 /// iPad bar and sidebar, and each series page lists its own bookmarks).
 /// TODO(PR 3): a Bookmarks entry in Favorites for compact width.
+///
+/// iPad sidebar: a Servers section under the tabs opens each server's
+/// library directly (sidebar only; the tab bar keeps the six tabs).
 struct IOSMainTabs: View {
     @Binding var tab: String
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         TabView(selection: $tab) {
@@ -43,6 +47,20 @@ struct IOSMainTabs: View {
                 SearchView()
             }
             .accessibilityIdentifier("tab.search")
+            if sizeClass != .compact, !model.servers.isEmpty {
+                TabSection("Servers") {
+                    ForEach(model.servers) { server in
+                        Tab(server.name, systemImage: server.kind.symbolName, value: "server.\(server.id)") {
+                            NavigationStack {
+                                ServerLibraryView(server: server)
+                                    .seriesNavigation()
+                            }
+                        }
+                        .accessibilityIdentifier("tab.server.\(server.id)")
+                    }
+                }
+                .defaultVisibility(.hidden, for: .tabBar)
+            }
         }
         .tabViewStyle(.sidebarAdaptable)
     }
