@@ -54,7 +54,9 @@ final class ReaderBackUITests: XCTestCase {
         wait(drawer, "exists == false", file: file, line: line)
         Thread.sleep(forTimeInterval: 0.5)
         XCTAssertTrue(reader(mode).exists, "Menu closed the reader, not just the options", file: file, line: line)
-        XCTAssertFalse(element("demo.openReader").exists, "the reader's cover was dismissed", file: file, line: line)
+        // The cover's presenter stays in the tree under the cover; it is
+        // only hittable once the cover is gone.
+        XCTAssertFalse(element("demo.openReader").isHittable, "the reader's cover was dismissed", file: file, line: line)
     }
 
     // MARK: Options tabs and rows
