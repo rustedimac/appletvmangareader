@@ -331,7 +331,10 @@ private struct ThemedMark: ViewModifier {
 
     func body(content: Content) -> some View {
         if theme.controls != nil {
-            content.foregroundStyle(isOn ? .primary : .secondary)
+            // Monochrome: a plate's two text styles would otherwise paint a
+            // filled symbol's cut-out (the tick in checkmark.circle.fill) too.
+            content.symbolRenderingMode(.monochrome)
+                .foregroundStyle(isOn ? .primary : .secondary)
         } else {
             content.foregroundStyle(isOn ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
         }
