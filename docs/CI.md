@@ -17,7 +17,7 @@ runs in the UI lint job).
 - **Smoke set**: the classes in `tools/ui_smoke_tests.txt`, plus every UI test file the PR adds or changes (so a PR's new tests always run on it). A PR that changes `App/UITests/UITestHelpers.swift` or `project.yml` runs the full suite. `tools/select_ui_tests.py` makes the choice and the job log prints the classes it picked.
 - **Full suite on a PR**: start the workflow by hand on the PR's branch (Actions, CI, Run workflow). Do this for changes that reach screens the smoke set doesn't cover, such as settings layout, Home rows, or server editors.
 - **Red main**: when a full run fails, the *Report main status* job opens an issue titled "CI is red on main", or comments on the open one. The next green full run closes it. Fixing a red main comes before merging anything else. Every merge runs the full suite, so the first red run points at the merge that broke it.
-- The UI job builds once (`build-for-testing`), then runs tests (`test-without-building`) on a tvOS simulator, with a 120 minute timeout (the full suite passed 90 minutes on 2026-11-26). Results stream into the job log as they finish, and the xcresult is uploaded when a run fails or times out.
+- The UI job builds once (`build-for-testing`), then runs tests (`test-without-building`) on a tvOS simulator, with a 180 minute timeout (the full suite passed 90 minutes, then 120, on 2026-11-26). Results stream into the job log as they finish, and the xcresult is uploaded when a run fails or times out.
 
 ### What limits CI, and what doesn't help
 

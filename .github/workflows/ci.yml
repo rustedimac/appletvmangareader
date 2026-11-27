@@ -65,8 +65,9 @@ jobs:
     # set about 18. Tests run one at a time on purpose: parallel simulator
     # clones made each test 2-5x slower on these 3-core runners (PR #42).
     # By 2026-11-26 it ran past 90 minutes (run 472, timed out in the last
-    # classes), so the limit is 120. See docs/CI.md.
-    timeout-minutes: 120
+    # classes), so the limit went to 120; a later run (PR #67) reached
+    # the last class at 120, so it is 180. See docs/CI.md.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
