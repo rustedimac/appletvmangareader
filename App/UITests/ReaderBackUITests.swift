@@ -180,6 +180,33 @@ final class ReaderBackUITests: XCTestCase {
         backClosesOptions("paged")
     }
 
+    func testBookBackClosesChoicesThenDrawer() {
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-readerDemo", "-readerDemoCover", "-readerBook"]
+        app.launch()
+        let book = element("book.reader")
+        XCTAssertTrue(book.waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 1)
+        remote.holdPlayPause()
+        XCTAssertTrue(element("book.menu").waitForExistence(timeout: 5))
+        wait(element("book.menu.size.larger"), "hasFocus == true")
+        let bookMenu = MenuRowDriver(app: app, prefix: "book.menu")
+        bookMenu.press("font")
+        XCTAssertTrue(element("book.menu.font.title").waitForExistence(timeout: 5))
+        remote.press(.menu)
+        wait(element("book.menu.font"), "hasFocus == true")
+        XCTAssertTrue(element("book.menu").exists, "the first Menu closes only the choices")
+        bookMenu.press("tab.contents")
+        XCTAssertTrue(element("book.toc.3").waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.5)
+        remote.press(.menu)
+        wait(element("book.menu"), "exists == false")
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(book.exists, "Menu closed the book, not just the drawer")
+        remote.press(.menu)
+        XCTAssertTrue(element("demo.openReader").waitForExistence(timeout: 5), "the next Menu closes the book")
+    }
+
     // MARK: From series detail
 
     func testBackClosesOptionsInAReaderOpenedFromSeriesDetail() {

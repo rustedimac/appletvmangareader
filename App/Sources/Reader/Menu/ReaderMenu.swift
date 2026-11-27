@@ -56,14 +56,15 @@ struct ReaderMenu: View {
         .defaultFocus($focus, initialFocus)
         .onAppear { setFocus(initialFocus) }
         // Menu closes an open list of choices first, then the drawer
-        // (`ReaderSession.back()`, so Back works whatever has focus).
-        // Play/Pause is `ReaderRemoteCatcher`'s.
-        .onExitCommand {
-            if session.menuPicker != nil {
-                closePicker()
-            } else {
-                session.back()
-            }
+        // (`ReaderSession.back()`). `ReaderRemoteCatcher` takes Menu while
+        // the drawer is open, so this works whatever has focus, even none;
+        // the handler here is only a fallback. Play/Pause is the catcher's.
+        .onExitCommand { session.back() }
+        // However the choices close (Menu, a pick), focus goes back to
+        // their row. A tab switch closes them too; focus stays on the tab.
+        .onChange(of: session.menuPicker) { old, new in
+            guard new == nil, let old, tab == .settings else { return }
+            setFocus(pickerSpec(old).key)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.menu")

@@ -258,6 +258,19 @@ Implementation notes for the fix PR:
   Y/☰ toggling the options must also respect it (closing the scrubber
   returns to the drawer).
 
+As built (2026-11-27, after John saw Back close the reader with the options
+open again): `onExitCommand` alone was not enough. Focus still drops out of
+the drawer at times (a tab switch, a focused row going away, a mode switch),
+and a Menu press then reaches the full-screen cover, which tvOS dismisses.
+So while the options or the scrubber are open, `ReaderRemoteCatcher` takes
+Menu with a window gesture recognizer (`takesMenu` / `onMenu`, gated on
+`ReaderSession.menuTakesBack`) and calls `ReaderSession.back()` itself; the
+press never reaches the views. Open choices inside the options are part of
+`back()` too (`menuPicker`). The book reader does the same with
+`BookReaderSession.back()`. Covered by `ReaderBackUITests` (TESTING_GUIDE
+CTL-05). With nothing open, Menu goes to the views as before (page number,
+zoom, play, then close).
+
 ---
 
 ## 6. Game controller mapping (extended gamepad: MFi, Xbox, PlayStation)

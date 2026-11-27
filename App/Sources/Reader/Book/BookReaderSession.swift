@@ -40,7 +40,24 @@ final class BookReaderSession {
     private(set) var layouts: [Int: BookSectionLayout] = [:]
     /// Non-nil while the start or end card is showing.
     private(set) var edge: ChapterEdge?
-    var isMenuPresented = false
+    var isMenuPresented = false {
+        didSet { if !isMenuPresented { menuPicker = nil } }
+    }
+    /// The drawer's settings row whose choices are open (`BookReaderMenu`).
+    var menuPicker: String?
+
+    /// Menu (Back): closes the drawer's open choices, then the drawer.
+    /// False when the drawer is closed, so the caller closes the reader.
+    @discardableResult
+    func back() -> Bool {
+        guard isMenuPresented else { return false }
+        if menuPicker != nil {
+            menuPicker = nil
+        } else {
+            isMenuPresented = false
+        }
+        return true
+    }
 
     @ObservationIgnored private let model: AppModel
     @ObservationIgnored private let pipeline: any ImageLoading

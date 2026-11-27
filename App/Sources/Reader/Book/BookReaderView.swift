@@ -46,12 +46,16 @@ struct BookReaderView: View {
                 ReaderRemoteCatcher(onPlayPause: {
                     // Nothing plays in a book; a press only closes the drawer.
                     if session.isMenuPresented { session.isMenuPresented = false }
-                }, onPlayPauseHold: { session.isMenuPresented.toggle() })
+                }, onPlayPauseHold: { session.isMenuPresented.toggle() },
+                // Menu with the drawer open closes it (or its open choices),
+                // never the reader, whatever has focus.
+                takesMenu: { session.isMenuPresented },
+                onMenu: { _ = session.back() })
             }
         }
         .onExitCommand {
-            if let session, session.isMenuPresented {
-                session.isMenuPresented = false
+            if let session, session.back() {
+                return
             } else {
                 session?.close()
                 dismiss()
