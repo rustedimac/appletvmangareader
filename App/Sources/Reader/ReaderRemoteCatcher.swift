@@ -120,13 +120,14 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
             tap.delaysTouchesEnded = false
             tap.delegate = self
 
-            // Menu, only while `takesMenu` (see `shouldReceive`). Presses
-            // are held back from the views until it fails, so a taken press
-            // never reaches `onExitCommand` or the cover's own dismissal.
+            // Menu, only while `takesMenu` (see `shouldReceive`). When it
+            // recognizes, the views get the press cancelled instead of
+            // ended (`cancelsTouchesInView`, on by default, covers presses),
+            // so a taken press never reaches `onExitCommand` or the cover's
+            // own dismissal, which both act on the press ending.
             let menu = UITapGestureRecognizer(target: self, action: #selector(menuPressed(_:)))
             menu.allowedPressTypes = [NSNumber(value: UIPress.PressType.menu.rawValue)]
             menu.allowedTouchTypes = []
-            menu.delaysPressesBegan = true
             menu.delegate = self
 
             menuRecognizer = menu
