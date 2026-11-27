@@ -530,16 +530,28 @@ final class ReaderSession {
         if isHUDVisible { isHUDVisible = false }
     }
 
+    /// Menu (Back) belongs to the open options or page scrubber, whatever
+    /// has focus (`ReaderRemoteCatcher.takesMenu`), so it can never fall
+    /// through to the full-screen cover and close the reader. Also true
+    /// just after a controller's ☰, whose Back echo `back()` ignores.
+    var menuTakesBack: Bool {
+        isMenuPresented || CACurrentMediaTime() - lastGamepadMenu < 0.35
+    }
+
     /// Menu (Back): closes the top layer. Returns false when nothing was
     /// open, so the caller closes the reader. Order (docs/READER_CONTROLS.md
-    /// section 5): scrubber (back to the options if it came from them),
-    /// options, page number, then auto-scroll or the page-turn timer. The
-    /// paged reader zooms out before asking here.
+    /// section 5): an open list of choices in the options, the scrubber
+    /// (back to the options if it came from them), options, page number,
+    /// then auto-scroll or the page-turn timer. The paged reader zooms out
+    /// before asking here.
     @discardableResult
     func back() -> Bool {
         if CACurrentMediaTime() - lastGamepadMenu < 0.35 { return true }
         if isMenuPresented {
-            if overlay == .scrubber, scrubberFromMenu {
+            if overlay == .menu, menuPicker != nil {
+                // ReaderMenu puts focus back on the row.
+                menuPicker = nil
+            } else if overlay == .scrubber, scrubberFromMenu {
                 overlay = .menu
                 scrubberFromMenu = false
             } else {

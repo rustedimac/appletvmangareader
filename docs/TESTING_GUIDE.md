@@ -176,6 +176,7 @@ server behaviour is worth a look.
 | CTL-01 | A | First-use hint and legend | Hint names the route on first opens, goes away with the options; Settings lists the button map | `ReaderControlsUITests`, `ReaderControlsTests` |
 | CTL-02 | A | Game controller mapping | Each button does what READER_CONTROLS.md section 10 says | `ReaderInputTests`, `ReaderControlsTests` |
 | CTL-04 | A | Controls tutorial | Offered once on the first reader open (Not Now keeps reading, Show Me runs it); each step waits for its input and other buttons don't break it; Menu leaves it; Settings > Remote and Controller replays it and shows the CC BY credit; nothing is saved | `ReaderTutorialUITests`, `ReaderTutorialTests` |
+| CTL-05 | A | Back with the options open | In a full-screen cover (as the app presents the reader) and from series detail, Menu closes open choices, then the scrubber or options, and the reader stays open: Settings, Chapters and Bookmarks tabs, after Set as Default / Reset, scrolled to the Controls legend, after switching paged to vertical, while zoomed (the next Menu zooms out), with the page timer or auto-scroll running, and in the book reader. Only the Menu after that closes the reader | `ReaderBackUITests`, `ReaderControlsUITests` |
 | CTL-03 | D | Real remote and controller | Siri Remote click, hold, swipe and Back behave as documented; a paired controller does too | manual |
 
 ### 3.9 Progress, sync, backup, saved data

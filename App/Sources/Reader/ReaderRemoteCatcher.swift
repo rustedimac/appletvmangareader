@@ -8,6 +8,14 @@ import UIKit
 ///   reader options open (docs/READER_CONTROLS.md section 10).
 /// - A **tap** on the touch surface, which is not a click: it shows the
 ///   page number (the HUD).
+/// - **Menu (Back)** while `takesMenu` says a reader layer (the options or
+///   the page scrubber) is open. SwiftUI's `onExitCommand` only runs when
+///   focus is inside the view that declares it; when focus drops out of
+///   the drawer for a moment (a focused row goes away, a tab switch, a
+///   reader mode switch), the press falls through to the full-screen cover
+///   the reader is in, and tvOS dismisses the cover: Back closed the reader
+///   with its options open. Taken here, the press never reaches the views,
+///   whatever has focus.
 ///
 /// Put it in the reader's background. While it is in a window it adds
 /// gesture recognizers to that window, so they see the remote whichever
@@ -21,6 +29,11 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
     var onPlayPauseHold: () -> Void
     /// A light tap on the touch surface with no click.
     var onTap: () -> Void = {}
+    /// True while Menu belongs to the reader (checked when the press
+    /// starts). False lets the press through to the views as usual.
+    var takesMenu: () -> Bool = { false }
+    /// Menu pressed while `takesMenu` was true.
+    var onMenu: () -> Void = {}
 
     static let holdDuration: TimeInterval = 0.5
 
@@ -62,6 +75,7 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
         var handlers: ReaderRemoteCatcher
         private weak var window: UIWindow?
         private var recognizers: [UIGestureRecognizer] = []
+        private weak var menuRecognizer: UIGestureRecognizer?
         /// When a click (Select) was last pressed, so a click's touch isn't
         /// also taken as a tap.
         private var lastSelect: CFTimeInterval = 0
@@ -106,7 +120,18 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
             tap.delaysTouchesEnded = false
             tap.delegate = self
 
-            recognizers = [hold, press, select, tap]
+            // Menu, only while `takesMenu` (see `shouldReceive`). When it
+            // recognizes, the views get the press cancelled instead of
+            // ended (`cancelsTouchesInView`, on by default, covers presses),
+            // so a taken press never reaches `onExitCommand` or the cover's
+            // own dismissal, which both act on the press ending.
+            let menu = UITapGestureRecognizer(target: self, action: #selector(menuPressed(_:)))
+            menu.allowedPressTypes = [NSNumber(value: UIPress.PressType.menu.rawValue)]
+            menu.allowedTouchTypes = []
+            menu.delegate = self
+
+            menuRecognizer = menu
+            recognizers = [hold, press, select, tap, menu]
             recognizers.forEach(window.addGestureRecognizer)
         }
 
@@ -124,6 +149,11 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
         @objc private func pressed(_ recognizer: UITapGestureRecognizer) {
             guard recognizer.state == .ended else { return }
             handlers.onPlayPause()
+        }
+
+        @objc private func menuPressed(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended else { return }
+            handlers.onMenu()
         }
 
         @objc private func tapped(_ recognizer: UITapGestureRecognizer) {
@@ -145,14 +175,20 @@ struct ReaderRemoteCatcher: UIViewRepresentable {
                 // Only noted; never let these recognizers take a click.
                 return false
             }
+            if press.type == .menu {
+                return gestureRecognizer.allowedPressTypes.contains(NSNumber(value: UIPress.PressType.menu.rawValue))
+                    && handlers.takesMenu()
+            }
             return true
         }
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                                shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-            // Never block the readers' own recognizers (the vertical
-            // reader's swipe pan) or the focus engine.
-            !recognizers.contains(other)
+            // A taken Menu is the reader's alone. Otherwise never block the
+            // readers' own recognizers (the vertical reader's swipe pan) or
+            // the focus engine.
+            if gestureRecognizer === menuRecognizer || other === menuRecognizer { return false }
+            return !recognizers.contains(other)
         }
     }
 }

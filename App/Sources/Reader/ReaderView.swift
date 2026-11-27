@@ -66,7 +66,12 @@ struct ReaderView: View {
                 // the remote belongs to them.
                 ReaderRemoteCatcher(onPlayPause: { if remoteIsOurs { session.playPausePressed() } },
                                     onPlayPauseHold: { if remoteIsOurs { session.playPauseHeld() } },
-                                    onTap: { if remoteIsOurs { session.toggleHUD() } })
+                                    onTap: { if remoteIsOurs { session.toggleHUD() } },
+                                    // Menu with the options or scrubber open
+                                    // closes them, never the reader, even
+                                    // when focus has dropped out of them.
+                                    takesMenu: { remoteIsOurs && session.menuTakesBack },
+                                    onMenu: { _ = session.back() })
             }
         }
         .onExitCommand {

@@ -17,8 +17,12 @@ struct BookReaderMenu: View {
     let session: BookReaderSession
 
     @State private var tab: Tab = .settings
-    /// The settings row whose choices are open, if any.
-    @State private var openPicker: String?
+    /// The settings row whose choices are open, if any (kept by the
+    /// session so Menu can close it from `ReaderRemoteCatcher`).
+    private var openPicker: String? {
+        get { session.menuPicker }
+        nonmutating set { session.menuPicker = newValue }
+    }
     @FocusState private var focus: String?
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -43,13 +47,13 @@ struct BookReaderMenu: View {
         .focusSection()
         .defaultFocus($focus, "size.larger")
         .onAppear { DispatchQueue.main.async { focus = "size.larger" } }
-        // Menu closes an open list of choices first, then the drawer.
-        .onExitCommand {
-            if openPicker != nil {
-                closePicker()
-            } else {
-                session.isMenuPresented = false
-            }
+        // Menu closes an open list of choices first, then the drawer
+        // (`BookReaderSession.back()`). `ReaderRemoteCatcher` takes Menu
+        // while the drawer is open, so this is only a fallback.
+        .onExitCommand { session.back() }
+        .onChange(of: session.menuPicker) { old, new in
+            guard new == nil, let old, tab == .settings else { return }
+            DispatchQueue.main.async { focus = old }
         }
         .onChange(of: tab) { _, _ in openPicker = nil }
         .accessibilityElement(children: .contain)
