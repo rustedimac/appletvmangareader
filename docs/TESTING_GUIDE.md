@@ -210,6 +210,20 @@ server behaviour is worth a look.
 | A11Y-01 | S | Large text and Bold Text | Largest Dynamic Type and Bold Text: no clipped labels, nothing off screen | manual |
 | A11Y-02 | S | VoiceOver | Tabs, posters, rows and reader pages read a sensible label; reader page says "Page N of M" | manual |
 
+### 3.12 iPhone and iPad
+
+Run on an iPhone and an iPad simulator (`MangaReaderiOS` scheme), and on a
+real device before a release. iOS UI tests live in `App/UITests-iOS`.
+
+| ID | Lvl | Check | Pass when | Covered by |
+| --- | --- | --- | --- | --- |
+| IOS-01 | A | Launch and tabs | iPhone: Home, Library, Favorites, Settings and a separate Search button, no More; iPad: all six tabs, sidebar toggle; every tab opens | iOS `SmokeUITests` |
+| IOS-02 | A | Reader chrome | Opens with the top bar (Close, title, bookmark, options) and the page bar; a centre tap hides both with the status bar, again shows them; Close closes the reader | iOS `ReaderTouchUITests` |
+| IOS-03 | A | Tap zones | Left and Right: side thirds turn following the reading direction; Both Sides Forward: either side goes forward; Off: side taps only toggle; vertical reader side taps scroll a step | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
+| IOS-04 | A | Swipe and zoom | A swipe turns (page follows the finger); pinch zooms up to 4x and pans; double-tap zooms to 2x and back; zoomed, side taps don't turn | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
+| IOS-05 | A | Orientation | Portrait shows single pages, landscape pairs spreads per Page Layout; rotating keeps the page | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
+| IOS-06 | S | Options | The options open as a sheet on iPhone, a popover on iPad, readable over any page, with Tap Zones; Done closes them | iOS `ReaderTouchUITests` |
+
 ## 4. A test pass, step by step
 
 1. Note the commit (`git rev-parse --short HEAD`), the date, the Xcode and

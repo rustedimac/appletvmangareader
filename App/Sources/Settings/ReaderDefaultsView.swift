@@ -27,6 +27,18 @@ struct ReaderDefaultsView: View {
                     .accessibilityIdentifier("readerDefaults.background")
             }
 
+            #if os(iOS)
+            Section {
+                SettingsPicker(ReaderMenuItem.tapZones.title, selection: settings.tapZones, options: TapZones.allCases,
+                               systemImage: "hand.tap") { $0.title }
+                    .accessibilityIdentifier("readerDefaults.tapZones")
+            } header: {
+                SettingsHeader("Touch")
+            } footer: {
+                Text("A tap in the middle of the page shows or hides the controls. Left and Right turns back and forward with the sides; Both Sides Forward turns forward with either side.")
+            }
+            #endif
+
             Section {
                 SettingsPicker(ReaderMenuItem.layout.title, selection: settings.layout, options: PageLayout.allCases,
                                systemImage: "book.pages") { $0.title }

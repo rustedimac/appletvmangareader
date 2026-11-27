@@ -39,6 +39,9 @@ enum SavedFormats {
         // Adds a profile's `contentFilter` and `requiresPINToOpen` (#19), on
         // top of every field above.
         "appstate-v1-2026-11-26-filters",
+        // Adds `tapZones` to reader settings (iPhone/iPad touch reader), on
+        // top of every field above.
+        "appstate-v1-2026-11-27-tapzones",
     ]
     static var newestAppState: String { appStateFixtures.last! }
 

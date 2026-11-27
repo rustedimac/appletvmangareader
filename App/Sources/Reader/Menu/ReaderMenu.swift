@@ -44,6 +44,30 @@ struct ReaderMenu: View {
     private var settings: ReaderSettings { session.settings }
 
     var body: some View {
+        layout
+            .tvFocusSection()
+            .defaultFocus($focus, initialFocus)
+            .onAppear { setFocus(initialFocus) }
+            // Menu closes an open list of choices first, then the drawer
+            // (`ReaderSession.back()`). `ReaderRemoteCatcher` takes Menu while
+            // the drawer is open, so this works whatever has focus, even none;
+            // the handler here is only a fallback. Play/Pause is the catcher's.
+            .onRemoteExit { session.back() }
+            // However the choices close (Menu, a pick), focus goes back to
+            // their row. A tab switch closes them too; focus stays on the tab.
+            .onChange(of: session.menuPicker) { old, new in
+                guard new == nil, let old, tab == .settings else { return }
+                setFocus(pickerSpec(old).key)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("reader.menu")
+    }
+
+    /// tvOS: a drawer on the right over the page. iPhone/iPad: the content
+    /// of the options popover (a sheet on iPhone), see ReaderTouchChrome.
+    @ViewBuilder
+    private var layout: some View {
+        #if os(tvOS)
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             panel
@@ -52,22 +76,11 @@ struct ReaderMenu: View {
                 .background(.thickMaterial)
         }
         .ignoresSafeArea()
-        .tvFocusSection()
-        .defaultFocus($focus, initialFocus)
-        .onAppear { setFocus(initialFocus) }
-        // Menu closes an open list of choices first, then the drawer
-        // (`ReaderSession.back()`). `ReaderRemoteCatcher` takes Menu while
-        // the drawer is open, so this works whatever has focus, even none;
-        // the handler here is only a fallback. Play/Pause is the catcher's.
-        .onRemoteExit { session.back() }
-        // However the choices close (Menu, a pick), focus goes back to
-        // their row. A tab switch closes them too; focus stays on the tab.
-        .onChange(of: session.menuPicker) { old, new in
-            guard new == nil, let old, tab == .settings else { return }
-            setFocus(pickerSpec(old).key)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("reader.menu")
+        #else
+        panel
+            .padding(.horizontal, Space.l)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        #endif
     }
 
     private var initialFocus: String { ReaderMenuItem.mode.rawValue }
@@ -202,7 +215,7 @@ struct ReaderMenu: View {
                 .padding(.top, 20)
         } else {
             VStack(alignment: .leading, spacing: Space.s) {
-                ForEach(ReaderMenuOptions.items(for: settings)) { item in
+                ForEach(ReaderMenuOptions.items(for: settings, touch: !Platform.isTV)) { item in
                     row(item)
                 }
                 if settings.mode == .paged {
@@ -225,7 +238,7 @@ struct ReaderMenu: View {
     @ViewBuilder
     private func row(_ item: ReaderMenuItem) -> some View {
         switch item {
-        case .mode, .layout, .direction, .fit, .zoom, .background:
+        case .mode, .layout, .direction, .fit, .zoom, .background, .tapZones:
             pickerRow(.setting(item))
         case .firstPageAlone:
             // The one pairing control. It is saved per series, so it also
@@ -320,6 +333,9 @@ struct ReaderMenu: View {
             case .background:
                 return spec(item, ReaderBackground.allCases.map { ($0, $0.rawValue, $0.title) },
                             selected: settings.background) { set(\.background, $0) }
+            case .tapZones:
+                return spec(item, TapZones.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.tapZones) { set(\.tapZones, $0) }
             case .firstPageAlone, .cropBorders, .splitWidePages, .webtoonWidth, .autoScroll:
                 // Toggles and steppers never open a list.
                 return PickerSpec(key: item.rawValue, title: item.title, choices: [], selected: "", pick: { _ in })

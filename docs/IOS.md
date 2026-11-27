@@ -55,6 +55,16 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - Idle timer stays off while the reader is open (already done for auto-scroll).
 - Play / auto-advance stays (Play button in the chrome) for the vertical auto-scroll and the paged page timer.
 
+### As built (step 2)
+
+- Rules live in MangaCore `ReaderTouch` (unit tested): `tap(_:zones:mode:direction:zoomed:)`, `swipeTurn`, zoom clamp (1x to 4x), double-tap target, `effectiveLayout` (portrait = single pages; the saved layout is untouched, `ReaderSession.layoutSettings`).
+- `ReaderSettings.tapZones` (`TapZones`: edges, leftHanded, off), saved per series with its row in Default Reader Settings (iOS only) and in the reader options (`ReaderMenuOptions.items(for:touch:)`). Snapshot `appstate-v1-2026-11-27-tapzones.json`.
+- While zoomed, side taps only toggle the chrome. Two taps within the double-tap interval count as a double-tap (zoom), so a side tap waits that long before turning; swipes don't.
+- Books use the profile's default Tap Zones (books have no per-series reader settings).
+- The vertical reader scrolls with a finger (its pan recognizer takes direct touches on iOS, gain 1); side taps scroll `webtoonScrollStep` of a screen.
+- Options: the same `ReaderMenu` / `BookReaderMenu` panels in a popover from the chrome's options button, a sheet (medium / large) on iPhone, with a Done button.
+- Not yet: long-press page menu (bookmark / share), the slider's thumbnails, orientation lock. Pinch in the vertical and book readers.
+
 ## 4. Layout
 
 - Poster grids use `GridItem(.adaptive(minimum:))` with a minimum from the token (`Grid.posterWidth`: 110 pt iPhone, 150 pt iPad, 217 tvOS) so the column count follows the window, including Split View and Stage Manager resizing.
@@ -100,7 +110,7 @@ The first test build uses the Personal Team route: the maintainer's Mac builds t
 | Step | State |
 | --- | --- |
 | 1 Foundation | built; iPhone + iPad smoke tests pass on simulators |
-| 2 Touch reader | |
+| 2 Touch reader | built; iPhone + iPad touch UI tests pass on simulators |
 | 3 Layouts | |
 | 4 System pieces | |
 | 5 Tests | |

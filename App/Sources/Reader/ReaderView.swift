@@ -60,23 +60,32 @@ struct ReaderView: View {
             if let session {
                 ReaderContent(session: session)
                     #if os(iOS)
-                    .readerTapZones { zone in handleTap(zone, session: session) }
+                    .readerTapRegions { region in handleTap(region, session: session) }
+                    .ignoresSafeArea()
                     #endif
             } else {
                 ProgressView()
             }
             #if os(iOS)
-            if chromeVisible {
-                ReaderTouchChrome(title: session?.series.title ?? series.title,
-                                  subtitle: session?.chapter.title,
+            if let session, chromeVisible || session.isMenuPresented {
+                ReaderTouchChrome(title: session.series.title, subtitle: session.chapter.title,
+                                  isBookmarked: session.isTutorial ? nil : session.isShowingBookmarkedPage,
+                                  onBookmark: { session.toggleBookmark() },
                                   onClose: closeReader,
-                                  onOptions: { session?.isMenuPresented.toggle() })
+                                  optionsPresented: Binding(get: { session.isMenuPresented && session.overlay == .menu },
+                                                            set: { session.isMenuPresented = $0 }),
+                                  options: { ReaderMenu(session: session).environment(model) },
+                                  bottom: { ReaderPageBar(session: session) })
             }
             #endif
         }
         #if os(iOS)
         .animation(.easeInOut(duration: 0.2), value: chromeVisible)
         .readerSystemOverlays(visible: chromeVisible)
+        .readerKeyboardShortcuts(session: session, onClose: closeReader)
+        // Reading shouldn't dim and lock the screen.
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         #else
         .ignoresSafeArea()
         #endif
@@ -151,17 +160,25 @@ struct ReaderView: View {
 
     /// Centre: chrome. Sides: page turn (paged) or one screen of scroll
     /// (vertical; finger scrolling works natively there).
-    private func handleTap(_ zone: ReaderTapZone, session: ReaderSession) {
+    /// Centre: chrome. Sides: by the Tap Zones setting (MangaCore
+    /// `ReaderTouch.tap`): turn (paged), scroll a step (vertical).
+    private func handleTap(_ region: TapRegion, session: ReaderSession) {
         guard !session.isMenuPresented else { return }
         // A tap on a page that failed to load retries it first.
         if session.retryVisibleFailedPages() { return }
-        switch zone {
-        case .center:
+        let action = ReaderTouch.tap(region, zones: session.settings.tapZones, mode: session.settings.mode,
+                                     direction: session.settings.direction, zoomed: session.isZoomed)
+        switch action {
+        case .toggleChrome:
             chromeVisible.toggle()
-        case .leading, .trailing:
-            if chromeVisible { chromeVisible = false }
-            guard session.settings.mode == .paged else { return }
-            session.turn(zone == .leading ? .left : .right)
+        case .turn(let direction):
+            chromeVisible = false
+            session.turn(direction)
+        case .scroll(let forward):
+            chromeVisible = false
+            session.scrollStep(forward: forward)
+        case .none:
+            break
         }
     }
     #endif
@@ -195,8 +212,14 @@ private struct ReaderContent: View {
             if session.isMenuPresented {
                 switch session.overlay {
                 case .menu:
+                    #if os(tvOS)
                     ReaderMenu(session: session)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
+                    #else
+                    // iPhone/iPad: the options open from the chrome's button
+                    // as a popover (a sheet on iPhone), see ReaderTouchChrome.
+                    EmptyView()
+                    #endif
                 case .scrubber:
                     PageScrubberView(session: session)
                         .transition(.move(edge: .bottom).combined(with: .opacity))

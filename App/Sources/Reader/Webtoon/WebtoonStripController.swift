@@ -46,7 +46,12 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
     private var userHasScrolled = false
     private var panStartOffset: CGFloat = 0
     /// Remote touch-surface travel to content travel.
+    #if os(tvOS)
     private let swipeGain: CGFloat = 1.5
+    #else
+    /// A finger on glass: the strip moves exactly with it.
+    private let swipeGain: CGFloat = 1
+    #endif
     /// When auto-scroll was last turned on or off. A second toggle right
     /// after is dropped, in case one controller press arrives both as a
     /// Play/Pause press and as the X button.
@@ -78,7 +83,13 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         // and every movement through the driver.
         sv.isScrollEnabled = false
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        #if os(tvOS)
         pan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        #else
+        // iPhone/iPad: fingers, Apple Pencil and trackpads.
+        pan.allowedTouchTypes = [UITouch.TouchType.direct, .indirect, .pencil, .indirectPointer]
+            .map { NSNumber(value: $0.rawValue) }
+        #endif
         pan.allowedPressTypes = []
         sv.addGestureRecognizer(pan)
         sv.onPress = { [weak self] type, began in self?.handlePress(type, began: began) ?? false }
@@ -553,6 +564,19 @@ final class WebtoonStripController: NSObject, UIScrollViewDelegate, WebtoonInput
         let speed = GamepadStick.scrollSpeed(y: y, viewport: Double(viewport.height))
         if speed != 0 { userHasScrolled = true }
         driver.stickVelocity = CGFloat(speed)
+    }
+
+    /// One step down or up, as a remote click does (touch tap zones).
+    func scrollStep(forward: Bool) {
+        if driver.autoLevel != nil { changeAutoScrollSpeed(by: forward ? 1 : -1); return }
+        userHasScrolled = true
+        session.note(.scroll)
+        let from = driver.target ?? scrollView.contentOffset.y
+        let target = WebtoonScrolling.stepTarget(from: Double(from), forward: forward,
+                                                 viewport: Double(viewport.height),
+                                                 step: settings.webtoonScrollStep,
+                                                 maxOffset: Double(maxOffsetPoints))
+        driver.glide(to: CGFloat(target))
     }
 
     /// Puts the top of the next (or previous) page at the top of the screen.
