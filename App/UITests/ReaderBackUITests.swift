@@ -67,7 +67,8 @@ final class ReaderBackUITests: XCTestCase {
         backClosesOptions("paged")
         // Back again now closes the reader.
         remote.press(.menu)
-        XCTAssertTrue(element("demo.openReader").waitForExistence(timeout: 5))
+        wait(reader("paged"), "exists == false")
+        XCTAssertTrue(element("demo.openReader").isHittable, "the second Menu closes the reader")
     }
 
     func testPagedBackFromChaptersTab() {
@@ -206,7 +207,8 @@ final class ReaderBackUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.5)
         XCTAssertTrue(book.exists, "Menu closed the book, not just the drawer")
         remote.press(.menu)
-        XCTAssertTrue(element("demo.openReader").waitForExistence(timeout: 5), "the next Menu closes the book")
+        wait(book, "exists == false")
+        XCTAssertTrue(element("demo.openReader").isHittable, "the next Menu closes the book")
     }
 
     // MARK: From series detail
