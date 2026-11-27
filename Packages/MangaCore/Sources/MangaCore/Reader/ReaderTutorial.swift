@@ -105,6 +105,10 @@ public enum ReaderTutorial {
     public static let sampleCredit =
         "Sample: “Pepper&Carrot”, Episode 1: The Potion of Flight, by David Revoy (www.peppercarrot.com), "
         + "CC BY 4.0. English proofreading by Amireeti and Alex Gryson."
+    /// The short form for tight spots (Settings > Remote and Controller,
+    /// beside the tutorial button). The tutorial's last card shows the full
+    /// `sampleCredit`, proofreaders included.
+    public static let shortCredit = "Sample: “Pepper&Carrot” by David Revoy, CC BY 4.0."
     public static let sampleLicenseURL = URL(string: "https://creativecommons.org/licenses/by/4.0/")!
     /// The bundled pages, in reading order (App/Resources/Tutorial).
     public static let samplePageNames = [

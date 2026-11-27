@@ -77,6 +77,76 @@ final class DesignLayoutUITests: XCTestCase {
                              first: app.element("readerDefaults.mode"), last: app.element("readerDefaults.reset"))
     }
 
+    /// Settings > Remote and Controller on every tab: the section tabs sit
+    /// below the system tab bar, and nothing (legend lines, footnote, the
+    /// tutorial button and its caption) ends up past the bottom safe area
+    /// where it can't be reached. Tabs with a tutorial may scroll: focusing
+    /// the button, the page's last row, must bring everything below the
+    /// legend into view. Tabs without one have nothing to focus below the
+    /// tabs, so they must fit outright. (John, 2026-11-27: tabs on top of
+    /// the tab bar and the credit cut off with no way to scroll.)
+    func testControlsPageNeverClips() {
+        let app = XCUIApplication.launched(tab: "settings")
+        select(app.element("settings.controls"))
+        XCTAssertTrue(app.element("controls.tabs").waitForExistence(timeout: 5))
+        let screen = app.windows.firstMatch.frame
+        let scale = screen.width / 1920
+        // Tab bar: 68 pt tall, 46 pt from the top (DESIGN_GUIDE §2).
+        let tabBarBottom: CGFloat = (46 + 68) * scale
+        let bottomLimit = screen.maxY - (60 - 4) * scale
+
+        var onTutorial = false
+        for tab in ["paged", "webtoon", "book", "gamepad", "chapters"] {
+            let tabButton = app.element("controls.tab.\(tab)")
+            if onTutorial {
+                // Up from the tutorial button lands on one of the tabs.
+                remote.press(.up)
+                Thread.sleep(forTimeInterval: 0.6)
+                onTutorial = false
+            }
+            focus(tabButton, .right)
+            remote.press(.select)
+            Thread.sleep(forTimeInterval: 0.8)
+            audit(app, "settings-controls-\(tab)")
+
+            let track = app.element("controls.tabs").frame
+            XCTAssertGreaterThanOrEqual(track.minY, tabBarBottom,
+                                        "[\(tab)] section tabs at y=\(Int(track.minY / scale)) run under the tab bar")
+
+            let tutorial = app.element("controls.tutorial.\(tab)")
+            if tutorial.exists {
+                focus(tutorial, .down)
+                onTutorial = true
+                Thread.sleep(forTimeInterval: 0.8)
+                audit(app, "settings-controls-\(tab)-bottom")
+            }
+            // One snapshot: every legend line, the footnote, the button and
+            // its caption, at their current (possibly scrolled) positions.
+            guard let root = snapshot(of: app) else { continue }
+            let prefix = "controls.\(tab)."
+            let items = all(in: root) {
+                $0.identifier.hasPrefix(prefix) || $0.identifier == "controls.footnote"
+                    || $0.identifier.hasPrefix("controls.tutorial.")
+            }
+            XCTAssertFalse(items.filter { $0.identifier.hasPrefix(prefix) }.isEmpty, "[\(tab)] no legend lines")
+            // With the tutorial focused, lines scrolled up past the top are
+            // fine; the ones at the end of the page must be in view.
+            let mustShow = tutorial.exists
+                ? items.filter { !$0.identifier.hasPrefix(prefix) }
+                    + Array(items.filter { $0.identifier.hasPrefix(prefix) }.suffix(1))
+                : items
+            for item in mustShow where !item.frame.isEmpty {
+                XCTAssertLessThanOrEqual(item.frame.maxY, bottomLimit,
+                                         "[\(tab)] \(describe(item)) ends at y=\(Int(item.frame.maxY / scale)), "
+                                         + "past the bottom safe area")
+                if !tutorial.exists {
+                    XCTAssertGreaterThanOrEqual(item.frame.minY, tabBarBottom,
+                                                "[\(tab)] \(describe(item)) is under the tab bar")
+                }
+            }
+        }
+    }
+
     func testWelcome() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-welcome"]

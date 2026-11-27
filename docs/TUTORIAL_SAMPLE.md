@@ -19,9 +19,10 @@ in the app) reads three bundled pages in `App/Resources/Tutorial/`.
   https://creativecommons.org/licenses/by/4.0/ . Commercial use allowed with
   credit. The site also asks that the work not be used to train or derive AI
   models; the app only displays it.
-- Credit shown in the app (`ReaderTutorial.sampleCredit`): on the
-  tutorial's last step and under Settings > Remote and Controller >
-  Learn the Controls.
+- Credit shown in the app: the full `ReaderTutorial.sampleCredit` on the
+  tutorial's last step, and the short `ReaderTutorial.shortCredit` (title,
+  author, license) beside Settings > Remote and Controller > Learn the
+  Controls.
 
 Human-made work with a clear license, as the project's sample rule
 requires. Don't swap in AI-generated or commercial pages; code-drawn
