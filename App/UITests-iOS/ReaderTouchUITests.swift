@@ -111,10 +111,48 @@ final class ReaderTouchUITests: XCTestCase {
         XCTAssertTrue(element("reader.page.1").exists)
     }
 
+    func testLongPressBookmarksThePage() {
+        launch()
+        let bookmark = element("reader.chrome.bookmark")
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 5))
+        XCTAssertEqual(bookmark.label, "Bookmark This Page")
+        point(0.5, 0.5).press(forDuration: 1.0)
+        // iPad shows the dialog as a popover whose button can appear twice.
+        let menuItem = app.buttons["reader.pageMenu.bookmark"].firstMatch
+        XCTAssertTrue(menuItem.waitForExistence(timeout: 5), "No page menu:\n\(app.debugDescription)")
+        XCTAssertTrue(app.buttons["reader.pageMenu.share"].firstMatch.exists)
+        menuItem.tap()
+        let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == 'Remove Bookmark'"), object: bookmark)
+        XCTAssertEqual(XCTWaiter().wait(for: [removed], timeout: 5), .completed, "Page wasn't bookmarked")
+    }
+
+    func testOrientationLockTurnsTheReader() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPad apps with Split View can't lock orientation")
+        XCUIDevice.shared.orientation = .portrait
+        launch()
+        element("reader.chrome.options").tap()
+        let row = element("reader.menu.orientationLock")
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        for _ in 0..<6 where !(row.exists && row.isHittable) { element("reader.menu").swipeUp() }
+        row.tap()
+        // The reader turns right away, options still open.
+        element("reader.menu.orientationLock.landscape").tap()
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let wide = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let f = self.app.windows.firstMatch.frame
+            return f.width > f.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [wide], timeout: 8), .completed, "Reader didn't turn to landscape")
+    }
+
     func testVerticalReaderSideTapsScroll() {
         launch(["-readerMode", "webtoon"])
         expectPage("1 / 6")
+        // Full-width pages can be taller than the screen: two steps.
         point(0.9, 0.5).tap()
+        sleep(1)
+        point(0.9, 0.5).tap()
+        sleep(1)
         point(0.5, 0.5).tap()
         let label = element("reader.chrome.pageNumber")
         let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != '1 / 6'"), object: label)

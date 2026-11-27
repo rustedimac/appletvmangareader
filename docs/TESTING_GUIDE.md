@@ -224,6 +224,7 @@ real device before a release. iOS UI tests live in `App/UITests-iOS`.
 | IOS-05 | A | Orientation | Portrait shows single pages, landscape pairs spreads per Page Layout; rotating keeps the page | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-07 | S | Layouts | iPhone: three poster columns in a library, posters inset from the edges, series page with cover beside title and full-width Continue; iPad: more columns, regular series layout; Split View switches to the iPhone layout; Bookmarks opens from Favorites on iPhone | iOS `SmokeUITests`, manual look |
 | IOS-08 | A | System pieces | Settings > iCloud Sync and Backup > Back Up and Restore exports a backup to Files and restores one (an Apple TV backup too); no "Set Up from Your Phone" in the server editor; no Remote and Controller page; light and dark follow the system with the Default theme | iOS `SystemUITests`, manual look |
+| IOS-09 | S | Page menu and orientation | Long-press a page: Bookmark This Page / Remove Bookmark and Share Page (share sheet with the page image); iPhone: Orientation (Follow Device / Portrait / Landscape) turns and holds the reader (not offered on iPad, where Split View apps can't lock), per series, with a default in Default Reader Settings; a portrait vertical reader fills the width | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-06 | S | Options | The options open as a sheet on iPhone, a popover on iPad, readable over any page, with Tap Zones; Done closes them | iOS `ReaderTouchUITests` |
 
 ## 4. A test pass, step by step

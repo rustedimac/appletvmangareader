@@ -1,0 +1,438 @@
+{
+  "activeProfileID" : "0E5B8C3A-2222-4A7B-9C3D-000000000002",
+  "freeLibraryRemoved" : true,
+  "profileData" : {
+    "0E5B8C3A-1111-4A7B-9C3D-000000000001" : {
+      "bookSettings" : {
+        "columns" : 1,
+        "font" : "sans",
+        "fontSize" : 44,
+        "justified" : false,
+        "lineSpacing" : "relaxed",
+        "theme" : "sepia"
+      },
+      "bookmarks" : [
+        {
+          "chapterID" : "v3",
+          "chapterNumber" : 3,
+          "chapterTitle" : "Volume 3",
+          "createdAt" : 785000710,
+          "needsUpload" : true,
+          "page" : 11,
+          "series" : {
+            "chapterCount" : 9,
+            "countUnit" : "volume",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
+            "feedDate" : 785000400,
+            "format" : "epub",
+            "libraryID" : "k1",
+            "pageCount" : 240,
+            "pagesRead" : 60,
+            "ref" : {
+              "seriesID" : "k-55",
+              "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+            },
+            "title" : "Tidewater Notes",
+            "unreadChapters" : 3,
+            "unreadCount" : 2
+          },
+          "volumeID" : "vol-3"
+        }
+      ],
+      "browse" : {
+        "caughtUp" : [
+          {
+            "caughtUpAt" : 785000900,
+            "chapterCount" : 9,
+            "series" : {
+              "chapterCount" : 9,
+              "countUnit" : "volume",
+              "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
+              "feedDate" : 785000400,
+              "format" : "epub",
+              "libraryID" : "k1",
+              "pageCount" : 240,
+              "pagesRead" : 60,
+              "ref" : {
+                "seriesID" : "k-55",
+                "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+              },
+              "title" : "Tidewater Notes",
+              "unreadChapters" : 3,
+              "unreadCount" : 2
+            }
+          }
+        ],
+        "dismissedContinueReading" : {
+          "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12" : 785000800
+        },
+        "gridDensity" : "large",
+        "home" : {
+          "hidden" : [
+            "newlyAdded"
+          ],
+          "order" : [
+            "favorites",
+            "continueReading",
+            "newlyAdded",
+            "recentlyUpdated",
+            "caughtUp"
+          ],
+          "serverLabel" : "onCover",
+          "serverRows" : "perServer"
+        },
+        "libraries" : {
+          "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|1" : {
+            "filter" : {
+              "genres" : [
+                "Comedy"
+              ],
+              "readProgress" : "unfinished",
+              "statuses" : [
+                "hiatus",
+                "ongoing"
+              ]
+            },
+            "gridOrder" : "rightToLeft",
+            "readingStyle" : "rightToLeft",
+            "sort" : "recentlyUpdated"
+          }
+        },
+        "libraryDefaults" : {
+          "filter" : {
+            "readProgress" : "unread",
+            "statuses" : [
+              "completed"
+            ]
+          },
+          "gridOrder" : "leftToRight",
+          "sort" : "titleDescending"
+        },
+        "posterCaption" : "progress",
+        "showsProgressPercent" : false
+      },
+      "defaultReaderSettings" : {
+        "background" : "black",
+        "cropBorders" : false,
+        "direction" : "rightToLeft",
+        "firstPageAlone" : true,
+        "fit" : "screen",
+        "layout" : "double",
+        "mode" : "paged",
+        "orientationLock" : "landscape",
+        "picture" : {
+          "brightness" : 0,
+          "color" : "normal",
+          "contrast" : 1,
+          "sharpen" : "off",
+          "upscaling" : "standard"
+        },
+        "shiftPairing" : false,
+        "splitWidePages" : false,
+        "tapZones" : "leftHanded",
+        "webtoonScrollStep" : 0.75,
+        "webtoonWidth" : 0.6,
+        "zoomScale" : 2
+      },
+      "favorites" : [
+        {
+          "addedAt" : 785000000,
+          "series" : {
+            "coverURL" : "http://kavita.local:5000/api/image/series-cover?seriesId=12",
+            "libraryID" : "1",
+            "ref" : {
+              "seriesID" : "12",
+              "serverID" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A"
+            },
+            "title" : "Lantern Harbor",
+            "unreadCount" : 3
+          }
+        },
+        {
+          "addedAt" : 785000050,
+          "series" : {
+            "categoryIDs" : [
+              "0",
+              "2"
+            ],
+            "ref" : {
+              "seriesID" : "7",
+              "serverID" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B"
+            },
+            "title" : "Paper Comet"
+          }
+        },
+        {
+          "addedAt" : 785000500,
+          "latestChapterAt" : 785000450,
+          "refreshedAt" : 785000600,
+          "series" : {
+            "chapterCount" : 9,
+            "countUnit" : "volume",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
+            "feedDate" : 785000400,
+            "format" : "epub",
+            "libraryID" : "k1",
+            "pageCount" : 240,
+            "pagesRead" : 60,
+            "ref" : {
+              "seriesID" : "k-55",
+              "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+            },
+            "title" : "Tidewater Notes",
+            "unreadChapters" : 3,
+            "unreadCount" : 2
+          },
+          "unreadChapters" : 2
+        }
+      ],
+      "favoritesSort" : {
+        "ascending" : true,
+        "key" : "latestChapter"
+      },
+      "progress" : {
+        "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12" : {
+          "chapterID" : "104",
+          "page" : 17,
+          "readChapterIDs" : [
+            "103",
+            "101",
+            "102"
+          ],
+          "updatedAt" : 785000100.5
+        },
+        "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55" : {
+          "chapterID" : "v3",
+          "page" : 11,
+          "readChapterIDs" : [
+            "v1",
+            "v2"
+          ],
+          "series" : {
+            "chapterCount" : 9,
+            "countUnit" : "volume",
+            "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
+            "feedDate" : 785000400,
+            "format" : "epub",
+            "libraryID" : "k1",
+            "pageCount" : 240,
+            "pagesRead" : 60,
+            "ref" : {
+              "seriesID" : "k-55",
+              "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+            },
+            "title" : "Tidewater Notes",
+            "unreadChapters" : 3,
+            "unreadCount" : 2
+          },
+          "updatedAt" : 785000700
+        }
+      },
+      "readerOverrides" : {
+        "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A|12" : {
+          "background" : "gray",
+          "cropBorders" : true,
+          "direction" : "leftToRight",
+          "firstPageAlone" : false,
+          "fit" : "width",
+          "layout" : "single",
+          "mode" : "webtoon",
+          "orientationLock" : "auto",
+          "picture" : {
+            "brightness" : -0.2,
+            "color" : "grayscale",
+            "contrast" : 1.2,
+            "sharpen" : "low",
+            "upscaling" : "lanczos"
+          },
+          "shiftPairing" : true,
+          "splitWidePages" : true,
+          "tapZones" : "edges",
+          "webtoonScrollStep" : 0.5,
+          "webtoonWidth" : 0.8,
+          "zoomScale" : 3
+        }
+      },
+      "recentSeries" : {
+        "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C|k-55" : {
+          "chapterCount" : 9,
+          "countUnit" : "volume",
+          "coverURL" : "http://komga.local:25600/api/v1/series/k-55/thumbnail",
+          "feedDate" : 785000400,
+          "format" : "epub",
+          "libraryID" : "k1",
+          "pageCount" : 240,
+          "pagesRead" : 60,
+          "ref" : {
+            "seriesID" : "k-55",
+            "serverID" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C"
+          },
+          "title" : "Tidewater Notes",
+          "unreadChapters" : 3,
+          "unreadCount" : 2
+        }
+      },
+      "serverSettings" : {
+        "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A" : {
+          "selectedCategoryIDs" : [
+            "3",
+            "1"
+          ],
+          "syncProgressToServer" : true
+        },
+        "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B" : {
+          "syncProgressToServer" : true
+        },
+        "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C" : {
+          "selectedCategoryIDs" : [
+            "k1"
+          ],
+          "syncProgressToServer" : true
+        },
+        "5A1D2C3B-DDDD-4E5F-8A9B-00000000000D" : {
+          "syncProgressToServer" : false
+        }
+      },
+      "webtoonAutoScrollLevel" : 7,
+      "welcomeCompleted" : true
+    },
+    "0E5B8C3A-2222-4A7B-9C3D-000000000002" : {
+      "contentFilter" : {
+        "hiddenGenres" : [
+          "Horror"
+        ],
+        "hiddenTags" : [
+          "Gore"
+        ],
+        "hideUnrated" : true,
+        "maxAgeRating" : 8
+      },
+      "defaultReaderSettings" : {
+        "background" : "white",
+        "cropBorders" : false,
+        "direction" : "leftToRight",
+        "firstPageAlone" : true,
+        "fit" : "screen",
+        "layout" : "double",
+        "mode" : "paged",
+        "orientationLock" : "auto",
+        "picture" : {
+          "brightness" : 0,
+          "color" : "normal",
+          "contrast" : 1,
+          "sharpen" : "off",
+          "upscaling" : "standard"
+        },
+        "shiftPairing" : false,
+        "splitWidePages" : false,
+        "tapZones" : "edges",
+        "webtoonScrollStep" : 0.75,
+        "webtoonWidth" : 0.6,
+        "zoomScale" : 2
+      },
+      "favorites" : [],
+      "progress" : {
+        "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|7" : {
+          "chapterID" : "70",
+          "page" : 4,
+          "pending" : [
+            {
+              "at" : 785000200,
+              "chapterID" : "70",
+              "completed" : false,
+              "page" : 4
+            }
+          ],
+          "readChapterIDs" : [],
+          "series" : {
+            "categoryIDs" : [
+              "0",
+              "2"
+            ],
+            "ref" : {
+              "seriesID" : "7",
+              "serverID" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B"
+            },
+            "title" : "Paper Comet"
+          },
+          "unreadChapterIDs" : [
+            "69"
+          ],
+          "updatedAt" : 785000200
+        },
+        "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B|8" : {
+          "chapterID" : "",
+          "ignoresServerProgress" : true,
+          "page" : 0,
+          "readChapterIDs" : [],
+          "updatedAt" : 785000300
+        }
+      },
+      "readerOverrides" : {},
+      "requiresPINToOpen" : true,
+      "serverSettings" : {
+        "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A" : {
+          "syncProgressToServer" : true
+        },
+        "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B" : {
+          "selectedCategoryIDs" : [],
+          "syncProgressToServer" : false
+        },
+        "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C" : {
+          "selectedCategoryIDs" : [
+            "k1"
+          ],
+          "syncProgressToServer" : true
+        },
+        "5A1D2C3B-DDDD-4E5F-8A9B-00000000000D" : {
+          "syncProgressToServer" : false
+        }
+      }
+    }
+  },
+  "profiles" : [
+    {
+      "colorIndex" : 0,
+      "id" : "0E5B8C3A-1111-4A7B-9C3D-000000000001",
+      "name" : "Me",
+      "symbol" : "person.fill"
+    },
+    {
+      "colorIndex" : 1,
+      "id" : "0E5B8C3A-2222-4A7B-9C3D-000000000002",
+      "name" : "Kid",
+      "symbol" : "star.fill"
+    }
+  ],
+  "rememberedProfileID" : "0E5B8C3A-2222-4A7B-9C3D-000000000002",
+  "servers" : [
+    {
+      "alternateURLs" : [
+        "https://manga.example.com/kavita"
+      ],
+      "baseURL" : "http://kavita.local:5000",
+      "id" : "5A1D2C3B-AAAA-4E5F-8A9B-00000000000A",
+      "kind" : "kavita",
+      "name" : "Kavita"
+    },
+    {
+      "baseURL" : "http://suwayomi.local:4567",
+      "id" : "5A1D2C3B-BBBB-4E5F-8A9B-00000000000B",
+      "kind" : "suwayomi",
+      "name" : "Suwayomi"
+    },
+    {
+      "baseURL" : "http://komga.local:25600",
+      "id" : "5A1D2C3B-CCCC-4E5F-8A9B-00000000000C",
+      "kind" : "komga",
+      "name" : "Komga"
+    },
+    {
+      "baseURL" : "http://opds.local/opds",
+      "id" : "5A1D2C3B-DDDD-4E5F-8A9B-00000000000D",
+      "kind" : "opds",
+      "name" : "Catalog"
+    }
+  ],
+  "version" : 1
+}

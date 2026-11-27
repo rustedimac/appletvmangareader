@@ -215,7 +215,8 @@ struct ReaderMenu: View {
                 .padding(.top, 20)
         } else {
             VStack(alignment: .leading, spacing: Space.s) {
-                ForEach(ReaderMenuOptions.items(for: settings, touch: !Platform.isTV)) { item in
+                ForEach(ReaderMenuOptions.items(for: settings, touch: !Platform.isTV)
+                            .filter { $0 != .orientationLock || Platform.canLockOrientation }) { item in
                     row(item)
                 }
                 if settings.mode == .paged {
@@ -242,7 +243,7 @@ struct ReaderMenu: View {
     @ViewBuilder
     private func row(_ item: ReaderMenuItem) -> some View {
         switch item {
-        case .mode, .layout, .direction, .fit, .zoom, .background, .tapZones:
+        case .mode, .layout, .direction, .fit, .zoom, .background, .tapZones, .orientationLock:
             pickerRow(.setting(item))
         case .firstPageAlone:
             // The one pairing control. It is saved per series, so it also
@@ -340,6 +341,9 @@ struct ReaderMenu: View {
             case .tapZones:
                 return spec(item, TapZones.allCases.map { ($0, $0.rawValue, $0.title) },
                             selected: settings.tapZones) { set(\.tapZones, $0) }
+            case .orientationLock:
+                return spec(item, OrientationLock.allCases.map { ($0, $0.rawValue, $0.title) },
+                            selected: settings.orientationLock) { set(\.orientationLock, $0) }
             case .firstPageAlone, .cropBorders, .splitWidePages, .webtoonWidth, .autoScroll:
                 // Toggles and steppers never open a list.
                 return PickerSpec(key: item.rawValue, title: item.title, choices: [], selected: "", pick: { _ in })

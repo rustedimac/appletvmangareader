@@ -71,6 +71,24 @@ public enum TapZones: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
+/// Touch screens: keep the reader in one orientation while it's open.
+/// Ignored on Apple TV.
+public enum OrientationLock: String, Codable, CaseIterable, Sendable, Identifiable {
+    /// Follow the device (the default).
+    case auto
+    case portrait
+    case landscape
+
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .auto: return "Follow Device"
+        case .portrait: return "Portrait"
+        case .landscape: return "Landscape"
+        }
+    }
+}
+
 /// How the paged reader sizes a spread against the screen.
 public enum PageFit: String, Codable, CaseIterable, Sendable, Identifiable {
     /// The whole spread is visible (the default).
@@ -120,6 +138,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
     public var picture: PictureSettings
     /// Touch screens: what side taps do. Ignored on Apple TV.
     public var tapZones: TapZones
+    /// Touch screens: the reader's orientation. Ignored on Apple TV.
+    public var orientationLock: OrientationLock
 
     public init(mode: ReadingMode = .paged,
                 direction: ReadingDirection = .rightToLeft,
@@ -134,7 +154,8 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
                 zoomScale: Double = 2.0,
                 splitWidePages: Bool = false,
                 picture: PictureSettings = .default,
-                tapZones: TapZones = .edges) {
+                tapZones: TapZones = .edges,
+                orientationLock: OrientationLock = .auto) {
         self.mode = mode
         self.direction = direction
         self.layout = layout
@@ -149,12 +170,13 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         self.splitWidePages = splitWidePages
         self.picture = picture
         self.tapZones = tapZones
+        self.orientationLock = orientationLock
     }
 
     private enum CodingKeys: String, CodingKey {
         case mode, direction, layout, firstPageAlone, shiftPairing, background
         case webtoonWidth, webtoonScrollStep, cropBorders, fit, zoomScale, splitWidePages, picture
-        case tapZones
+        case tapZones, orientationLock
     }
 
     /// Missing or unknown values fall back to the defaults, so settings
@@ -180,6 +202,7 @@ public struct ReaderSettings: Codable, Hashable, Sendable {
         splitWidePages = value(.splitWidePages, d.splitWidePages)
         picture = value(.picture, d.picture)
         tapZones = value(.tapZones, d.tapZones)
+        orientationLock = value(.orientationLock, d.orientationLock)
     }
 
     public static let `default` = ReaderSettings()

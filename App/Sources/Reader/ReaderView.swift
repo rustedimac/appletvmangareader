@@ -61,7 +61,12 @@ struct ReaderView: View {
                 ReaderContent(session: session)
                     #if os(iOS)
                     .readerTapRegions { region in handleTap(region, session: session) }
+                    .readerPageMenu(session: session)
                     .ignoresSafeArea()
+                    // Portrait: single pages, full-width column (ReaderTouch).
+                    .onGeometryChange(for: Bool.self, of: { $0.size.height > $0.size.width }) { portrait in
+                        session.isPortrait = portrait
+                    }
                     #endif
             } else {
                 ProgressView()
@@ -83,6 +88,7 @@ struct ReaderView: View {
         .animation(.easeInOut(duration: 0.2), value: chromeVisible)
         .readerSystemOverlays(visible: chromeVisible)
         .readerKeyboardShortcuts(session: session, onClose: closeReader)
+        .readerOrientationLock(session?.settings.orientationLock)
         // Reading shouldn't dim and lock the screen.
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }

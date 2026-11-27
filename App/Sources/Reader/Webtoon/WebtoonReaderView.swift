@@ -77,7 +77,7 @@ struct StripState: Equatable {
         chapterID = session.chapter.id
         loadState = session.loadState
         pageCount = session.pageCount
-        settings = session.settings
+        settings = session.layoutSettings
         menuPresented = session.isMenuPresented
         autoScrolling = session.isAutoScrolling
         autoScrollLevel = session.autoScrollLevel

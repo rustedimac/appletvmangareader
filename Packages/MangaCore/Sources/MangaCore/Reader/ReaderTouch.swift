@@ -93,4 +93,11 @@ public enum ReaderTouch {
     public static func effectiveLayout(_ layout: PageLayout, portrait: Bool) -> PageLayout {
         portrait ? .single : layout
     }
+
+    /// The vertical reader's column fills a portrait window (a phone held
+    /// upright has no room to spare); landscape uses the Column Width
+    /// setting. The saved width is never changed.
+    public static func effectiveWebtoonWidth(_ width: Double, portrait: Bool) -> Double {
+        portrait ? 1.0 : width
+    }
 }
