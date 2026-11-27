@@ -73,6 +73,16 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - Settings: inset-grouped `Form`, standard iOS rows (`LabeledContent`, `Picker` with `.menu` / `.navigationLink` styles). `SettingsPicker` on iOS is a system `Picker` in navigation-link style.
 - Dynamic Type: every text uses text styles already (lint `check_design_tokens.py`); layouts must survive the accessibility sizes (rows wrap, grids drop columns).
 
+### As built (step 3)
+
+- Poster sizes per device: `GridDensity.points` / `spacingPoints` (iPhone 80 / 100 / 150, iPad 120 / 150 / 190; tvOS unchanged). `PosterMetrics` and `Grid.posterWidth` follow them.
+- Browse tabs get side margins (`browseMargins()`, safe-area padding so shelves still run to the screen edge) and large titles (`browseTitle(_:)`); a server's library page shows its name in the bar instead of a heading.
+- Series page: compact width puts a 120 pt cover beside the title and the rest below, with Continue as a full-width prominent button and bordered Favorite / sort / More under it; chapter rows put pages and date under the title. Regular width keeps the TV layout at 220 pt.
+- A–Z jump bar: a narrow iOS-style index.
+- iPhone: Bookmarks opens as a sheet from a button in Favorites.
+- `platformValue(tv:touch:)` for one-off spacings; the tvOS numbers are the old ones.
+- Not yet: servers and libraries listed in the iPad sidebar.
+
 ## 5. Files and local content
 
 - **Open from Files** (phase 2, after the release build): CBZ / ZIP / PDF / EPUB picked with `fileImporter` or opened from the share sheet go into an on-device "On This iPhone" source, read with the existing `ZipArchive`, PDF and book readers. Not needed for the first device build.
@@ -111,7 +121,7 @@ The first test build uses the Personal Team route: the maintainer's Mac builds t
 | --- | --- |
 | 1 Foundation | built; iPhone + iPad smoke tests pass on simulators |
 | 2 Touch reader | built; iPhone + iPad touch UI tests pass on simulators |
-| 3 Layouts | |
+| 3 Layouts | built; browse screens, series page and library grid checked on iPhone and iPad simulators |
 | 4 System pieces | |
 | 5 Tests | |
 | 6 Device build | |

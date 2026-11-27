@@ -25,12 +25,15 @@ struct SeriesDetailView: View {
         var message: String
     }
     @FocusState private var focus: Field?
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
 
     private enum Field: Hashable { case primary }
 
     var body: some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 50) {
+            VStack(alignment: .leading, spacing: platformValue(tv: 50, touch: Space.xl)) {
                 header
                 if let detail {
                     SeriesBookmarksSection(series: series.ref, chapters: detail.chapters) { open($0, page: $1) }
@@ -42,9 +45,12 @@ struct SeriesDetailView: View {
                     ProgressView().frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 60)
+            .padding(.horizontal, platformValue(tv: 20, touch: Space.l))
+            .padding(.bottom, platformValue(tv: 60, touch: Space.xl))
         }
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .themedScreen()
         .defaultFocus($focus, .primary)
         .task { await load() }
@@ -78,59 +84,99 @@ struct SeriesDetailView: View {
         return s
     }
 
+    @ViewBuilder
     private var header: some View {
+        #if os(tvOS)
         HStack(alignment: .top, spacing: 60) {
-            PosterImage(url: summary.coverURL, server: model.client(for: series.ref), title: summary.title)
-                .frame(width: 360, height: 540)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.poster))
-                .shadow(radius: 20)
-
+            cover(width: 360)
             VStack(alignment: .leading, spacing: 20) {
-                Text(summary.title)
-                    .themedHeading(.title2, fallback: .title2.bold())
-                    .lineLimit(2)
-                    .accessibilityIdentifier("series.title")
-                if let line = metaLine, !line.isEmpty {
-                    Text(line).foregroundStyle(.secondary)
-                }
-                if let server = model.state.server(series.ref.serverID),
-                   let location = SeriesPlacement.line(server: server.name, placement: placement) {
-                    // "kavita-en.home · Manga": the server and the library or
-                    // categories the series is in there.
-                    Label(location, systemImage: server.kind.symbolName)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(location)
-                        .accessibilityIdentifier("series.location")
-                }
-                if let genres = detail?.genres, !genres.isEmpty {
-                    Text(genres.joined(separator: " · "))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                if let synopsis = detail?.synopsis.map(Self.plainText), !synopsis.isEmpty {
-                    Text(synopsis)
-                        .font(.callout)
-                        .lineLimit(5)
-                        .frame(maxWidth: 1100, alignment: .leading)
-                        .accessibilityIdentifier("series.synopsis")
-                }
-                if model.browsePreferences.showsProgressPercent, let detail,
-                   let read = PosterBadges.readText(detail: detail, summary: series) {
-                    // "42% read", next to Continue, so checking how far
-                    // along a series is doesn't need a trip back out.
-                    Text(read)
-                        .font(.callout.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 10)
-                        .accessibilityIdentifier("series.percentRead")
-                }
+                titleBlock
+                aboutBlock
                 actions.padding(.top, 10)
             }
         }
         .tvFocusSection()
+        #else
+        // iPhone, compact iPad windows: a small cover beside the title, the
+        // rest full width below. Regular width: the TV layout, smaller.
+        if sizeClass == .compact {
+            VStack(alignment: .leading, spacing: Space.l) {
+                HStack(alignment: .top, spacing: Space.l) {
+                    cover(width: 120)
+                    VStack(alignment: .leading, spacing: Space.s) { titleBlock }
+                }
+                aboutBlock
+                actions
+            }
+        } else {
+            HStack(alignment: .top, spacing: Space.xl) {
+                cover(width: 220)
+                VStack(alignment: .leading, spacing: Space.m) {
+                    titleBlock
+                    aboutBlock
+                    actions.padding(.top, Space.s)
+                }
+            }
+        }
+        #endif
+    }
+
+    private func cover(width: CGFloat) -> some View {
+        PosterImage(url: summary.coverURL, server: model.client(for: series.ref), title: summary.title)
+            .frame(width: width, height: width * 1.5)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.poster))
+            .shadow(radius: platformValue(tv: 20, touch: 8))
+    }
+
+    /// Title, authors and status, and where the series lives.
+    @ViewBuilder
+    private var titleBlock: some View {
+        Text(summary.title)
+            .themedHeading(.title2, fallback: .title2.bold())
+            .lineLimit(2)
+            .accessibilityIdentifier("series.title")
+        if let line = metaLine, !line.isEmpty {
+            Text(line).foregroundStyle(.secondary)
+        }
+        if let server = model.state.server(series.ref.serverID),
+           let location = SeriesPlacement.line(server: server.name, placement: placement) {
+            // "kavita-en.home · Manga": the server and the library or
+            // categories the series is in there.
+            Label(location, systemImage: server.kind.symbolName)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(location)
+                .accessibilityIdentifier("series.location")
+        }
+    }
+
+    /// Genres, synopsis and how much is read.
+    @ViewBuilder
+    private var aboutBlock: some View {
+        if let genres = detail?.genres, !genres.isEmpty {
+            Text(genres.joined(separator: " · "))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        if let synopsis = detail?.synopsis.map(Self.plainText), !synopsis.isEmpty {
+            Text(synopsis)
+                .font(.callout)
+                .lineLimit(5)
+                .frame(maxWidth: 1100, alignment: .leading)
+                .accessibilityIdentifier("series.synopsis")
+        }
+        if model.browsePreferences.showsProgressPercent, let detail,
+           let read = PosterBadges.readText(detail: detail, summary: series) {
+            // "42% read", next to Continue, so checking how far
+            // along a series is doesn't need a trip back out.
+            Text(read)
+                .font(.callout.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .padding(.top, 10)
+                .accessibilityIdentifier("series.percentRead")
+        }
     }
 
     private var metaLine: String? {
@@ -143,58 +189,98 @@ struct SeriesDetailView: View {
         return parts.joined(separator: " · ")
     }
 
+    @ViewBuilder
     private var actions: some View {
+        #if os(tvOS)
         HStack(spacing: 30) {
-            if let action = detail?.continueAction {
-                Button {
-                    open(action.chapter)
-                } label: {
-                    Label(action.label, systemImage: "play.fill")
-                        .lineLimit(1)
-                }
-                .focused($focus, equals: .primary)
-                .accessibilityIdentifier("series.continue")
+            continueButton
+            favoriteButton
+            sortButton
+            moreMenu
+        }
+        #else
+        // Touch: Continue is the one prominent button, full width on a
+        // phone; the rest sit under it as bordered buttons.
+        VStack(alignment: .leading, spacing: Space.m) {
+            continueButton
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: sizeClass == .compact ? .infinity : nil)
+            HStack(spacing: Space.m) {
+                favoriteButton
+                sortButton
+                moreMenu
             }
+            .buttonStyle(.bordered)
+        }
+        #endif
+    }
 
-            let favorite = model.isFavorite(series.ref)
+    @ViewBuilder
+    private var continueButton: some View {
+        if let action = detail?.continueAction {
             Button {
-                model.toggleFavorite(summary)
+                open(action.chapter)
             } label: {
-                Label(favorite ? "Favorited" : "Favorite", systemImage: favorite ? "heart.fill" : "heart")
+                Label(action.label, systemImage: "play.fill")
+                    .lineLimit(1)
+                    #if os(iOS)
+                    .frame(maxWidth: sizeClass == .compact ? .infinity : nil)
+                    #endif
             }
-            .accessibilityIdentifier("series.favorite")
-            .accessibilityValue(favorite ? "on" : "off")
+            .focused($focus, equals: .primary)
+            .accessibilityIdentifier("series.continue")
+        }
+    }
 
-            if let detail, detail.chapters.count > 1 {
+    private var favoriteButton: some View {
+        let favorite = model.isFavorite(series.ref)
+        return Button {
+            model.toggleFavorite(summary)
+        } label: {
+            Label(favorite ? "Favorited" : "Favorite", systemImage: favorite ? "heart.fill" : "heart")
+        }
+        .accessibilityIdentifier("series.favorite")
+        .accessibilityValue(favorite ? "on" : "off")
+    }
+
+    @ViewBuilder
+    private var sortButton: some View {
+        if let detail, detail.chapters.count > 1 {
+            Button {
+                newestFirst.toggle()
+            } label: {
+                Label(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down")
+            }
+            .accessibilityIdentifier("series.sort")
+        }
+    }
+
+    @ViewBuilder
+    private var moreMenu: some View {
+        if let detail {
+            Menu {
                 Button {
-                    newestFirst.toggle()
+                    markRead(detail.chapters.filter { !$0.isRead })
                 } label: {
-                    Label(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down")
+                    Label("Mark Series as Read", systemImage: "checkmark.circle")
                 }
-                .accessibilityIdentifier("series.sort")
-            }
-
-            if let detail {
-                Menu {
-                    Button {
-                        markRead(detail.chapters.filter { !$0.isRead })
-                    } label: {
-                        Label("Mark Series as Read", systemImage: "checkmark.circle")
-                    }
-                    .disabled(detail.chapters.allSatisfy(\.isRead))
-                    .accessibilityIdentifier("series.more.read")
-                    Button {
-                        markUnread(nil)
-                    } label: {
-                        Label("Mark Series as Unread", systemImage: "circle")
-                    }
-                    .disabled(!detail.hasProgress)
-                    .accessibilityIdentifier("series.more.unread")
+                .disabled(detail.chapters.allSatisfy(\.isRead))
+                .accessibilityIdentifier("series.more.read")
+                Button {
+                    markUnread(nil)
                 } label: {
-                    Label("More", systemImage: "ellipsis")
+                    Label("Mark Series as Unread", systemImage: "circle")
                 }
-                .accessibilityIdentifier("series.more")
+                .disabled(!detail.hasProgress)
+                .accessibilityIdentifier("series.more.unread")
+            } label: {
+                Label("More", systemImage: "ellipsis")
+                    #if os(iOS)
+                    .labelStyle(.iconOnly)
+                    #endif
             }
+            .accessibilityIdentifier("series.more")
         }
     }
 
@@ -304,6 +390,7 @@ private struct ChapterRow: View {
     var body: some View {
         HStack(spacing: Space.m) {
             Button(action: open) {
+                #if os(tvOS)
                 HStack(spacing: 24) {
                     Image(systemName: icon)
                         .themedMark(!chapter.isRead)
@@ -325,7 +412,34 @@ private struct ChapterRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                #else
+                // Touch: the details go under the title so long titles
+                // keep their room on a phone.
+                HStack(spacing: Space.m) {
+                    Image(systemName: icon)
+                        .themedMark(!chapter.isRead)
+                        .frame(width: Size.icon)
+                    VStack(alignment: .leading, spacing: Space.xxs) {
+                        Text(chapter.title)
+                            .lineLimit(2)
+                            .foregroundStyle(chapter.isRead ? Color.secondary : Color.primary)
+                        Text(touchDetail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if let badge = chapter.format?.badge {
+                        FormatBadge(text: badge)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: Size.minTarget)
+                .contentShape(Rectangle())
+                #endif
             }
+            #if os(iOS)
+            .buttonStyle(PressDimButtonStyle())
+            #endif
             .accessibilityIdentifier("chapter.\(chapter.id)")
             .accessibilityValue(chapter.readState == .read ? "read" : chapter.readState == .unread ? "unread" : "in progress")
             .contextMenu { items(prefix: "chapter.menu") }
@@ -368,6 +482,15 @@ private struct ChapterRow: View {
         .disabled(!seriesHasProgress)
         .accessibilityIdentifier("\(prefix).seriesUnread")
     }
+
+    #if os(iOS)
+    /// "20 pages · Nov 15, 2023"
+    private var touchDetail: String {
+        var parts = [chapter.rowDetail]
+        if let date = chapter.updatedAt { parts.append(date.formatted(.dateTime.year().month().day())) }
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    #endif
 
     private var icon: String {
         switch chapter.readState {

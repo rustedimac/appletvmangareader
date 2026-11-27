@@ -19,6 +19,8 @@ struct SearchView: View {
                 .padding(.bottom, 60)
             }
             .searchable(text: $query, prompt: "Series title")
+            .browseMargins()
+            .browseTitle("Search")
             .seriesNavigation()
             .themedScreen()
         }

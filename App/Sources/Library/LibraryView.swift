@@ -24,6 +24,8 @@ struct LibraryView: View {
             // The pushed value is a snapshot; show the server as it is now,
             // so an edit in Settings (address, login) applies right away.
             .navigationDestination(for: ServerConfig.self) { ServerLibraryView(server: model.state.server($0.id) ?? $0) }
+            .browseMargins()
+            .browseTitle("Library")
             .seriesNavigation()
             .themedScreen()
         }
@@ -80,11 +82,13 @@ struct ServerLibraryView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .center, spacing: platformValue(tv: 10, touch: Space.xs)) {
                 ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: platformValue(tv: 20, touch: Space.m)) {
+                        #if os(tvOS)
                         Text(server.name)
                             .themedHeading(.title3, fallback: .title3.bold())
+                        #endif
                         if let errorMessage {
                             BrowseMessage(title: "Couldn't reach \(server.name)", message: errorMessage,
                                           systemImage: "wifi.exclamationmark") { Task { await load() } }
@@ -124,6 +128,11 @@ struct ServerLibraryView: View {
             }
             await load()
         }
+        .browseMargins()
+        .browseTitle(server.name)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .themedScreen()
     }
 

@@ -7,22 +7,29 @@ struct AlphabetJumpBar: View {
     let onPick: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: platformValue(tv: 2, touch: 0)) {
             ForEach(AlphabetIndex.letters, id: \.self) { letter in
                 Button {
                     onPick(letter)
                 } label: {
+                    #if os(tvOS)
                     Text(letter)
                         .font(.system(size: 23, weight: .semibold)) // design-ok: fixed 28 pt rows so 27 letters fit; 23 pt is the HIG minimum
                         .frame(width: 48, height: 28)
+                    #else
+                    // Like the iOS section index: small letters in a narrow column.
+                    Text(letter)
+                        .font(.caption2.weight(.semibold))
+                        .frame(width: 20, height: 16)
+                    #endif
                 }
                 .buttonStyle(LetterButtonStyle())
                 .accessibilityLabel(letter == "#" ? "Numbers and symbols" : letter)
                 .accessibilityIdentifier("library.jump.\(letter)")
             }
         }
-        .padding(.vertical, 10)
-        .padding(.trailing, 10)
+        .padding(.vertical, platformValue(tv: 10, touch: Space.xs))
+        .padding(.trailing, platformValue(tv: 10, touch: 0))
         .tvFocusSection()
     }
 }
