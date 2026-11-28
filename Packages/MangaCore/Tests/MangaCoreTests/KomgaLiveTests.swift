@@ -61,8 +61,14 @@ final class KomgaLiveTests: XCTestCase {
         try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: page, completed: false)
         let after = try await client.seriesDetail(series.ref.seriesID).chapters.first { $0.id == chapter.id }
         XCTAssertEqual(after?.lastPageRead, page)
-        try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: chapter.lastPageRead,
-                                      completed: chapter.isRead)
+        if chapter.isRead || chapter.lastPageRead > 0 {
+            try await client.saveProgress(chapter: chapter, libraryID: series.libraryID, page: chapter.lastPageRead,
+                                          completed: chapter.isRead)
+        } else {
+            // No progress before: remove the record, so the book doesn't
+            // land in Continue Reading.
+            try await client.markUnread(chapters: [chapter])
+        }
     }
 
     /// Every format, text EPUBs included (downloaded and read on device).
