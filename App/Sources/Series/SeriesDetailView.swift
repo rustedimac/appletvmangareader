@@ -51,7 +51,6 @@ struct SeriesDetailView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .themedScreen()
         .defaultFocus($focus, .primary)
         .task { await load() }
         .fullScreenCover(item: $reader, onDismiss: {
@@ -132,7 +131,7 @@ struct SeriesDetailView: View {
     @ViewBuilder
     private var titleBlock: some View {
         Text(summary.title)
-            .themedHeading(.title2, fallback: .title2.bold())
+            .font(.title2.bold())
             .lineLimit(2)
             .accessibilityIdentifier("series.title")
         if let line = metaLine, !line.isEmpty {
@@ -292,7 +291,7 @@ struct SeriesDetailView: View {
         } else {
             LazyVStack(alignment: .leading, spacing: 12) {
                 Text("Chapters")
-                    .themedSectionLabel(.headline, fallback: .headline)
+                    .font(.headline).foregroundStyle(.secondary)
                 ForEach(detail.displayChapters(newestFirst: newestFirst)) { chapter in
                     let earlier = detail.chapters(before: chapter)
                     ChapterRow(chapter: chapter, seriesHasProgress: detail.hasProgress,
@@ -393,7 +392,7 @@ private struct ChapterRow: View {
                 #if os(tvOS)
                 HStack(spacing: 24) {
                     Image(systemName: icon)
-                        .themedMark(!chapter.isRead)
+                        .checkMarkStyle(!chapter.isRead)
                         .frame(width: 40)
                     Text(chapter.title)
                         .lineLimit(1)
@@ -417,7 +416,7 @@ private struct ChapterRow: View {
                 // keep their room on a phone.
                 HStack(spacing: Space.m) {
                     Image(systemName: icon)
-                        .themedMark(!chapter.isRead)
+                        .checkMarkStyle(!chapter.isRead)
                         .frame(width: Size.icon)
                     VStack(alignment: .leading, spacing: Space.xxs) {
                         Text(chapter.title)

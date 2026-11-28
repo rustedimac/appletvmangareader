@@ -377,7 +377,7 @@ struct SeriesShelf: View {
         let density = model.gridDensity
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .themedSectionLabel(.headline, fallback: .headline)
+                .font(.headline).foregroundStyle(.secondary)
                 .accessibilityIdentifier("shelf.\(identifier ?? title)")
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: density.spacingPoints) {

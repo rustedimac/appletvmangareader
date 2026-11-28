@@ -48,7 +48,6 @@ struct FavoritesView: View {
             #endif
             .seriesNavigation()
             .task(id: model.contentKey) { await model.refreshStaleFavorites() }
-            .themedScreen()
         }
         .task(id: model.contentFilter.cacheKey) { await model.refreshHiddenSeries() }
         .resetsNavigationWhenLeft()

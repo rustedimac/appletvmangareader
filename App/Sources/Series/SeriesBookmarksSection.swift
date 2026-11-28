@@ -14,7 +14,7 @@ struct SeriesBookmarksSection: View {
         if !bookmarks.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Bookmarks")
-                    .themedSectionLabel(.headline, fallback: .headline)
+                    .font(.headline).foregroundStyle(.secondary)
                     .accessibilityIdentifier("series.bookmarks")
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 30) {

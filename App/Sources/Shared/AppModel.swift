@@ -110,10 +110,6 @@ final class AppModel {
             }
             if ProcessInfo.processInfo.arguments.contains("-liveServers") { model.installLiveServersFromEnvironment() }
             model.applyUITestingHomeLayout()
-            // `-uiTestingTheme celadon` opens the app in that theme (ThemeScreensUITests).
-            if let raw = UITestingSeed.value(after: "-uiTestingTheme"), let theme = AppTheme(rawValue: raw) {
-                model.updateBrowse { $0.theme = theme }
-            }
             return model
         }
         let model = AppModel(stateStore: StateStore(backing: UserDefaultsStore()), secrets: KeychainSecretStore(),
@@ -169,8 +165,8 @@ final class AppModel {
     /// `state`, so screens can't observe them any other way.
     private(set) var credentialRevision = 0
 
-    /// Home's last rows. Kept here rather than in `HomeView`, which is
-    /// rebuilt when the theme changes (see `HomeSnapshot`).
+    /// Home's last rows. Kept here rather than in `HomeView`, so a rebuilt
+    /// Home shows them at once (see `HomeSnapshot`).
     var home = HomeSnapshot()
 
     /// Changes whenever what the browse screens load from servers could:

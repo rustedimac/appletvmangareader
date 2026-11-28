@@ -33,7 +33,6 @@ struct HomeView: View {
             .browseTitle("Home")
             .seriesNavigation()
             .navigationDestination(for: Route.self) { _ in BrowseSettingsView() }
-            .themedScreen()
         }
         .resetsNavigationWhenLeft(path: $path)
         // Runs on every appear too, so coming back from another tab (after
@@ -50,8 +49,8 @@ struct HomeView: View {
     /// Rows loaded for the current servers, libraries and profile. Rows
     /// from before a change in Settings aren't shown while the new ones
     /// load, so Home never mixes in a removed server or unticked library.
-    /// They live in the model (`AppModel.home`), so a Home rebuilt by a
-    /// theme change shows them at once instead of starting empty.
+    /// They live in the model (`AppModel.home`), so a rebuilt Home shows
+    /// them at once instead of starting empty.
     private var currentSections: [HomeServerSection] {
         model.home.sections(for: model.contentKey)
     }

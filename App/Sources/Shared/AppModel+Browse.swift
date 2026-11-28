@@ -17,7 +17,6 @@ extension AppModel {
     var homeServerRows: HomeServerRows { homeLayout.serverRows }
     /// Where posters name their server in rows that mix servers.
     var posterServerLabel: PosterServerLabel { homeLayout.serverLabel }
-    var appTheme: AppTheme { browsePreferences.theme }
 
     // MARK: Libraries
 

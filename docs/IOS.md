@@ -24,7 +24,7 @@ instead of the Siri Remote. Status of each step is in section 9.
 | Game controllers | Shared: `GameControllerHub` works on iOS too (MFi / Xbox / PlayStation pads, same mapping). | Free feature, same code. |
 | Reader input | Touch-first (section 3). Remote-only code (`ReaderRemoteCatcher`, `TouchSurfacePan`, `onMoveCommand`) stays tvOS only. | |
 | Orientation | Every orientation on iPad and iPhone. The reader can lock orientation from its options (per series, with a global default, like every per-series setting). | |
-| Look | System light/dark on iOS (the tvOS app is dark only). The reader is always dark-backed (its own background setting). Theme Lab themes keep working: the `Packages/Themes` packages already ship iOS values. | |
+| Look | System light/dark on iOS (the tvOS app is dark only). The reader is always dark-backed (its own background setting). No custom app themes (removed 2026-11-28). | |
 
 ## 2. Navigation
 
@@ -90,7 +90,7 @@ Same `ReaderSession`, `ReaderNavigator`, `SpreadLayout`, `ReaderSettings` as tvO
 - `FilesBackupView` (App/Sources-iOS): Export Backup (`fileExporter`, a `.json` file named "Manga Reader Backup <date>", so Files, AirDrop and Mail open it without a custom type) and Restore from a Backup File (`fileImporter`). Same `MangaBackup` format as the Apple TV page.
 - Server editor: no "Set Up from Your Phone" on iOS. Settings: no Remote and Controller page; the reader's controls tutorial isn't offered; remote hints and the Siri Remote legend are tvOS only.
 - Text: "this Apple TV" reads "this iPhone" / "this iPad" (`Platform.deviceName`), retry hints say "Tap to retry", empty Bookmarks and Search explain the touch way.
-- The Default theme follows the system's light or dark setting on iOS; Theme Lab themes keep their own. The reader stays dark-backed.
+- The app follows the system's light or dark setting on iOS. The reader stays dark-backed.
 - Profiles: in-app profiles with `SingleUserDevice` (from step 1); "Who's reading?" shows only with several profiles.
 
 ## 5. Files and local content

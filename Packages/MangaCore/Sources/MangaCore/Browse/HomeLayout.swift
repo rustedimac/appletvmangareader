@@ -204,8 +204,6 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public var posterCaption: PosterCaption
     /// Shows "40%" next to poster progress bars. On by default.
     public var showsProgressPercent: Bool
-    /// The app's look outside the reader.
-    public var theme: AppTheme
     /// Keyed by `LibraryKey.storageKey`.
     public var libraries: [String: LibraryOptions]
     /// Sort, grid order and filter for libraries without their own.
@@ -221,20 +219,21 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
     public static let dismissedLimit = 100
 
     public init(home: HomeLayout = .default, gridDensity: GridDensity = .default,
-                posterCaption: PosterCaption = .default, showsProgressPercent: Bool = true, theme: AppTheme = .default, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
+                posterCaption: PosterCaption = .default, showsProgressPercent: Bool = true, libraries: [String: LibraryOptions] = [:], dismissedContinueReading: [String: Date] = [:],
                 caughtUp: [CaughtUpEntry] = [], libraryDefaults: LibraryDefaults = .default) {
         self.home = home
         self.libraryDefaults = libraryDefaults
         self.gridDensity = gridDensity
         self.posterCaption = posterCaption
         self.showsProgressPercent = showsProgressPercent
-        self.theme = theme
         self.libraries = libraries
         self.dismissedContinueReading = dismissedContinueReading
         self.caughtUp = caughtUp
     }
 
-    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, showsProgressPercent, theme, libraries, dismissedContinueReading, caughtUp, libraryDefaults }
+    // No `theme` key: Settings > Theme was removed (2026-11-28). A stored
+    // "theme" value from an older version is ignored, and dropped on save.
+    private enum CodingKeys: String, CodingKey { case home, gridDensity, posterCaption, showsProgressPercent, libraries, dismissedContinueReading, caughtUp, libraryDefaults }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -242,7 +241,6 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         gridDensity = (try? c.decodeIfPresent(GridDensity.self, forKey: .gridDensity)) ?? .default
         posterCaption = (try? c.decodeIfPresent(PosterCaption.self, forKey: .posterCaption)) ?? .default
         showsProgressPercent = (try? c.decodeIfPresent(Bool.self, forKey: .showsProgressPercent)) ?? true
-        theme = (try? c.decodeIfPresent(AppTheme.self, forKey: .theme)) ?? .default
         // One unreadable entry costs that entry, not the list.
         libraries = c.tolerantDictionary(.libraries)
         dismissedContinueReading = c.tolerantDictionary(.dismissedContinueReading)
@@ -256,7 +254,6 @@ public struct BrowsePreferences: Codable, Hashable, Sendable {
         if gridDensity != .default { try c.encode(gridDensity, forKey: .gridDensity) }
         if posterCaption != .default { try c.encode(posterCaption, forKey: .posterCaption) }
         if !showsProgressPercent { try c.encode(showsProgressPercent, forKey: .showsProgressPercent) }
-        if theme != .default { try c.encode(theme, forKey: .theme) }
         if !libraries.isEmpty { try c.encode(libraries, forKey: .libraries) }
         if !dismissedContinueReading.isEmpty { try c.encode(dismissedContinueReading, forKey: .dismissedContinueReading) }
         if !caughtUp.isEmpty { try c.encode(caughtUp, forKey: .caughtUp) }

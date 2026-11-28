@@ -2,11 +2,12 @@ import Foundation
 
 /// Home's rows as last loaded, and the `contentKey` they belong to.
 ///
-/// It lives in the app model, not in the Home view: switching between a
-/// theme and the default theme rebuilds every screen, and a Home that kept
-/// its rows in view state came back empty, showing only the fastest source
-/// (the built-in Free Library) until the servers answered again. Kept here,
-/// a rebuilt Home shows its rows at once and refreshes them in place.
+/// It lives in the app model, not in the Home view: a Home that kept its
+/// rows in view state came back empty whenever SwiftUI rebuilt it (first
+/// seen when the since-removed themes rebuilt every screen), showing only
+/// the fastest source (the built-in Free Library) until the servers
+/// answered again. Kept here, a rebuilt Home shows its rows at once and
+/// refreshes them in place.
 ///
 /// Rows only show for the key they were loaded for, so Home never mixes in
 /// a removed server, an unticked library or another profile's rows.

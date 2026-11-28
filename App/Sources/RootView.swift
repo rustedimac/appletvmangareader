@@ -16,7 +16,6 @@ struct RootView: View {
         content
             .fullScreenCover(item: $link) { route in
                 DeepLinkHost(route: route)
-                    .themedScreen()
             }
             .onOpenURL { url in
                 if let parsed = DeepLink(url: url) { link = model.route(for: parsed) }
@@ -36,8 +35,10 @@ struct RootView: View {
                     Task { await model.retryPendingProgressNow() }
                 }
             }
-            // Settings > Theme, for the active profile.
-            .appTheme(model.appTheme)
+            #if os(tvOS)
+            // The tvOS app is dark only; iPhone and iPad follow the system.
+            .preferredColorScheme(.dark)
+            #endif
     }
 
     @ViewBuilder
