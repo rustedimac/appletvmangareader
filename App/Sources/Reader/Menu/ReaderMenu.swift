@@ -78,7 +78,6 @@ struct ReaderMenu: View {
         .ignoresSafeArea()
         #else
         panel
-            .padding(.horizontal, Space.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         #endif
     }
@@ -101,7 +100,7 @@ struct ReaderMenu: View {
     private var panel: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
+                VStack(alignment: .leading, spacing: MenuMetrics.sectionSpacing) {
                     header
                         .id(Self.topID)
                         // Up from any tab lands on Bookmark This Page, even
@@ -122,9 +121,9 @@ struct ReaderMenu: View {
                         BookmarkListPane(session: session, focus: $focus)
                     }
                 }
-                .padding(.leading, Space.xl)
-                .padding(.trailing, Layout.safeSide)
-                .padding(.vertical, Layout.safeTop)
+                .padding(.leading, MenuMetrics.leadingInset)
+                .padding(.trailing, MenuMetrics.trailingInset)
+                .padding(.vertical, MenuMetrics.verticalInset)
             }
             // An open list of choices belongs to the Settings tab.
             .onChange(of: tab) { _, _ in session.menuPicker = nil }
@@ -138,6 +137,22 @@ struct ReaderMenu: View {
     }
 
     private static let topID = "reader.menu.top"
+
+    /// The drawer's spacing on the TV canvas, and the touch values for the
+    /// iPhone sheet and iPad popover (iOS form margins, 44 pt targets).
+    /// Steppers must fit a 375 pt phone: the Page Timer row is the widest.
+    enum MenuMetrics {
+        static let leadingInset = platformValue(tv: Space.xl, touch: 20)
+        static let trailingInset = platformValue(tv: Layout.safeSide, touch: 20)
+        static let verticalInset = platformValue(tv: Layout.safeTop, touch: Space.m)
+        static let sectionSpacing = platformValue(tv: 32, touch: Space.l)
+        static let paneTop = platformValue(tv: 20, touch: Space.xs)
+        static let titleToControl = platformValue(tv: 14, touch: Space.xs)
+        static let stepperSpacing = platformValue(tv: 28, touch: Space.s)
+        static let stepperButton = platformValue(tv: 50, touch: Size.minTarget)
+        static let stepperValue = platformValue(tv: 110, touch: 64)
+        static let speedValue = platformValue(tv: 180, touch: 72)
+    }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -212,7 +227,7 @@ struct ReaderMenu: View {
     private var settingsPane: some View {
         if let picker = session.menuPicker {
             choiceList(picker)
-                .padding(.top, 20)
+                .padding(.top, MenuMetrics.paneTop)
         } else {
             VStack(alignment: .leading, spacing: Space.s) {
                 ForEach(ReaderMenuOptions.items(for: settings, touch: !Platform.isTV)
@@ -229,14 +244,15 @@ struct ReaderMenu: View {
                     Divider().padding(.vertical, Space.s)
                     defaultsSection
                 }
-                // Touch screens list nothing here unless a game controller
-                // is connected; their controls are on screen.
-                if Platform.isTV || GameControllerHub.shared.hasExtendedGamepad {
+                // The remote and controller legend is for the TV. Touch
+                // screens show their controls on screen (and the iOS
+                // simulator always reports a game controller).
+                if Platform.isTV {
                     Divider().padding(.vertical, Space.s)
                     ReaderControlsLegend(mode: settings.mode)
                 }
             }
-            .padding(.top, 20)
+            .padding(.top, MenuMetrics.paneTop)
         }
     }
 
@@ -391,7 +407,7 @@ struct ReaderMenu: View {
 
     /// A stepper keeps its title above it, like the Picture steppers.
     private func stepperSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {
             Text(title)
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -403,11 +419,11 @@ struct ReaderMenu: View {
 
     private var widthStepper: some View {
         let width = settings.webtoonWidth
-        return HStack(spacing: 28) {
+        return HStack(spacing: MenuMetrics.stepperSpacing) {
             Button {
                 set(\.webtoonWidth, ReaderMenuOptions.steppedWidth(width, by: -1))
             } label: {
-                Image(systemName: "minus").frame(width: 50).lineHeightLabel()
+                Image(systemName: "minus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
             }
             .disabled(!ReaderMenuOptions.canStepWidth(width, by: -1))
             .focused($focus, equals: "webtoonWidth.decrease")
@@ -416,13 +432,13 @@ struct ReaderMenu: View {
 
             Text(ReaderMenuOptions.widthLabel(width))
                 .font(.callout.monospacedDigit())
-                .frame(minWidth: 110)
+                .frame(minWidth: MenuMetrics.stepperValue)
                 .accessibilityIdentifier("reader.menu.webtoonWidth.value")
 
             Button {
                 set(\.webtoonWidth, ReaderMenuOptions.steppedWidth(width, by: 1))
             } label: {
-                Image(systemName: "plus").frame(width: 50).lineHeightLabel()
+                Image(systemName: "plus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
             }
             .disabled(!ReaderMenuOptions.canStepWidth(width, by: 1))
             .focused($focus, equals: "webtoonWidth.increase")
@@ -437,8 +453,8 @@ struct ReaderMenu: View {
     private var playControls: some View {
         let level = session.autoScrollLevel
         let webtoon = settings.mode == .webtoon
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 28) {
+        return VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {
+            HStack(spacing: MenuMetrics.stepperSpacing) {
                 Button {
                     session.isMenuPresented = false
                     session.togglePlay()
@@ -453,7 +469,7 @@ struct ReaderMenu: View {
                 Button {
                     session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: -1))
                 } label: {
-                    Image(systemName: "tortoise").frame(width: 50).lineHeightLabel()
+                    Image(systemName: "tortoise").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
                 }
                 .disabled(!WebtoonAutoScroll.canStep(level, by: -1))
                 .focused($focus, equals: "autoScroll.slower")
@@ -462,13 +478,13 @@ struct ReaderMenu: View {
 
                 Text(WebtoonAutoScroll.label(level))
                     .font(.callout)
-                    .frame(minWidth: 180)
+                    .frame(minWidth: MenuMetrics.speedValue)
                     .accessibilityIdentifier("reader.menu.autoScroll.value")
 
                 Button {
                     session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: 1))
                 } label: {
-                    Image(systemName: "hare").frame(width: 50).lineHeightLabel()
+                    Image(systemName: "hare").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
                 }
                 .disabled(!WebtoonAutoScroll.canStep(level, by: 1))
                 .focused($focus, equals: "autoScroll.faster")
@@ -576,11 +592,11 @@ struct ReaderMenu: View {
     private func pictureStepper(_ item: PictureMenuItem, value: Double, steps: [Double], label: String,
                                 less: (String, String), more: (String, String),
                                 set: @escaping (Double) -> Void) -> some View {
-        HStack(spacing: 28) {
+        HStack(spacing: MenuMetrics.stepperSpacing) {
             Button {
                 set(PictureSettings.stepped(value, in: steps, by: -1))
             } label: {
-                Image(systemName: less.0).frame(width: 50).lineHeightLabel()
+                Image(systemName: less.0).frame(width: MenuMetrics.stepperButton).lineHeightLabel()
             }
             .disabled(!PictureSettings.canStep(value, in: steps, by: -1))
             .focused($focus, equals: "picture.\(item.rawValue).decrease")
@@ -589,13 +605,13 @@ struct ReaderMenu: View {
 
             Text(label)
                 .font(.callout.monospacedDigit())
-                .frame(minWidth: 110)
+                .frame(minWidth: MenuMetrics.stepperValue)
                 .accessibilityIdentifier("reader.menu.picture.\(item.rawValue).value")
 
             Button {
                 set(PictureSettings.stepped(value, in: steps, by: 1))
             } label: {
-                Image(systemName: more.0).frame(width: 50).lineHeightLabel()
+                Image(systemName: more.0).frame(width: MenuMetrics.stepperButton).lineHeightLabel()
             }
             .disabled(!PictureSettings.canStep(value, in: steps, by: 1))
             .focused($focus, equals: "picture.\(item.rawValue).increase")
@@ -649,7 +665,7 @@ private struct ChapterListPane: View {
                 row(chapter).id(chapter.id)
             }
         }
-        .padding(.top, 20)
+        .padding(.top, ReaderMenu.MenuMetrics.paneTop)
         .onAppear {
             let current = session.chapter.id
             proxy.scrollTo(current, anchor: .center)
@@ -706,7 +722,7 @@ private struct BookmarkListPane: View {
                 row(bookmark)
             }
         }
-        .padding(.top, 20)
+        .padding(.top, ReaderMenu.MenuMetrics.paneTop)
     }
 
     private func row(_ bookmark: Bookmark) -> some View {
