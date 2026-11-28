@@ -72,3 +72,17 @@ struct ImageStubServer: MangaServer {
         return r
     }
 }
+
+/// A one-page PDF of `width` × `height` points with a filled square.
+func makePDF(width: Double, height: Double) -> Data {
+    let out = NSMutableData()
+    var box = CGRect(x: 0, y: 0, width: width, height: height)
+    let consumer = CGDataConsumer(data: out as CFMutableData)!
+    let ctx = CGContext(consumer: consumer, mediaBox: &box, nil)!
+    ctx.beginPDFPage(nil)
+    ctx.setFillColor(red: 0.2, green: 0.4, blue: 0.8, alpha: 1)
+    ctx.fill(CGRect(x: 20, y: 20, width: 100, height: 100))
+    ctx.endPDFPage()
+    ctx.closePDF()
+    return out as Data
+}

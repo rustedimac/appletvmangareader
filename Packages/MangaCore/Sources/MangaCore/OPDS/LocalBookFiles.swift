@@ -174,15 +174,21 @@ public enum LocalPDFRenderer {
         }
     }
 
-    static func render(folder: URL, index: Int) -> Data? {
-        guard let doc = document(in: folder), !doc.isEncrypted || doc.unlockWithPassword(""),
-              let page = doc.page(at: index + 1) else { return nil }
+    /// The page's crop box size, rotation applied, in PDF points.
+    static func size(of page: CGPDFPage) -> (width: Double, height: Double)? {
         let box = page.getBoxRect(.cropBox)
         let rotated = abs(page.rotationAngle) % 180 == 90
         let w = Double(rotated ? box.height : box.width), h = Double(rotated ? box.width : box.height)
         guard w > 0, h > 0 else { return nil }
+        return (w, h)
+    }
+
+    /// The page drawn on white with its longer side `longSide` pixels.
+    static func image(of page: CGPDFPage, longSide: Double) -> CGImage? {
+        guard let size = size(of: page) else { return nil }
+        let w = size.width, h = size.height
         let scale = longSide / max(w, h)
-        let width = Int((w * scale).rounded()), height = Int((h * scale).rounded())
+        let width = max(1, Int((w * scale).rounded())), height = max(1, Int((h * scale).rounded()))
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpaceCreateDeviceRGB(),
                                   bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
@@ -192,7 +198,13 @@ public enum LocalPDFRenderer {
         ctx.interpolationQuality = .high
         ctx.concatenate(page.getDrawingTransform(.cropBox, rect: rect, rotate: 0, preserveAspectRatio: true))
         ctx.drawPDFPage(page)
-        guard let image = ctx.makeImage() else { return nil }
+        return ctx.makeImage()
+    }
+
+    static func render(folder: URL, index: Int) -> Data? {
+        guard let doc = document(in: folder), !doc.isEncrypted || doc.unlockWithPassword(""),
+              let page = doc.page(at: index + 1),
+              let image = image(of: page, longSide: longSide) else { return nil }
         let out = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(out as CFMutableData, "public.jpeg" as CFString, 1, nil) else {
             return nil

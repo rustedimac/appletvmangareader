@@ -37,6 +37,18 @@ final class ImageDecoderTests: XCTestCase {
         XCTAssertLessThanOrEqual(image.cgImage.width, 34)
     }
 
+    /// Codex (and Komga without an image Accept header) answer a PDF
+    /// book's page with a one-page PDF. It's drawn instead of failing with
+    /// "The page isn't an image the TV can show".
+    func testDecodesAPageSentAsAPDF() throws {
+        let data = makePDF(width: 300, height: 450)
+        XCTAssertEqual(ImageDecoder.pixelSize(of: data), PageSize(width: 1600, height: 2400))
+        let image = try ImageDecoder.decode(data, targetSize: CGSize(width: 1920, height: 1080), scaling: .fit)
+        XCTAssertEqual(image.pixelSize, PageSize(width: 1600, height: 2400))
+        XCTAssertEqual(image.cgImage.height, 1080)
+        XCTAssertEqual(image.cgImage.width, 720)
+    }
+
     func testDecodeRejectsNonImages() {
         XCTAssertThrowsError(try ImageDecoder.decode(Data("<html>".utf8), targetSize: nil, scaling: .fit)) {
             XCTAssertEqual($0 as? ImagePipelineError, .undecodable)
