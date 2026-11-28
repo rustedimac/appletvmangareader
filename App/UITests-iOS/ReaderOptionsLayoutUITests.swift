@@ -35,11 +35,12 @@ final class ReaderOptionsLayoutUITests: XCTestCase {
         XCTAssertTrue(edges.waitForExistence(timeout: 5), "No panel marker", file: file, line: line)
         var lastSignature = ""
         for _ in 0..<10 {
-            let bounds = edges.frame
-            let frames = (panel.buttons.allElementsBoundByIndex + panel.staticTexts.allElementsBoundByIndex)
-                .filter { $0.exists }
-                .map(\.frame)
-                .filter { $0.width > 1 && $0.height > 1 && bounds.intersection($0).height >= $0.height * 0.9 }
+            let bounds: CGRect = edges.frame
+            let elements: [XCUIElement] = panel.buttons.allElementsBoundByIndex + panel.staticTexts.allElementsBoundByIndex
+            let frames: [CGRect] = elements.filter { $0.exists }.map { $0.frame }.filter { (f: CGRect) -> Bool in
+                guard f.width > 1, f.height > 1 else { return false }
+                return bounds.intersection(f).height >= f.height * 0.9
+            }
             for f in frames {
                 XCTAssertGreaterThanOrEqual(f.minX - bounds.minX, Self.minSideInset,
                                             "Element at \(f) is \(f.minX - bounds.minX) pt from the panel's leading edge", file: file, line: line)
