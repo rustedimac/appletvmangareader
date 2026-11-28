@@ -438,10 +438,10 @@ struct ReaderLoadStateView: View {
             VStack(spacing: 24) {
                 Text("Couldn't load \(session.chapter.title)").font(.title3)
                 Text(message).foregroundStyle(.secondary)
-                Button("Retry") { Task { await session.retry() } }
+                Button("Try Again") { Task { await session.retry() } }
             }
             .padding(60)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.panel))
             .accessibilityIdentifier("reader.error")
         case .loaded:
             EmptyView()

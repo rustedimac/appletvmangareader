@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fails when a view uses a value the design guide says comes from a token.
 
-Rules for App/Sources (see docs/DESIGN_GUIDE.md and docs/CONSISTENCY_AUDIT.md):
+Rules for App/Sources and App/Sources-iOS (see docs/DESIGN_GUIDE.md and docs/CONSISTENCY_AUDIT.md):
 
 1. radius: no literal corner radius (`cornerRadius: 12`, `.cornerRadius(8)`).
    Use a `Radius` token, `Capsule()`, or the system shape.
@@ -10,7 +10,8 @@ Rules for App/Sources (see docs/DESIGN_GUIDE.md and docs/CONSISTENCY_AUDIT.md):
    (the check skips a line within three lines of `Image(systemName:`).
 3. text-style: no `.footnote`, `.subheadline` or `.title` (Title 1) on text.
    They aren't in the tvOS type table the guide uses; use `.caption`, `.body`
-   or `.title2`. Symbol images are skipped as in rule 2.
+   or `.title2`. Symbol images are skipped as in rule 2. tvOS only: the
+   iOS sources (App/Sources-iOS) use the iOS type table, where these exist.
 4. section-header: no `Section("Title")` in a form. Use
    `Section(settingsHeader:)` so every settings header looks the same.
 5. retry-label: a retry button says "Try Again", not "Retry".
@@ -32,7 +33,9 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-ROOT = REPO / "App" / "Sources"
+ROOTS = [REPO / "App" / "Sources", REPO / "App" / "Sources-iOS"]
+# Rules that follow the tvOS type table, so they skip the iOS-only sources.
+TVOS_ONLY = {"text-style"}
 
 RULES = {
     "radius": (re.compile(r"cornerRadius:\s*\d|\.cornerRadius\(\s*\d"),
@@ -52,24 +55,22 @@ RULES = {
 
 # (file, rule) -> problems allowed. Only for files open PRs are changing;
 # fix them once those PRs merge. Keep this list shrinking.
-BASELINE = {
-    ("App/Sources/Reader/ReaderView.swift", "radius"): 1,
-    ("App/Sources/Reader/ReaderView.swift", "retry-label"): 1,
-    ("App/Sources/Reader/Book/BookReaderView.swift", "radius"): 1,
-    ("App/Sources/Reader/Book/BookReaderView.swift", "retry-label"): 1,
-    ("App/Sources/Reader/Menu/ReaderMenu.swift", "text-style"): 3,
-}
+# Empty since 2026-11-28: the reader cases were fixed after #67 merged.
+BASELINE = {}
 
 counts = collections.Counter()
 lines_by_key = collections.defaultdict(list)
-for path in sorted(ROOT.rglob("*.swift")):
+for path in sorted(p for root in ROOTS for p in root.rglob("*.swift")):
     rel = str(path.relative_to(REPO))
+    ios_only = rel.startswith("App/Sources-iOS/")
     lines = path.read_text(encoding="utf-8").splitlines()
     for i, line in enumerate(lines):
         if "design-ok:" in line:
             continue
         code = line.split("//", 1)[0]
         for rule, (pattern, _) in RULES.items():
+            if ios_only and rule in TVOS_ONLY:
+                continue
             if rule == "header-text":
                 prev = next((l for l in reversed(lines[:i]) if l.strip()), "")
                 if not prev.rstrip().endswith("header: {"):

@@ -238,11 +238,11 @@ final class WebtoonPageFailureView: UIView {
         messageLabel.textColor = .secondaryLabel
         messageLabel.numberOfLines = 2
         for label in [titleLabel, messageLabel] { label.textAlignment = .center }
-        retryLabel.text = "Retry"
+        retryLabel.text = "Try Again"
         retryLabel.font = .preferredFont(forTextStyle: .headline)
         retryLabel.textColor = .black
         retryLabel.backgroundColor = .white
-        retryLabel.layer.cornerRadius = 12
+        retryLabel.layer.cornerRadius = Radius.poster
         retryLabel.layer.masksToBounds = true
         retryLabel.textAlignment = .center
         let hint = UILabel()

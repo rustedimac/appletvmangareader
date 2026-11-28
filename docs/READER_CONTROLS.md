@@ -1,6 +1,8 @@
-# Reader controls: current behaviour, conflicts and proposal
+# Reader controls: design record
 
-Status: **proposal for review, nothing implemented yet.** Written 2026-11-26
+Status: **implemented** in #67 and #81 (the scheme in section 10). The
+current button map is docs/CONTROLS.md; sections 1 to 9 below describe the
+controls before #67 and are kept as the record of why. Written 2026-11-26
 after John asked why Down and Play/Pause both open the reader options, why
 Back leaves the chapter while the options are open, and that the page number
 pill should not be on screen all the time.
