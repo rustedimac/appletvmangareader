@@ -131,20 +131,36 @@ final class DownloadedBookTests: XCTestCase {
     static func storedZip(_ files: [(String, String)]) -> Data {
         var out = Data()
         var central = Data()
-        func u16(_ v: Int) -> Data { Data([UInt8(v & 0xff), UInt8((v >> 8) & 0xff)]) }
-        func u32(_ v: Int) -> Data { u16(v & 0xffff) + u16((v >> 16) & 0xffff) }
+        func u16(_ data: inout Data, _ values: Int...) {
+            for v in values { data.append(contentsOf: [UInt8(v & 0xff), UInt8((v >> 8) & 0xff)]) }
+        }
+        func u32(_ data: inout Data, _ values: Int...) {
+            for v in values { u16(&data, v & 0xffff, (v >> 16) & 0xffff) }
+        }
         for (name, text) in files {
             let nameData = Data(name.utf8), body = Data(text.utf8)
             let offset = out.count
-            out += u32(0x04034b50) + u16(20) + u16(0) + u16(0) + u16(0) + u16(0) + u32(0)
-            out += u32(body.count) + u32(body.count) + u16(nameData.count) + u16(0) + nameData + body
-            central += u32(0x02014b50) + u16(20) + u16(20) + u16(0) + u16(0) + u16(0) + u16(0) + u32(0)
-            central += u32(body.count) + u32(body.count) + u16(nameData.count) + u16(0) + u16(0) + u16(0) + u16(0)
-            central += u32(0) + u32(offset) + nameData
+            // Local file header.
+            u32(&out, 0x04034b50)
+            u16(&out, 20, 0, 0, 0, 0)
+            u32(&out, 0, body.count, body.count)
+            u16(&out, nameData.count, 0)
+            out.append(nameData)
+            out.append(body)
+            // Central directory entry.
+            u32(&central, 0x02014b50)
+            u16(&central, 20, 20, 0, 0, 0, 0)
+            u32(&central, 0, body.count, body.count)
+            u16(&central, nameData.count, 0, 0, 0, 0)
+            u32(&central, 0, offset)
+            central.append(nameData)
         }
         let start = out.count
-        out += central
-        out += u32(0x06054b50) + u16(0) + u16(0) + u16(files.count) + u16(files.count) + u32(central.count) + u32(start) + u16(0)
+        out.append(central)
+        u32(&out, 0x06054b50)
+        u16(&out, 0, 0, files.count, files.count)
+        u32(&out, central.count, start)
+        u16(&out, 0)
         return out
     }
 }
