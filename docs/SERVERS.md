@@ -12,7 +12,8 @@ worth supporting, with a rough effort and value for each.
 | **Kavita** | Native REST client | Synced per Kavita user | Page sizes up front, so spreads pair before loading. |
 | **Suwayomi** (Tachiyomi/Mihon server) | Native GraphQL client | One progress per server (per-user only in previews) | Library only, no source browsing. |
 | **Komga** | Native REST client (`KomgaClient`, Komga 1.19+) | Synced per Komga user | API key or email + password. Libraries, series, books, page sizes, new/updated rows, Continue Reading from books in progress. |
-| **OPDS 1.2 / 2.0** | Generic client (`OPDSClient`) | Kept on the Apple TV | Covers every server below that has an OPDS feed. Page streaming via OPDS-PSE or OPDS 2 DiViNa manifests; otherwise CBZ files are downloaded and unpacked locally. |
+| **Calibre** (content server) | Native JSON client (`CalibreClient`, `ajax/…`) | Kept on the device | Libraries are categories; books in a Calibre series group into one series in series order. CBZ, EPUB, PDF and TXT open (downloaded and read on device, `docs/BOOKS-AND-PDF.md`). Optional login, Basic or Digest. Tags work as genres for content filters. |
+| **OPDS 1.2 / 2.0** | Generic client (`OPDSClient`) | Kept on the Apple TV | Covers every server below that has an OPDS feed. Page streaming via OPDS-PSE or OPDS 2 DiViNa manifests; otherwise the file is downloaded: CBZ and PDF read as pages, EPUB and TXT in the book reader. |
 
 ### Reading lists, collections and smart filters
 
@@ -42,17 +43,24 @@ Enter the catalog URL, or just the host: the client tries
 
 | Server | OPDS path | Streams pages? | Tested |
 | --- | --- | --- | --- |
-| Komga | `/opds/v1.2/catalog`, `/opds/v2/catalog` | Yes (PSE, DiViNa) | Live against Komga 1.30.2 (v1.2 and v2) |
-| Stump | `/opds/v1.2/catalog`, `/opds/v2.0/catalog` | v1.2: PSE. v2: downloads the CBZ | Live against Stump (v1.2 and v2) |
-| Kavita | `/api/opds/<api key>` | Yes (PSE) | Use the native Kavita type instead |
-| Codex | `/opds/v1.2/`, `/opds/v2.0/` | Yes (PSE) | Paths from Codex docs; not run live yet |
-| Ubooquity | `/opds-comics/`, `/opds-books/` | Comics: PSE | From Ubooquity docs; not run live yet |
-| Calibre-Web | `/opds` | No: downloads the file | Fixture in Calibre-Web's feed format |
-| Calibre content server | `/opds` | No: downloads the file | Not run live yet |
+| Komga | `/opds/v1.2/catalog`, `/opds/v2/catalog` | Yes (PSE, DiViNa) | Live against Komga 1.30.2 (v1.2 and v2), 2026-11-28 |
+| Stump | `/opds/v1.2/catalog`, `/opds/v2.0/catalog` | v1.2: PSE (EPUBs too, as pictures). v2: downloads the file | Live against Stump 0.1.14, 2026-11-28 |
+| Kavita | `/api/opds/<api key>` | Yes (PSE) | Live against Kavita 0.9.1.4; use the native Kavita type instead |
+| Codex | `/opds/v1.2/`, `/opds/v2.0/` | Yes (PSE) | Live against Codex 1.9.24 (v1.2), 2026-11-28. Its Keep Reading / Recently Updated sections list navigation links, not books (follow-up) |
+| Ubooquity | `/opds-comics/`, `/opds-books/` | Comics: PSE | From Ubooquity docs; Ubooquity 3.1 wouldn't start headless, not run live |
+| Calibre-Web | `/opds` | No: downloads the file | Live against Calibre-Web 0.6.27 (CBZ, EPUB, PDF), 2026-11-28 |
+| Calibre content server | `/opds` | No: downloads the file | Live against calibre 9.19 with Digest login; the native Calibre type is better (series grouping) |
 
-Limits today: PDF and EPUB files from OPDS catalogs don't open yet (they
-will once the PDF/ebook reader lands), CBR/RAR archives aren't supported,
+Limits today: CBR/RAR archives aren't supported, MOBI/AZW3 aren't read,
 and OPDS has no standard way to write progress back.
+
+### Test servers
+
+Every type above was run live on 2026-11-28 against local servers with
+public-domain and CC content (Pepper&Carrot, Project Gutenberg EPUBs). How
+to set them up: `tools/test-servers/README.md`. The live tests
+(`KavitaLiveTests`, `SuwayomiLiveTests`, `KomgaLiveTests`, `OPDSLiveTests`,
+`CalibreLiveTests`) take the server from environment variables.
 
 ## Several addresses per server
 
@@ -105,16 +113,16 @@ Kavita and Komga ones, with fixtures and UI tests.
 
 | # | Service | Value | Effort | Why |
 | --- | --- | --- | --- | --- |
-| 1 | **PDF/EPUB from OPDS** (not a server) | High | Small | Calibre-Web and Calibre users mostly have EPUB/PDF. Hook `OPDSClient.pages` up to the PDF and book readers once they merge. |
+| 1 | ~~PDF/EPUB from OPDS~~ | Done | | EPUB, PDF and TXT files from OPDS, Calibre and Komga open on device (2026-11-28). |
 | 2 | **Codex** native | Medium | Medium | Popular with comic readers and has a REST API with per-user progress and filters. OPDS already works, so a native client mainly adds progress sync. |
 | 3 | **Stump** native | Medium | Medium | Young but growing; GraphQL and REST APIs with per-user progress. OPDS already works. |
 | 4 | **Plain folders over WebDAV or SMB** (NAS shares of CBZ/PDF/EPUB) | High | Large | Many people have no server at all, just a NAS. WebDAV is plain HTTP (doable with `URLSession`); SMB needs a library such as AMSMB2. Folder names become series; files become chapters; CBZ pages unpack through `LocalArchiveCache`. Progress stays local. |
-| 5 | **Calibre content server** native (`/ajax` API) | Medium | Medium | Huge user base for ebooks, but mostly EPUB, so it depends on the book reader. OPDS covers browsing today. |
+| 5 | ~~Calibre content server native~~ | Done | | `CalibreClient` (2026-11-28). |
 | 6 | **Audiobookshelf** (ebooks only) | Low to medium | Medium | Mainly audiobooks and podcasts; its ebook support (EPUB/PDF/CBZ) is secondary. Only worth it after the book reader, and only for its ebook libraries. |
 | 7 | **Ubooquity** | Low | Small | Older and little maintained. OPDS covers it fully. |
 | 8 | **Komga OPDS-only users** | None | None | Covered by the native Komga type. |
 
-Recommendation: do 1 first (small, unlocks Calibre-Web/Calibre), then 4
+Recommendation: 1 and 5 are done; next 4
 (the biggest group not served at all), then native Codex and Stump only if
 users ask for progress sync on them.
 

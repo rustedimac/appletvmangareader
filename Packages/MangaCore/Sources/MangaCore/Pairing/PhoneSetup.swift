@@ -85,7 +85,7 @@ public enum PhoneSetupHTTP {
                 draft.apiKey = clean(apiKey)
                 draft.username = clean(username)
                 draft.password = password ?? ""
-            case .suwayomi, .opds:
+            case .suwayomi, .opds, .calibre:
                 draft.apiKey = ""
                 draft.username = clean(username)
                 draft.password = password ?? ""
@@ -190,7 +190,7 @@ public enum PhoneSetupHTTP {
         <div data-for="kavita komga"><label for="apiKey">API key</label>
         <p class="small" data-for="kavita">Or leave it empty and use your Kavita username and password below.</p>
         <input id="apiKey" name="apiKey" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-        <div data-for="kavita komga suwayomi opds"><label for="username" id="userLabel">Username</label>
+        <div data-for="kavita komga suwayomi opds calibre"><label for="username" id="userLabel">Username</label>
         <input id="username" name="username" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="username">
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="current-password"></div>

@@ -272,8 +272,20 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
                 pageCount: pages,
                 lastPageRead: min(lastPage, max(pages - 1, 0)),
                 isRead: completed,
-                updatedAt: book.lastModified
+                updatedAt: book.lastModified,
+                format: format(book)
             )
+        }
+    }
+
+    /// EPUBs that aren't picture books (Komga's `epubDivinaCompatible`)
+    /// read in the book reader; PDFs get a badge but read as Komga's
+    /// rendered pages.
+    static func format(_ book: KomgaBookDTO) -> ContentFormat? {
+        switch book.media?.mediaProfile?.uppercased() {
+        case "EPUB": return book.media?.epubDivinaCompatible == true ? nil : .epub
+        case "PDF": return .pdf
+        default: return nil
         }
     }
 
@@ -311,5 +323,24 @@ public final class KomgaClient: MangaServer, @unchecked Sendable {
     /// change the path.
     static func pathSegment(_ id: String) -> String {
         id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
+    }
+}
+
+/// Text EPUBs: Komga serves the file (`api/v1/books/{id}/file`) and the app
+/// reads it on device, like OPDS and Calibre books.
+extension KomgaClient: DownloadsBookFiles {
+    func download(_ chapter: Chapter) throws -> DownloadedBook {
+        var r = try http.request("GET", "api/v1/books/\(Self.pathSegment(chapter.id))/file")
+        r.timeoutInterval = 300
+        r.setValue(nil, forHTTPHeaderField: "Accept")
+        return DownloadedBook(request: r, kind: .epub, archives: .shared, transport: transport)
+    }
+
+    public func bookManifest(for chapter: Chapter) async throws -> BookManifest {
+        try await download(chapter).manifest(title: chapter.title)
+    }
+
+    public func bookSection(_ index: Int, of chapter: Chapter) async throws -> BookSection {
+        try await download(chapter).section(index)
     }
 }

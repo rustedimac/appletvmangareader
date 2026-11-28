@@ -106,7 +106,7 @@ struct ServerEditorView: View {
                         .textContentType(.password)
                         .accessibilityIdentifier("serverEditor.password")
                         .settingsTextFieldRow()
-                case .suwayomi, .opds:
+                case .suwayomi, .opds, .calibre:
                     TextField("Username (optional)", text: $draft.username)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
@@ -280,6 +280,8 @@ struct ServerEditorView: View {
             return "Only needed if the server asks for a login."
         case .opds:
             return "Only needed if the catalog asks for a login. Works with Calibre-Web, Ubooquity, Codex, Stump and other OPDS servers; only the host is needed for the usual catalog paths."
+        case .calibre:
+            return "Only needed if the content server requires a username and password (Calibre → Preferences → Sharing over the net)."
         case .freeLibrary:
             return "The Free Library needs no login."
         }
@@ -293,6 +295,8 @@ struct ServerEditorView: View {
             return "Komga keeps progress per user, so this is normally on."
         case .opds:
             return "OPDS catalogs can't store reading progress, so it's kept on this \(Platform.deviceName)."
+        case .calibre:
+            return "Calibre keeps reading positions for its own viewer only, so progress is kept on this \(Platform.deviceName)."
         case .suwayomi:
             let others = otherSyncingProfiles
             let base = "Suwayomi keeps one reading progress for the whole server. Turn this on for one profile; the others keep their progress on this \(Platform.deviceName)."
@@ -309,6 +313,7 @@ struct ServerEditorView: View {
         case .komga: return "Address, e.g. komga.local:25600"
         case .suwayomi: return "Address, e.g. suwayomi.local:4567"
         case .opds: return "Catalog URL or address, e.g. books.local:8083/opds"
+        case .calibre: return "Address, e.g. calibre.local:8080"
         case .freeLibrary: return ""
         }
     }

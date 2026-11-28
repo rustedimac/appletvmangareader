@@ -73,8 +73,13 @@ reader, X starts or stops auto-scroll, and Y opens the reader menu.
   Suwayomi keeps one progress per server, so one profile syncs there and the
   others keep progress on the Apple TV, unless the server has user accounts.
 - **Komga**: the server address plus an API key, or your email and password.
-- **OPDS**: the catalog's address (for example a Komga, Kavita or Calibre
-  OPDS feed). Progress stays on the Apple TV.
+- **Calibre**: the address of Calibre's content server, e.g.
+  `http://calibre.local:8080`, plus a username and password if it requires
+  one. Books in a Calibre series show as one series; CBZ, EPUB, PDF and TXT
+  open. Progress stays on the Apple TV.
+- **OPDS**: the catalog's address (for example Calibre-Web, Stump, Codex, or
+  a Komga or Kavita OPDS feed). EPUB, PDF and TXT books are downloaded and
+  read on the device. Progress stays on the Apple TV.
 - **Free Library**: built in, no setup. See
   [docs/SERVERS.md](docs/SERVERS.md) for what each type supports.
 

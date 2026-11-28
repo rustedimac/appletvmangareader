@@ -374,7 +374,7 @@ final class FreeLibraryTests: XCTestCase {
     }
 
     func testServerKindLists() {
-        XCTAssertEqual(ServerKind.userAddable, [.kavita, .komga, .suwayomi, .opds])
+        XCTAssertEqual(ServerKind.userAddable, [.kavita, .komga, .suwayomi, .calibre, .opds])
         XCTAssertFalse(ServerKind.userAddable.contains(.freeLibrary))
         XCTAssertEqual(ServerKind.freeLibrary.categoryNoun, "Collections")
         XCTAssertNil(ServerDraft(kind: .freeLibrary).credential)

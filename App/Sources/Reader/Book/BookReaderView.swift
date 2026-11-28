@@ -16,6 +16,9 @@ struct BookReaderView: View {
     let start: Chapter
     /// Overrides the server client (UI tests and previews).
     var server: MangaServer? = nil
+    /// Called instead of opening when a downloaded EPUB is all pictures
+    /// (comics made into EPUBs), so `ReaderView` can use the image readers.
+    var onPictureBook: (() -> Void)? = nil
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -103,6 +106,11 @@ struct BookReaderView: View {
             guard session == nil, !unsupported else { return }
             guard let books = (server ?? model.client(for: series.ref))?.unfiltered as? BookProviding else {
                 unsupported = true
+                return
+            }
+            if let onPictureBook, books is any DownloadsBookFiles,
+               let manifest = try? await books.bookManifest(for: start), manifest.isImageOnly {
+                onPictureBook()
                 return
             }
             let s = BookReaderSession(model: model, server: books, series: series, chapters: chapters, start: start)

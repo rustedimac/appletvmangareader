@@ -1,0 +1,220 @@
+{
+ "1": {
+  "application_id": 1,
+  "title": "Lantern Courier",
+  "title_sort": "Lantern Courier",
+  "authors": [
+   "Test Author"
+  ],
+  "author_sort": "Author, Test",
+  "series": "Lantern Courier",
+  "series_index": 2.0,
+  "tags": [
+   "Comics"
+  ],
+  "formats": [
+   "CBZ"
+  ],
+  "format_metadata": {
+   "cbz": {
+    "size": 1000,
+    "mtime": "2026-11-22T10:00:00+00:00"
+   }
+  },
+  "comments": null,
+  "timestamp": "2026-11-22T10:00:00+00:00",
+  "last_modified": "2026-11-22T10:00:00+00:00",
+  "pubdate": "0101-01-01T00:00:00+00:00",
+  "cover": "/get/cover/1/Test_Library",
+  "thumbnail": "/get/thumb/1/Test_Library",
+  "main_format": {
+   "CBZ": "/get/CBZ/1/Test_Library"
+  },
+  "other_formats": {},
+  "languages": [
+   "eng"
+  ],
+  "uuid": "uuid-1",
+  "identifiers": {},
+  "publisher": null,
+  "rating": 0,
+  "user_metadata": {}
+ },
+ "2": {
+  "application_id": 2,
+  "title": "Lantern Courier",
+  "title_sort": "Lantern Courier",
+  "authors": [
+   "Test Author"
+  ],
+  "author_sort": "Author, Test",
+  "series": "Lantern Courier",
+  "series_index": 1.0,
+  "tags": [
+   "Comics"
+  ],
+  "formats": [
+   "CBZ",
+   "PDF"
+  ],
+  "format_metadata": {
+   "cbz": {
+    "size": 1000,
+    "mtime": "2026-11-21T10:00:00+00:00"
+   },
+   "pdf": {
+    "size": 1000,
+    "mtime": "2026-11-21T10:00:00+00:00"
+   }
+  },
+  "comments": null,
+  "timestamp": "2026-11-21T10:00:00+00:00",
+  "last_modified": "2026-11-21T10:00:00+00:00",
+  "pubdate": "0101-01-01T00:00:00+00:00",
+  "cover": "/get/cover/2/Test_Library",
+  "thumbnail": "/get/thumb/2/Test_Library",
+  "main_format": {
+   "CBZ": "/get/CBZ/2/Test_Library"
+  },
+  "other_formats": {
+   "PDF": "/get/PDF/2/Test_Library"
+  },
+  "languages": [
+   "eng"
+  ],
+  "uuid": "uuid-2",
+  "identifiers": {},
+  "publisher": null,
+  "rating": 0,
+  "user_metadata": {}
+ },
+ "3": {
+  "application_id": 3,
+  "title": "The Lamp Keeper",
+  "title_sort": "The Lamp Keeper",
+  "authors": [
+   "Test Author"
+  ],
+  "author_sort": "Author, Test",
+  "series": null,
+  "series_index": 1.0,
+  "tags": [
+   "Fiction",
+   "Night"
+  ],
+  "formats": [
+   "PDF",
+   "EPUB"
+  ],
+  "format_metadata": {
+   "pdf": {
+    "size": 1000,
+    "mtime": "2026-11-23T10:00:00+00:00"
+   },
+   "epub": {
+    "size": 1000,
+    "mtime": "2026-11-23T10:00:00+00:00"
+   }
+  },
+  "comments": "<p>A keeper &amp; a <b>lamp</b>.</p>",
+  "timestamp": "2026-11-23T10:00:00+00:00",
+  "last_modified": "2026-11-23T10:00:00+00:00",
+  "pubdate": "0101-01-01T00:00:00+00:00",
+  "cover": "/get/cover/3/Test_Library",
+  "thumbnail": "/get/thumb/3/Test_Library",
+  "main_format": {
+   "PDF": "/get/PDF/3/Test_Library"
+  },
+  "other_formats": {
+   "EPUB": "/get/EPUB/3/Test_Library"
+  },
+  "languages": [
+   "eng"
+  ],
+  "uuid": "uuid-3",
+  "identifiers": {},
+  "publisher": null,
+  "rating": 0,
+  "user_metadata": {}
+ },
+ "4": {
+  "application_id": 4,
+  "title": "Paper Notes",
+  "title_sort": "Paper Notes",
+  "authors": [
+   "Test Author"
+  ],
+  "author_sort": "Author, Test",
+  "series": null,
+  "series_index": 1.0,
+  "tags": [
+   "Notes"
+  ],
+  "formats": [
+   "TXT"
+  ],
+  "format_metadata": {
+   "txt": {
+    "size": 1000,
+    "mtime": "2026-11-19T10:00:00+00:00"
+   }
+  },
+  "comments": null,
+  "timestamp": "2026-11-19T10:00:00+00:00",
+  "last_modified": "2026-11-19T10:00:00+00:00",
+  "pubdate": "0101-01-01T00:00:00+00:00",
+  "cover": "/get/cover/4/Test_Library",
+  "thumbnail": "/get/thumb/4/Test_Library",
+  "main_format": {
+   "TXT": "/get/TXT/4/Test_Library"
+  },
+  "other_formats": {},
+  "languages": [
+   "eng"
+  ],
+  "uuid": "uuid-4",
+  "identifiers": {},
+  "publisher": null,
+  "rating": 0,
+  "user_metadata": {}
+ },
+ "5": {
+  "application_id": 5,
+  "title": "Odd Format",
+  "title_sort": "Odd Format",
+  "authors": [
+   "Test Author"
+  ],
+  "author_sort": "Author, Test",
+  "series": null,
+  "series_index": 1.0,
+  "tags": [],
+  "formats": [
+   "MOBI"
+  ],
+  "format_metadata": {
+   "mobi": {
+    "size": 1000,
+    "mtime": "2026-11-18T10:00:00+00:00"
+   }
+  },
+  "comments": null,
+  "timestamp": "2026-11-18T10:00:00+00:00",
+  "last_modified": "2026-11-18T10:00:00+00:00",
+  "pubdate": "0101-01-01T00:00:00+00:00",
+  "cover": "/get/cover/5/Test_Library",
+  "thumbnail": "/get/thumb/5/Test_Library",
+  "main_format": {
+   "MOBI": "/get/MOBI/5/Test_Library"
+  },
+  "other_formats": {},
+  "languages": [
+   "eng"
+  ],
+  "uuid": "uuid-5",
+  "identifiers": {},
+  "publisher": null,
+  "rating": 0,
+  "user_metadata": {}
+ }
+}

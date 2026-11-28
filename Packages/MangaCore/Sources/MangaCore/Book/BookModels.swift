@@ -30,11 +30,16 @@ public struct BookManifest: Hashable, Sendable {
     /// Number of sections (EPUB spine items). Kavita calls these pages.
     public var sectionCount: Int
     public var toc: [BookTOCEntry]
+    /// Every section is a single picture (a comic or manga packed as an
+    /// EPUB). The app opens these in the image readers instead, through
+    /// the server's `pages(for:)`.
+    public var isImageOnly: Bool
 
-    public init(title: String, sectionCount: Int, toc: [BookTOCEntry] = []) {
+    public init(title: String, sectionCount: Int, toc: [BookTOCEntry] = [], isImageOnly: Bool = false) {
         self.title = title
         self.sectionCount = sectionCount
         self.toc = toc
+        self.isImageOnly = isImageOnly
     }
 }
 

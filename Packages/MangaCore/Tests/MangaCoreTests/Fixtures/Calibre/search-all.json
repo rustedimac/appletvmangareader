@@ -1,0 +1,19 @@
+{
+ "total_num": 5,
+ "sort_order": "desc",
+ "num_books_without_search": 5,
+ "offset": 0,
+ "num": 1000,
+ "sort": "timestamp",
+ "base_url": "/ajax/search/Test_Library",
+ "query": "",
+ "library_id": "Test_Library",
+ "book_ids": [
+  3,
+  1,
+  2,
+  4,
+  5
+ ],
+ "vl": ""
+}

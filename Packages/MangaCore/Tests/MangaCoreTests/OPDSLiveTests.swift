@@ -36,6 +36,15 @@ final class OPDSLiveTests: XCTestCase {
             for series in page.items.prefix(3) where !opened {
                 let detail = try await client.seriesDetail(series.ref.seriesID)
                 guard let chapter = detail.chapters.first else { continue }
+                if chapter.format?.isText == true {
+                    // EPUB and text books are downloaded and read on device.
+                    let manifest = try await client.bookManifest(for: chapter)
+                    let text = try await client.bookSection(0, of: chapter)
+                    print("\(section.name) › \(detail.summary.title) › \(chapter.title): \(manifest.sectionCount) sections, "
+                          + "picture book \(manifest.isImageOnly), \(text.blocks.count) blocks in the first")
+                    XCTAssertGreaterThan(manifest.sectionCount, 0)
+                    continue
+                }
                 let pages = try await client.pages(for: chapter)
                 print("\(section.name) › \(detail.summary.title) › \(chapter.title): \(pages.count) pages, first \(pages.first?.url.absoluteString ?? "-")")
                 XCTAssertFalse(pages.isEmpty)

@@ -16,15 +16,18 @@ import FoundationNetworking
 /// - In a section, a folder entry (a series, an author…) is a series whose
 ///   chapters are the books inside it; a book entry is a one-chapter series.
 /// - Pages stream through OPDS-PSE (`{pageNumber}`, zero-based) or an OPDS 2
-///   DiViNa manifest. Otherwise a CBZ is downloaded and unpacked locally
-///   (`LocalArchiveCache`).
+///   DiViNa manifest. Otherwise the file is downloaded and read on device
+///   (`DownloadedBook`): CBZ and PDF as pages, EPUB and text in the book
+///   reader.
 /// - OPDS has no way to write progress back, so progress stays on the
 ///   Apple TV (`saveProgress` does nothing; the server form turns sync off).
 public final class OPDSClient: MangaServer, @unchecked Sendable {
     public let config: ServerConfig
     let transport: HTTPTransport
     public let categoryScope: Set<String>?
-    let authHeader: String?
+    /// Basic, or Digest once the server asks for it (Calibre's content
+    /// server does over plain HTTP).
+    let auth: PasswordAuth?
     let archives: LocalArchiveCache
     private let state = OPDSState()
 
@@ -47,13 +50,15 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
     public init(config: ServerConfig, username: String?, password: String?, categoryScope: Set<String>? = nil,
                 archives: LocalArchiveCache = .shared, transport: HTTPTransport) {
         self.config = config
-        self.transport = transport
         self.categoryScope = categoryScope
         self.archives = archives
         if let username, !username.isEmpty {
-            authHeader = "Basic " + Data("\(username):\(password ?? "")".utf8).base64EncodedString()
+            let auth = PasswordAuth(username: username, password: password ?? "")
+            self.auth = auth
+            self.transport = PasswordAuthTransport(inner: transport, auth: auth, host: config.baseURL.host)
         } else {
-            authHeader = nil
+            auth = nil
+            self.transport = transport
         }
     }
 
@@ -279,7 +284,8 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
             return try await folderDetail(url, seriesID: seriesID)
         case .book(let book):
             let chapter = Self.chapter(book, seriesRef: ref(seriesID), number: 1)
-            let summary = SeriesSummary(ref: ref(seriesID), title: book.title, coverURL: book.cover.flatMap(URL.init(string:)))
+            let summary = SeriesSummary(ref: ref(seriesID), title: book.title, coverURL: book.cover.flatMap(URL.init(string:)),
+                                        format: book.format)
             return SeriesDetail(summary: summary, synopsis: book.summary, authors: book.authors, genres: [], status: nil,
                                 chapters: [chapter])
         case nil:
@@ -345,20 +351,22 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
                 return URL(string: filled).map { PageDescriptor(index: index, url: $0) }
             }
         }
-        guard let file = book.file.flatMap(URL.init(string:)) else {
+        guard let download = download(book) else {
             throw MangaError.decoding("This book has no pages or file to read.")
         }
-        switch ContentKind(mediaType: book.fileType ?? "", url: file) {
-        case .comicArchive:
-            var r = URLRequest(url: file)
-            r.timeoutInterval = 300
-            let urls = try await archives.pages(for: authorize(r), transport: transport)
-            return urls.enumerated().map { PageDescriptor(index: $0, url: $1) }
-        case .pdf, .epub:
-            throw MangaError.decoding("PDF and EPUB books from OPDS catalogs can't be opened yet.")
-        case .other:
-            throw MangaError.decoding("This book's format (\(book.fileType ?? file.pathExtension)) isn't supported.")
+        if download.kind == .other {
+            throw MangaError.decoding("This book's format (\(book.fileType ?? download.request.url?.pathExtension ?? "")) isn't supported.")
         }
+        return try await download.pages()
+    }
+
+    /// The book's file, for reading on device.
+    func download(_ book: OPDSBook) -> DownloadedBook? {
+        guard let file = book.file.flatMap(URL.init(string:)) else { return nil }
+        var r = URLRequest(url: file)
+        r.timeoutInterval = 300
+        return DownloadedBook(request: authorize(r), kind: ContentKind(mediaType: book.fileType ?? "", url: file),
+                              archives: archives, transport: transport)
     }
 
     public func saveProgress(chapter: Chapter, libraryID: String?, page: Int, completed: Bool) async throws {
@@ -372,9 +380,9 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
     public func markSeriesUnread(_ seriesID: String) async throws {}
 
     public func authorize(_ request: URLRequest) -> URLRequest {
-        guard let authHeader, let host = request.url?.host, host == config.baseURL.host else { return request }
+        guard let auth, let host = request.url?.host, host == config.baseURL.host else { return request }
         var r = request
-        r.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        r.setValue(auth.header(for: r), forHTTPHeaderField: "Authorization")
         return r
     }
 
@@ -391,7 +399,8 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
         } else {
             return nil
         }
-        return SeriesSummary(ref: ref(id), title: entry.title, coverURL: entry.coverURL, libraryID: category)
+        let format = entry.isPublication ? OPDSBook(entry).format : nil
+        return SeriesSummary(ref: ref(id), title: entry.title, coverURL: entry.coverURL, libraryID: category, format: format)
     }
 
     static func chapter(_ book: OPDSBook, seriesRef: SeriesRef, number: Double) -> Chapter {
@@ -399,7 +408,8 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
         // pse:lastRead counts from one in Komga, the main server sending it.
         let last = max(0, min((book.lastRead ?? 0) - 1, max(count - 1, 0)))
         return Chapter(id: book.chapterID, seriesRef: seriesRef, title: book.title, number: number, pageCount: count,
-                       lastPageRead: last, isRead: count > 0 && (book.lastRead ?? 0) >= count, updatedAt: book.updated)
+                       lastPageRead: last, isRead: count > 0 && (book.lastRead ?? 0) >= count, updatedAt: book.updated,
+                       format: book.format)
     }
 }
 
@@ -437,6 +447,13 @@ struct OPDSBook: Codable, Hashable {
         updated = entry.updated
     }
 
+    /// How the app reads it: nil (pages) when the server streams pages or
+    /// the file is a comic archive.
+    var format: ContentFormat? {
+        guard stream == nil, divina == nil, let file else { return nil }
+        return ContentKind(mediaType: fileType ?? "", url: URL(string: file)).contentFormat
+    }
+
     /// The chapter id leaves out display-only fields to stay short.
     var chapterID: String {
         var lean = self
@@ -472,6 +489,19 @@ struct OPDSBook: Codable, Hashable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         return try? decoder.decode(OPDSBook.self, from: data)
+    }
+}
+
+/// EPUB and text books are downloaded and read on device.
+extension OPDSClient: DownloadsBookFiles {
+    public func bookManifest(for chapter: Chapter) async throws -> BookManifest {
+        guard let book = OPDSBook(chapterID: chapter.id), let download = download(book) else { throw MangaError.notFound }
+        return try await download.manifest(title: chapter.title)
+    }
+
+    public func bookSection(_ index: Int, of chapter: Chapter) async throws -> BookSection {
+        guard let book = OPDSBook(chapterID: chapter.id), let download = download(book) else { throw MangaError.notFound }
+        return try await download.section(index)
     }
 }
 

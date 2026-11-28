@@ -65,6 +65,8 @@ public enum ConnectionErrorMessage {
             return "Komga rejected the login. Check the API key, or the email and password."
         case .suwayomi, .opds:
             return "The server rejected the username or password."
+        case .calibre:
+            return "Calibre rejected the username or password. Use a user from Calibre → Preferences → Sharing over the net → User accounts."
         case .freeLibrary:
             return "The server rejected the login."
         }
@@ -80,6 +82,7 @@ public enum ConnectionErrorMessage {
         case .komga: return "http://komga.local:25600"
         case .suwayomi: return "http://suwayomi.local:4567"
         case .opds: return "http://books.local:8083/opds"
+        case .calibre: return "http://calibre.local:8080"
         case .freeLibrary: return ""
         }
     }

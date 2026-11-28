@@ -9,6 +9,7 @@ import CryptoKit
 /// Downloads a comic archive (CBZ/ZIP) that a server only offers as a whole
 /// file, unpacks its pages into Caches, and hands back `file://` page URLs
 /// the image pipeline can read (`URLSessionTransport` serves file URLs).
+/// EPUBs and PDFs are kept the same way (`LocalBookFiles.swift`).
 ///
 /// tvOS may purge Caches at any time; a missing book is simply downloaded
 /// again. The oldest books are removed once the folder passes `byteLimit`.
@@ -21,6 +22,11 @@ public actor LocalArchiveCache {
     public static let maxArchiveBytes = 600 * 1024 * 1024
 
     private var inFlight: [String: Task<[URL], Error>] = [:]
+    /// Downloads being unpacked into a folder (EPUB, PDF), by key.
+    var inFlightFolders: [String: Task<URL, Error>] = [:]
+    /// Parsed EPUBs by folder path, so turning sections doesn't re-read
+    /// the package each time.
+    var packages: [String: EPUBPackage] = [:]
 
     public init(directory: URL? = nil, byteLimit: Int = 1_500 * 1024 * 1024) {
         let base = directory ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -90,17 +96,22 @@ public actor LocalArchiveCache {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
-    private func touch(_ folder: URL) {
+    func touch(_ folder: URL) {
         try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: folder.path)
     }
 
     /// Removes the least recently opened books until under the limit.
-    private func trim(keeping current: URL) {
+    func trim(keeping current: URL) {
         let fm = FileManager.default
         guard let books = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
         func size(_ folder: URL) -> Int {
-            let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-            return files.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+            // Unpacked EPUBs have subfolders.
+            guard let walker = fm.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
+            var total = 0
+            for case let file as URL in walker {
+                total += (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            }
+            return total
         }
         var entries = books.map { book -> (URL, Date, Int) in
             let date = (try? book.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
