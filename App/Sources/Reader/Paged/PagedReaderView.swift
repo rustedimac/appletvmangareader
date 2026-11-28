@@ -671,7 +671,7 @@ struct PageFailureCard: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
-            Text("Retry")
+            Text("Try Again")
                 .font(.headline)
                 .foregroundStyle(.black)
                 .padding(.horizontal, 36)

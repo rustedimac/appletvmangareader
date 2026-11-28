@@ -51,7 +51,7 @@ struct BookReaderView: View {
             } else if unsupported {
                 VStack(spacing: 20) {
                     Text("This server can't open books yet").font(.title3)
-                    Text("\(start.format?.displayName ?? "This format") reading isn't available for this source.")
+                    Text("\(start.format?.displayName ?? "This format") reading isn't available for this server.")
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityIdentifier("book.unsupported")
@@ -283,10 +283,10 @@ private struct BookLoadStateView: View {
             VStack(spacing: 24) {
                 Text("Couldn't open \(session.chapter.title)").font(.title3)
                 Text(message).foregroundStyle(.secondary)
-                Button("Retry") { Task { await session.retry() } }
+                Button("Try Again") { Task { await session.retry() } }
             }
             .padding(60)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.panel))
             .accessibilityIdentifier("book.error")
         case .loaded:
             EmptyView()

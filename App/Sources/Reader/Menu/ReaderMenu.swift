@@ -481,7 +481,7 @@ struct ReaderMenu: View {
                                   : "The Play button starts and stops it. While it runs, tap the sides to change speed.")
                  : (Platform.isTV ? "Play/Pause starts and stops it. It stops at the end of the chapter."
                                   : "The Play button starts and stops it. It stops at the end of the chapter."))
-                .font(.footnote)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -491,7 +491,7 @@ struct ReaderMenu: View {
         let profileDefault = model.libraryDefaultReaderSettings(for: session.series)
         return VStack(alignment: .leading, spacing: 18) {
             Text("Changes are saved for this series. Series you haven't changed use your default.")
-                .font(.footnote)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 20) {
@@ -509,7 +509,7 @@ struct ReaderMenu: View {
             .font(.callout)
             if profileDefault == settings {
                 Label("Same as your default", systemImage: "checkmark")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("reader.menu.isDefault")
             }
