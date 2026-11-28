@@ -318,6 +318,62 @@ final class OPDSClientTests: XCTestCase {
         } catch {}
     }
 
+    /// Stump advertises an OPDS-PSE page stream for EPUBs too, but its
+    /// "pages" are the book's XHTML files, so every page after the cover
+    /// failed with "The page isn't an image the TV can show". An EPUB opens
+    /// from its file instead, whatever else the entry offers.
+    func testEPUBWithAPageStreamStillOpensFromItsFile() async throws {
+        let feed = try OPDSParser.parse(Data(loadFixture("opds1-stump-series", ext: "xml").utf8), contentType: nil,
+                                        baseURL: URL(string: "http://stump.local:10801/opds/v1.2/series/0d6d970f")!)
+        var entry = feed.entries[0]
+        XCTAssertNotNil(entry.pseLink)
+        entry.links = entry.links.map { link in
+            guard (link.rel ?? "").hasPrefix("http://opds-spec.org/acquisition") else { return link }
+            var epub = link
+            epub.type = "application/epub+zip"
+            epub.href = URL(string: "http://stump.local:10801/opds/v1.2/books/8d29/file/Frankenstein.epub")!
+            return epub
+        }
+        let book = OPDSBook(entry)
+        XCTAssertNotNil(book.stream, "the stream is still known")
+        XCTAssertEqual(book.format, .epub, "an EPUB opens in the book reader, not the page stream")
+
+        let c = client()
+        let chapter = OPDSClient.chapter(book, seriesRef: SeriesRef(serverID: c.config.id, seriesID: "b:x"), number: 1)
+        XCTAssertEqual(chapter.format, .epub)
+
+        // A text EPUB: the book reader gets sections, pages(for:) refuses
+        // and never touches the page stream.
+        mock.on("/opds/v1.2/books/8d29/file", data: loadFixtureData("book-text", ext: "epub"))
+        let manifest = try await c.bookManifest(for: chapter)
+        XCTAssertEqual(manifest.sectionCount, 2)
+        do {
+            _ = try await c.pages(for: chapter)
+            XCTFail("a text EPUB has no pages")
+        } catch {}
+        XCTAssertFalse(mock.requested.contains { $0.path.contains("/pages/") }, "the PSE stream isn't used")
+    }
+
+    func testPictureEPUBWithAPageStreamReadsItsOwnPictures() async throws {
+        let feed = try OPDSParser.parse(Data(loadFixture("opds1-stump-series", ext: "xml").utf8), contentType: nil,
+                                        baseURL: URL(string: "http://stump.local:10801/opds/v1.2/series/0d6d970f")!)
+        var entry = feed.entries[0]
+        entry.links = entry.links.map { link in
+            guard (link.rel ?? "").hasPrefix("http://opds-spec.org/acquisition") else { return link }
+            var epub = link
+            epub.type = "application/epub+zip"
+            epub.href = URL(string: "http://stump.local:10801/opds/v1.2/books/8d29/file/Pictures.epub")!
+            return epub
+        }
+        let book = OPDSBook(entry)
+        mock.on("/opds/v1.2/books/8d29/file", data: loadFixtureData("book-pictures", ext: "epub"))
+        let c = client()
+        let chapter = OPDSClient.chapter(book, seriesRef: SeriesRef(serverID: c.config.id, seriesID: "b:x"), number: 1)
+        let pages = try await c.pages(for: chapter)
+        XCTAssertFalse(pages.isEmpty)
+        XCTAssertTrue(pages.allSatisfy(\.url.isFileURL), "pictures come from the downloaded EPUB")
+    }
+
     func testPagingFollowsNextLinks() async throws {
         mock.on("/opds/new", fixture: "opds1-calibreweb-books")
         let c = client()

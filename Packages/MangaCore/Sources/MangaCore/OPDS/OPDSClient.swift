@@ -330,6 +330,8 @@ public final class OPDSClient: MangaServer, @unchecked Sendable {
 
     public func pages(for chapter: Chapter) async throws -> [PageDescriptor] {
         guard let book = OPDSBook(chapterID: chapter.id) else { throw MangaError.notFound }
+        // EPUB and text: never the server's page stream (see `format`).
+        if book.isBookFile, let download = download(book) { return try await download.pages() }
         if let manifest = book.divina.flatMap(URL.init(string:)) {
             let (data, response) = try await transport.send(request(manifest))
             if (200..<300).contains(response.statusCode),
@@ -448,10 +450,24 @@ struct OPDSBook: Codable, Hashable {
     }
 
     /// How the app reads it: nil (pages) when the server streams pages or
-    /// the file is a comic archive.
+    /// the file is a comic archive. An EPUB or text file always opens in
+    /// the book reader, even when the server also offers a page stream:
+    /// Stump (and others) advertise OPDS-PSE for EPUBs, but its "pages"
+    /// are the book's XHTML files, not pictures. A picture-book EPUB still
+    /// reads as pages: the reader checks the downloaded file first.
     var format: ContentFormat? {
-        guard stream == nil, divina == nil, let file else { return nil }
-        return ContentKind(mediaType: fileType ?? "", url: URL(string: file)).contentFormat
+        guard let file else { return nil }
+        let kind = ContentKind(mediaType: fileType ?? "", url: URL(string: file))
+        if kind.isBook { return kind.contentFormat }
+        guard stream == nil, divina == nil else { return nil }
+        return kind.contentFormat
+    }
+
+    /// The file is an EPUB or plain text, read on device rather than
+    /// through the server's page stream.
+    var isBookFile: Bool {
+        guard let file else { return false }
+        return ContentKind(mediaType: fileType ?? "", url: URL(string: file)).isBook
     }
 
     /// The chapter id leaves out display-only fields to stay short.

@@ -198,4 +198,7 @@ extension ContentKind {
         case .text: return .text
         }
     }
+
+    /// EPUB or plain text: read in the book reader from the downloaded file.
+    var isBook: Bool { self == .epub || self == .text }
 }
