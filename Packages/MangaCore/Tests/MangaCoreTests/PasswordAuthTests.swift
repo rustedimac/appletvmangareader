@@ -63,6 +63,16 @@ final class PasswordAuthTests: XCTestCase {
         XCTAssertEqual(server.unauthorized, 2)
     }
 
+    func testCalibreRejectsBasicWith400() async throws {
+        let server = DigestServer(user: "tester", password: "secret")
+        server.basicStatus = 400
+        let auth = PasswordAuth(username: "tester", password: "secret")
+        let transport = PasswordAuthTransport(inner: server, auth: auth, host: "calibre.test")
+        let (_, response) = try await transport.send(URLRequest(url: URL(string: "http://calibre.test:8080/opds")!))
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertTrue(auth.usesDigest)
+    }
+
     func testWrongPasswordDoesNotLoop() async throws {
         let server = DigestServer(user: "tester", password: "secret")
         let transport = PasswordAuthTransport(inner: server, auth: PasswordAuth(username: "tester", password: "nope"),
@@ -88,6 +98,8 @@ final class DigestServer: HTTPTransport, @unchecked Sendable {
     let user: String, password: String
     var nonce = "first"
     let realm = "calibre"
+    /// What a Basic header gets (Calibre in Digest mode: 400).
+    var basicStatus = 401
     private(set) var unauthorized = 0
     private(set) var requests = 0
     private(set) var lastAuthorization: String?
@@ -109,6 +121,10 @@ final class DigestServer: HTTPTransport, @unchecked Sendable {
             if p["nonce"] == nonce, p["response"] == expected, p["uri"] == PasswordAuth.digestURI(url) {
                 return (Data("{}".utf8), HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
             }
+        }
+        if lastAuthorization?.hasPrefix("Basic ") == true, basicStatus != 401 {
+            return (Data("Unsupported authentication method".utf8),
+                    HTTPURLResponse(url: url, statusCode: basicStatus, httpVersion: nil, headerFields: nil)!)
         }
         unauthorized += 1
         let challenge = #"Digest realm="\#(realm)", nonce="\#(nonce)", algorithm="MD5", qop="auth""#

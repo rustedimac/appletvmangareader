@@ -177,8 +177,18 @@ struct PasswordAuthTransport: HTTPTransport {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         guard let url = request.url, !url.isFileURL, url.host == host else { return try await inner.send(request) }
         var r = request
+        let wasDigest = auth.usesDigest
         r.setValue(auth.header(for: r), forHTTPHeaderField: "Authorization")
-        let (data, response) = try await inner.send(r)
+        var (data, response) = try await inner.send(r)
+        if !wasDigest, response.statusCode == 400 {
+            // Calibre in Digest mode answers a Basic header with 400
+            // ("Unsupported authentication method"); ask without one to
+            // get its challenge.
+            var bare = request
+            bare.setValue(nil, forHTTPHeaderField: "Authorization")
+            (data, response) = try await inner.send(bare)
+            guard response.statusCode == 401 else { return (data, response) }
+        }
         guard response.statusCode == 401, auth.learn(from: response) else { return (data, response) }
         r.setValue(auth.header(for: r), forHTTPHeaderField: "Authorization")
         return try await inner.send(r)
