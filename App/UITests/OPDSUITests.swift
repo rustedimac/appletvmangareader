@@ -49,5 +49,6 @@ final class OPDSUITests: XCTestCase {
         let app = launch(tab: "settings")
         select(app.element("settings.addServer"))
         XCTAssertTrue(app.buttons["OPDS"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Calibre"].exists, "Calibre's content server has its own type")
     }
 }

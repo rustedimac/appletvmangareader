@@ -49,9 +49,10 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        // Pages unpacked from a downloaded archive (`LocalArchiveCache`).
+        // Pages unpacked from a downloaded archive (`LocalArchiveCache`),
+        // or PDF pages drawn the first time they're read.
         if let url = request.url, url.isFileURL {
-            guard let data = FileManager.default.contents(atPath: url.path) else {
+            guard let data = FileManager.default.contents(atPath: url.path) ?? LocalPDFRenderer.renderedPage(at: url) else {
                 return (Data(), HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!)
             }
             return (data, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)

@@ -1,0 +1,7 @@
+{
+ "library_map": {
+  "Test_Library": "Test Library",
+  "Comics": "Comics"
+ },
+ "default_library": "Test_Library"
+}

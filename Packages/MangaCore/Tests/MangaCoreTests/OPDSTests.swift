@@ -108,6 +108,8 @@ final class OPDSParserTests: XCTestCase {
         XCTAssertEqual(ContentKind(mediaType: "application/epub+zip", url: nil), .epub)
         XCTAssertEqual(ContentKind(mediaType: "application/octet-stream", url: URL(string: "http://h/a.pdf")), .pdf)
         XCTAssertEqual(ContentKind(mediaType: "application/x-cbr", url: nil), .other)
+        XCTAssertEqual(ContentKind(mediaType: "text/plain", url: nil), .text)
+        XCTAssertEqual(ContentKind(mediaType: "", url: URL(string: "http://h/a.txt")), .text)
     }
 }
 
@@ -263,14 +265,57 @@ final class OPDSClientTests: XCTestCase {
         _ = try await c.pages(for: detail.chapters[0])
         XCTAssertEqual(mock.requested.filter { $0.path.contains("download") }.count, downloads)
 
-        // PDFs aren't handled by this client yet.
+        // A PDF-only book is downloaded and drawn page by page.
+        mock.on("/opds/download/7/pdf", data: loadFixtureData("two-pages", ext: "pdf"))
         let pdf = try await c.seriesDetail(items.items[1].ref.seriesID)
+        XCTAssertEqual(pdf.chapters[0].format, .pdf)
+        XCTAssertEqual(items.items[1].format, .pdf)
+        XCTAssertNil(detail.chapters[0].format, "a CBZ reads as pages")
+        #if canImport(CoreGraphics) && canImport(ImageIO)
+        let pdfPages = try await c.pages(for: pdf.chapters[0])
+        XCTAssertEqual(pdfPages.count, 2)
+        XCTAssertEqual(pdfPages[0].size, PageSize(width: 600, height: 900))
+        XCTAssertEqual(pdfPages[1].size, PageSize(width: 900, height: 600))
+        let (jpeg, ok) = try await URLSessionTransport().send(URLRequest(url: pdfPages[1].url))
+        XCTAssertEqual(ok.statusCode, 200)
+        XCTAssertEqual(Array(jpeg.prefix(2)), [0xFF, 0xD8], "a JPEG")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pdfPages[1].url.path), "kept once drawn")
+        #else
         do {
             _ = try await c.pages(for: pdf.chapters[0])
             XCTFail("expected an error")
         } catch {
             XCTAssertTrue(error.localizedDescription.contains("PDF"), error.localizedDescription)
         }
+        #endif
+    }
+
+    func testEPUBBooksOpenInTheBookReader() async throws {
+        mock.on("/opds/new", fixture: "opds1-calibreweb-books")
+        // Book 12 also has a CBZ; make an EPUB-only entry from it.
+        let feed = try OPDSParser.parse(Data(loadFixture("opds1-calibreweb-books", ext: "xml").utf8), contentType: nil,
+                                        baseURL: URL(string: "http://stump.local:10801/opds/new")!)
+        var entry = feed.entries[0]
+        entry.links = entry.links.filter { !$0.href.absoluteString.contains("/cbz") }
+        let book = OPDSBook(entry)
+        XCTAssertEqual(book.format, .epub)
+        mock.on("/opds/download/12/epub", data: loadFixtureData("book-text", ext: "epub"))
+        let c = client()
+        let chapter = OPDSClient.chapter(book, seriesRef: SeriesRef(serverID: c.config.id, seriesID: "b:x"), number: 1)
+        XCTAssertEqual(chapter.format, .epub)
+        let manifest = try await c.bookManifest(for: chapter)
+        XCTAssertEqual(manifest.title, "The Lamp Keeper")
+        XCTAssertEqual(manifest.sectionCount, 2)
+        XCTAssertFalse(manifest.isImageOnly)
+        let section = try await c.bookSection(0, of: chapter)
+        XCTAssertEqual(section.blocks.first?.plainText, "The Hill")
+        let auth = try XCTUnwrap(mock.requests.last { $0.url?.path.contains("download") == true })
+        XCTAssertNotNil(auth.value(forHTTPHeaderField: "Authorization"), "downloads carry the login")
+        XCTAssertEqual(mock.requested.filter { $0.path.contains("download") }.count, 1, "downloaded once")
+        do {
+            _ = try await c.pages(for: chapter)
+            XCTFail("a text EPUB has no pages")
+        } catch {}
     }
 
     func testPagingFollowsNextLinks() async throws {

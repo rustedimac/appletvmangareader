@@ -154,7 +154,9 @@ public struct ServerDraft: Equatable, Sendable {
         case .suwayomi:
             return "The address you open Suwayomi at in a browser, for example http://suwayomi.local:4567."
         case .opds:
-            return "The catalog URL, for example http://books.local:8083/opds. Just the address works for most servers."
+            return "The catalog URL, for example http://books.local:8083/opds. Just the address works for most servers, Calibre-Web included."
+        case .calibre:
+            return "The address of Calibre's content server, for example http://calibre.local:8080 (in Calibre: Connect/share → Start Content server). For Calibre-Web, choose OPDS instead."
         case .freeLibrary:
             return ""
         }
@@ -166,6 +168,7 @@ public struct ServerDraft: Equatable, Sendable {
         case .kavita: return [["api", "opds"], ["api"]]
         case .suwayomi: return [["api", "graphql"], ["api", "v1"], ["api"]]
         case .komga: return [["api", "v1"], ["api", "v2"], ["api"]]
+        case .calibre: return [["ajax"], ["opds"]]
         case .opds, .freeLibrary: return []
         }
     }
@@ -203,7 +206,7 @@ public struct ServerDraft: Equatable, Sendable {
         }
         if kind == .kavita, resolvedAPIKey.isEmpty { return "Enter the API key from Kavita → User Settings → 3rd Party Clients, or use the full OPDS URL as the address." }
         let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        if kind == .suwayomi || kind == .opds, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
+        if kind == .suwayomi || kind == .opds || kind == .calibre, user.isEmpty != password.isEmpty { return "Enter both a username and a password, or neither." }
         if kind == .komga, resolvedAPIKey.isEmpty {
             if user.isEmpty && password.isEmpty { return "Enter an API key, or your Komga email and password." }
             if user.isEmpty || password.isEmpty { return "Enter both your Komga email and password." }
@@ -236,7 +239,7 @@ public struct ServerDraft: Equatable, Sendable {
             let unchanged = existing?.username == user && existing?.password == password
             return ServerCredential(username: user, password: password,
                                     suwayomiLogin: unchanged ? existing?.suwayomiLogin : nil)
-        case .opds:
+        case .opds, .calibre:
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
             return user.isEmpty ? nil : ServerCredential(username: user, password: password)
         case .komga:

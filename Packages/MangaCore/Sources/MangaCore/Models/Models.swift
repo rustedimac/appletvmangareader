@@ -6,6 +6,8 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case suwayomi
     case komga
     case opds
+    /// Calibre's content server (its JSON API). Calibre-Web uses `.opds`.
+    case calibre
     /// The built-in Free Library (public-domain Internet Archive items and
     /// Pepper&Carrot). Always there; never typed in by the user.
     case freeLibrary
@@ -18,12 +20,13 @@ public enum ServerKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .suwayomi: return "Suwayomi"
         case .komga: return "Komga"
         case .opds: return "OPDS"
+        case .calibre: return "Calibre"
         case .freeLibrary: return "Free Library"
         }
     }
 
     /// The kinds offered when adding a server, in picker order.
-    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi, .opds] }
+    public static var userAddable: [ServerKind] { [.kavita, .komga, .suwayomi, .calibre, .opds] }
 }
 
 /// A saved server connection, shared by every profile. Credentials are not

@@ -128,7 +128,9 @@ public struct OPDSEntry: Hashable, Sendable {
     /// The best file to download for reading, by format preference.
     public var preferredAcquisition: OPDSLink? {
         let ranked = acquisitions.map { ($0, ContentKind(mediaType: $0.baseType, url: $0.href)) }
-        for kind in [ContentKind.comicArchive, .pdf, .epub] {
+        // Comics as pages first; an EPUB reflows, so it beats a PDF of the
+        // same book on a TV.
+        for kind in [ContentKind.comicArchive, .epub, .pdf, .text] {
             if let match = ranked.first(where: { $0.1 == kind }) { return match.0 }
         }
         return acquisitions.first
@@ -161,6 +163,7 @@ public enum ContentKind: Equatable, Sendable {
     case comicArchive
     case pdf
     case epub
+    case text
     case other
 
     public init(mediaType: String, url: URL?) {
@@ -171,13 +174,28 @@ public enum ContentKind: Equatable, Sendable {
             self = .comicArchive
         case "application/pdf": self = .pdf
         case "application/epub+zip": self = .epub
+        case "text/plain": self = .text
         default:
             switch ext {
             case "cbz", "zip": self = .comicArchive
             case "pdf": self = .pdf
             case "epub": self = .epub
+            case "txt": self = .text
             default: self = .other
             }
+        }
+    }
+}
+
+extension ContentKind {
+    /// How the app reads a downloaded file of this kind. Nil for comic
+    /// archives (page images, the default) and unsupported files.
+    var contentFormat: ContentFormat? {
+        switch self {
+        case .comicArchive, .other: return nil
+        case .pdf: return .pdf
+        case .epub: return .epub
+        case .text: return .text
         }
     }
 }

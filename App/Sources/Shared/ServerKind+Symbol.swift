@@ -7,6 +7,7 @@ extension ServerKind {
         case .kavita, .komga: return "books.vertical.fill"
         case .suwayomi: return "square.stack.3d.up.fill"
         case .opds: return "antenna.radiowaves.left.and.right"
+        case .calibre: return "books.vertical.circle.fill"
         case .freeLibrary: return FreeLibrarySymbol.name
         }
     }

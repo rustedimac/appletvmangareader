@@ -45,10 +45,15 @@ struct ReaderView: View {
     @State private var chromeVisible = true
     #endif
 
+    /// The EPUB turned out to be pictures only (`BookManifest.isImageOnly`):
+    /// read it in the image readers.
+    @State private var pictureBook = false
+
     var body: some View {
-        if start.format?.isText == true {
+        if start.format?.isText == true && !pictureBook {
             // EPUB and plain text reflow, so they get the book reader.
-            BookReaderView(series: series, chapters: chapters, start: start, server: server)
+            BookReaderView(series: series, chapters: chapters, start: start, server: server,
+                           onPictureBook: { pictureBook = true })
         } else {
             imageReader
         }

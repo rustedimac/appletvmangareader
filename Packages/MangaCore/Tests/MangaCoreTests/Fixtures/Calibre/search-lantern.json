@@ -1,0 +1,12 @@
+{
+ "total_num": 2,
+ "offset": 0,
+ "num": 200,
+ "sort": "timestamp",
+ "query": "lantern",
+ "library_id": "Test_Library",
+ "book_ids": [
+  1,
+  2
+ ]
+}
