@@ -32,7 +32,10 @@ final class WelcomeUITests: XCTestCase {
         let app = launch(tab: "library")
         let start = app.element("welcome.start")
         XCTAssertTrue(start.waitForExistence(timeout: 10), "no welcome on an empty install")
-        XCTAssertTrue(app.element("welcome.explanation").exists)
+        let explanation = app.element("welcome.explanation")
+        XCTAssertTrue(explanation.exists)
+        XCTAssertEqual(explanation.elementType, .staticText, "the intro must be plain text, not a button")
+        XCTAssertFalse(explanation.hasFocus, "the intro must not take focus")
 
         let comics = app.element("welcome.collection.comics")
         let pulps = app.element("welcome.collection.pulps")
