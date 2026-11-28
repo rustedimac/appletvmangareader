@@ -33,6 +33,12 @@ final class ReaderOptionsLayoutUITests: XCTestCase {
         // is only the union of its children).
         let edges = app.descendants(matching: .any)["reader.options.panel"]
         XCTAssertTrue(edges.waitForExistence(timeout: 5), "No panel marker", file: file, line: line)
+        // The panel itself fits the screen (a too-wide panel pushed rows
+        // past the sheet's left edge, where the inset check can't see it).
+        let window: CGRect = app.windows.firstMatch.frame
+        let marker: CGRect = edges.frame
+        XCTAssertGreaterThanOrEqual(marker.minX, window.minX, "Panel starts left of the screen: \(marker)", file: file, line: line)
+        XCTAssertLessThanOrEqual(marker.maxX, window.maxX, "Panel ends right of the screen: \(marker)", file: file, line: line)
         var lastSignature = ""
         for _ in 0..<10 {
             let bounds: CGRect = edges.frame

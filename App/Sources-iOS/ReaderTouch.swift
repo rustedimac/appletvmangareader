@@ -72,21 +72,14 @@ struct ReaderTouchChrome<Options: View, Bottom: View>: View {
                                 .accessibilityElement()
                                 .accessibilityIdentifier("reader.options.panel")
                         }
-                        .safeAreaInset(edge: .top, spacing: 0) {
-                            HStack {
-                                Spacer()
-                                Button("Done") { optionsPresented = false }
-                                    .fontWeight(.semibold)
-                                    .accessibilityIdentifier("reader.options.done")
-                            }
-                            .padding(.horizontal, Space.l)
-                            .padding(.top, Space.m)
-                            .padding(.bottom, Space.xs)
-                            // Rows scroll under a solid bar, not under the button.
-                            .background(Color(uiColor: .systemGroupedBackground))
-                        }
+                        // No Done button (John, 2026-11-28): drag the sheet down
+                        // or tap outside it / the popover to close.
+                        .padding(.top, Space.s)
                         .foregroundStyle(.primary)
-                        .frame(minWidth: 380, idealWidth: 420, minHeight: 420, idealHeight: 640)
+                        // The popover's size on iPad. Only ideal sizes: a
+                        // minimum wider than an iPhone sheet pushed the
+                        // rows past its left edge.
+                        .frame(idealWidth: 420, idealHeight: 640)
                         // Solid, so the page behind doesn't show through the rows.
                         .presentationBackground(Color(uiColor: .systemGroupedBackground))
                         // The reader is dark-backed whatever the system

@@ -458,7 +458,57 @@ struct ReaderMenu: View {
     /// Auto-scroll (vertical) or page-timer (paged) speed, as a named step
     /// (saved for the profile, not the series), and a button that closes the
     /// menu and starts it. The same speed drives both.
+    /// tvOS: Start plus slower/faster. iPhone/iPad: the same − value +
+    /// stepper as Column Width (playing is the chrome's Play button).
+    @ViewBuilder
     private var playControls: some View {
+        #if os(tvOS)
+        tvPlayControls
+        #else
+        touchPlayControls
+        #endif
+    }
+
+    #if os(iOS)
+    private var touchPlayControls: some View {
+        let level = session.autoScrollLevel
+        let webtoon = settings.mode == .webtoon
+        return VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {
+            HStack(spacing: MenuMetrics.stepperSpacing) {
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: -1))
+                } label: {
+                    Image(systemName: "minus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: -1))
+                .accessibilityLabel("Slower")
+                .accessibilityIdentifier("reader.menu.autoScroll.slower")
+
+                Text(WebtoonAutoScroll.label(level))
+                    .font(.callout)
+                    .frame(minWidth: MenuMetrics.stepperValue)
+                    .accessibilityIdentifier("reader.menu.autoScroll.value")
+
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: 1))
+                } label: {
+                    Image(systemName: "plus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: 1))
+                .accessibilityLabel("Faster")
+                .accessibilityIdentifier("reader.menu.autoScroll.faster")
+            }
+            Text(webtoon
+                 ? "Start it with ▶ in the reader controls. While it runs, tap the sides to change speed."
+                 : "Start it with ▶ in the reader controls. It stops at the end of the chapter.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    #endif
+
+    private var tvPlayControls: some View {
         let level = session.autoScrollLevel
         let webtoon = settings.mode == .webtoon
         return VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {

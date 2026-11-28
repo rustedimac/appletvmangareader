@@ -42,8 +42,10 @@ struct MenuValueRow<ID: Hashable>: View {
 
     var body: some View {
         HStack(spacing: Space.m) {
+            // The name gives way first when space is short.
             Text(title)
                 .lineLimit(1)
+                .layoutPriority(-1)
             Spacer(minLength: Space.s)
             Menu {
                 Picker(title, selection: Binding<ID>(get: { selected }, set: { pick($0) })) {
@@ -53,8 +55,12 @@ struct MenuValueRow<ID: Hashable>: View {
                 }
             } label: {
                 HStack(spacing: Space.xs) {
+                    // Full width at once: a new, longer value used to show
+                    // cut off while the label animated its width.
                     Text(value)
                         .lineLimit(1)
+                        .fixedSize()
+                        .contentTransition(.identity)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.footnote.weight(.semibold))
                         .accessibilityHidden(true)
@@ -62,6 +68,7 @@ struct MenuValueRow<ID: Hashable>: View {
                 .foregroundStyle(.secondary)
                 .frame(minHeight: Size.minTarget)
                 .contentShape(Rectangle())
+                .transaction { $0.animation = nil }
             }
             .accessibilityLabel(title)
             .accessibilityValue(value)
