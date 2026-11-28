@@ -288,16 +288,24 @@ struct ReaderMenu: View {
             .accessibilityIdentifier("reader.menu.\(item.rawValue)")
     }
 
-    /// A row that opens its choices.
+    /// A row that opens its choices: in place of the rows on tvOS, as the
+    /// system pop-up menu on iPhone and iPad (MenuValueRow).
+    @ViewBuilder
     private func pickerRow(_ picker: ReaderMenuPicker) -> some View {
         let spec = pickerSpec(picker)
+        #if os(tvOS)
         let value = spec.choices.first { $0.id == spec.selected }?.title ?? ""
-        return PanelValueRow(title: spec.title, value: value) {
+        PanelValueRow(title: spec.title, value: value) {
             session.menuPicker = picker
             setFocus("\(spec.key).\(spec.selected)")
         }
         .focused($focus, equals: spec.key)
         .accessibilityIdentifier("reader.menu.\(spec.key)")
+        #else
+        let choices: [MenuChoice<String>] = spec.choices.map { MenuChoice(id: $0.id, title: $0.title) }
+        MenuValueRow(title: spec.title, choices: choices, selected: spec.selected,
+                     pick: { spec.pick($0) }, identifier: "reader.menu.\(spec.key)")
+        #endif
     }
 
     /// The open row's choices, in place of the rows.
@@ -793,7 +801,7 @@ struct ReaderControlsLegend: View {
         }
         .padding(Space.s)
         .background(focused ? Color.white.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: Radius.card))
-        .focusable()
+        .tvFocusable()
         .focused($focused)
         .focusEffectDisabled()
     }

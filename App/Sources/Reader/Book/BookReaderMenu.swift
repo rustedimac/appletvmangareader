@@ -169,14 +169,22 @@ struct BookReaderMenu: View {
 
     private var openSpec: ChoiceSpec? { openPicker.map { spec(for: $0) } }
 
+    @ViewBuilder
     private func pickerRow(_ key: String) -> some View {
         let p = spec(for: key)
-        return PanelValueRow(title: p.title, value: p.choices.first { $0.id == p.selected }?.title ?? "") {
+        #if os(tvOS)
+        PanelValueRow(title: p.title, value: p.choices.first { $0.id == p.selected }?.title ?? "") {
             openPicker = key
             DispatchQueue.main.async { focus = "\(key).\(p.selected)" }
         }
         .focused($focus, equals: key)
         .accessibilityIdentifier("book.menu.\(key)")
+        #else
+        // iPhone/iPad: the system pop-up menu (MenuValueRow).
+        let choices: [MenuChoice<String>] = p.choices.map { MenuChoice(id: $0.id, title: $0.title) }
+        MenuValueRow(title: p.title, choices: choices, selected: p.selected,
+                     pick: { p.pick($0) }, identifier: "book.menu.\(key)")
+        #endif
     }
 
     private func closePicker() {

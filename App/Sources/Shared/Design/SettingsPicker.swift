@@ -42,6 +42,18 @@ struct SettingsPicker<Value: Hashable>: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        // iPhone/iPad: the system pop-up menu in the row, like iOS Settings.
+        let choices: [MenuChoice<Int>] = options.indices.map { MenuChoice(id: $0, title: label(options[$0])) }
+        let current: Int = options.firstIndex(of: selection) ?? 0
+        MenuValueRow(title: title, choices: choices, selected: current,
+                     pick: { selection = options[$0] })
+        #else
+        tvBody
+        #endif
+    }
+
+    private var tvBody: some View {
         Button {
             guard let navigator else {
                 assertionFailure("SettingsPicker needs to be inside a SettingsPage")

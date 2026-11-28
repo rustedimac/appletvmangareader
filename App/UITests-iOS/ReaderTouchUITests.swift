@@ -81,14 +81,36 @@ final class ReaderTouchUITests: XCTestCase {
         for _ in 0..<6 where !tapZones.isHittable { element("reader.menu").swipeUp() }
         XCTAssertTrue(tapZones.exists, "No Tap Zones row:\n\(app.debugDescription)")
         tapZones.tap()
-        let off = element("reader.menu.tapZones.off")
-        XCTAssertTrue(off.waitForExistence(timeout: 3))
+        // The system pop-up menu: items are buttons named by their titles.
+        let off = app.buttons["Off"].firstMatch
+        XCTAssertTrue(off.waitForExistence(timeout: 3), "No pop-up menu:\n\(app.debugDescription)")
         off.tap()
         // Close the options; with Tap Zones off a side tap only toggles.
         element("reader.options.done").tap()
         XCTAssertTrue(element("reader.menu").waitForNonExistence(timeout: 5), "Options didn't close")
         point(0.1, 0.5).tap()
         expectPageStays("1 / 6")
+    }
+
+    /// A choice row opens the system pop-up menu; picking an item updates
+    /// the row's value and the options stay open (no in-place list).
+    func testChoiceRowOpensPopUpMenu() {
+        launch()
+        element("reader.chrome.options").tap()
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        let mode = app.buttons["reader.menu.mode"]
+        XCTAssertTrue(mode.waitForExistence(timeout: 3), "No Reading Mode row:\n\(app.debugDescription)")
+        XCTAssertEqual(mode.value as? String, "Paged")
+        mode.tap()
+        let vertical = app.buttons["Vertical Scroll"].firstMatch
+        XCTAssertTrue(vertical.waitForExistence(timeout: 3), "No pop-up menu:\n\(app.debugDescription)")
+        XCTAssertFalse(app.staticTexts["Press Menu to go back without changing it."].exists)
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "A keyboard came up with the menu")
+        vertical.tap()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'Vertical Scroll'"), object: mode)
+        XCTAssertEqual(XCTWaiter().wait(for: [changed], timeout: 5), .completed, "Row didn't show the new value")
+        XCTAssertTrue(element("reader.menu").exists, "Options closed after picking")
+        XCTAssertTrue(element("reader.webtoon.strip").waitForExistence(timeout: 5), "Reader didn't switch mode")
     }
 
     func testCloseButtonClosesTheReader() {
@@ -136,7 +158,9 @@ final class ReaderTouchUITests: XCTestCase {
         for _ in 0..<6 where !(row.exists && row.isHittable) { element("reader.menu").swipeUp() }
         row.tap()
         // The reader turns right away, options still open.
-        element("reader.menu.orientationLock.landscape").tap()
+        let landscape = app.buttons["Landscape"].firstMatch
+        XCTAssertTrue(landscape.waitForExistence(timeout: 3))
+        landscape.tap()
         defer { XCUIDevice.shared.orientation = .portrait }
         let wide = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let f = self.app.windows.firstMatch.frame

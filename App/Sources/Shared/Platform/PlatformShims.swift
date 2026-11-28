@@ -22,6 +22,17 @@ extension View {
         #endif
     }
 
+    /// `focusable()` on tvOS, where the remote moves focus; nothing on iOS,
+    /// where a focusable reader view became the keyboard's first responder
+    /// and brought up the on-screen keyboard when a pop-up menu opened.
+    @ViewBuilder func tvFocusable() -> some View {
+        #if os(tvOS)
+        focusable()
+        #else
+        self
+        #endif
+    }
+
     /// `onExitCommand` (remote Menu/Back) on tvOS; nothing on iOS.
     @ViewBuilder func onRemoteExit(perform action: (() -> Void)?) -> some View {
         #if os(tvOS)
