@@ -24,7 +24,15 @@ struct WelcomeView: View {
         NavigationStack(path: $path) {
             Form {
                 Section {
+                    // Plain text on the page, not a row: no platter, so it
+                    // doesn't read as a button (DESIGN_GUIDE "Information
+                    // isn't focusable"). Default insets keep it lined up
+                    // with the header and row text below.
                     Text(Self.explanation)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, Space.s)
+                        .listRowBackground(Color.clear)
+                        .focusable(false)
                         .accessibilityIdentifier("welcome.explanation")
                 }
 

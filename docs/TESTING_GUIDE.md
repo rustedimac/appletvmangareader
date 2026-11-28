@@ -78,7 +78,7 @@ server behaviour is worth a look.
 | ID | Lvl | Check | Pass when | Covered by |
 | --- | --- | --- | --- | --- |
 | LCH-01 | A | Launch the app | Tab bar shows Home, Library, Search, Favorites, Settings; no crash | `SmokeUITests`, `TabBarVisibilityUITests` |
-| LCH-02 | A | Empty install | Welcome offers Free Library collections, Add a server, Restore a backup; picking collections lands on Home with them; removing every source brings Welcome back | `WelcomeUITests`, `WelcomeTests` |
+| LCH-02 | A | Empty install | Welcome offers Free Library collections, Add a server, Restore a backup; picking collections lands on Home with them; removing every source brings Welcome back; the intro at the top is plain text (no platter, never focused) | `WelcomeUITests`, `WelcomeTests` |
 | LCH-03 | A | Install with servers | Welcome never shows | `WelcomeUITests` |
 | PRF-01 | A | One profile | Opens straight to Home, no picker | `ProfilesUITests` |
 | PRF-02 | A | Two or more profiles | "Who's reading?" picker shows, centered; add, switch and delete work | `ProfilesUITests`, `AppStateTests` |
