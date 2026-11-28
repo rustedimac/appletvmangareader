@@ -220,13 +220,14 @@ final class SavedDataUpgradeTests: XCTestCase {
             return XCTFail("fixture has no profileData")
         }
         for (id, value) in profiles {
-            guard var data = value as? [String: Any] else { continue }
-            var browse = data["browse"] as? [String: Any] ?? [:]
+            // Only profiles that saved browse preferences could hold a theme.
+            guard var data = value as? [String: Any], var browse = data["browse"] as? [String: Any] else { continue }
             browse["theme"] = "celadon"
             data["browse"] = browse
             profiles[id] = data
         }
         root["profileData"] = profiles
+        XCTAssertNotEqual(try SavedJSON.canonical(root), try SavedJSON.canonical(original), "no theme was injected")
         let (state, outcome) = try decodeState(SavedJSON.data(root))
         XCTAssertEqual(outcome, .decoded)
         XCTAssertEqual(try SavedJSON.canonical(reencoded(state)), try SavedJSON.canonical(baseline))
