@@ -117,6 +117,9 @@ final class AppModel {
                              identity: Self.deviceIdentity,
                              sharedServers: KeychainSharedServerStore())
         model.installFreeLibraryIfNeeded()
+        #if DEBUG
+        model.addServersFromLaunchEnvironment()
+        #endif
         return model
     }
 

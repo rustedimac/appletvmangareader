@@ -58,7 +58,7 @@ container of images (the way Mihon's local source does), so text EPUBs show
 up as empty or image-only chapters. There's no PDF support. Everything from
 Suwayomi goes through the image readers; format labels don't apply.
 
-### OPDS, Komga and other planned sources
+### OPDS, Komga, Calibre and other sources
 
 - **OPDS 1.2 / OPDS-PSE** (Kavita, Komga, Calibre-web, Ubooquity, Internet
   Archive): feeds list acquisition links with MIME types
@@ -123,11 +123,37 @@ Suwayomi goes through the image readers; format labels don't apply.
     section is kept locally (as a fraction of the section), so reopening a
     book lands on the same screen page even after the font size changes.
 
+## Downloaded books (OPDS, Calibre, Komga EPUBs)
+
+Servers that only hand out the whole file (OPDS catalogs such as
+Calibre-Web, Calibre's content server, and Komga for text EPUBs) conform
+to `DownloadsBookFiles`. `DownloadedBook` downloads the file once into its
+own folder in `LocalArchiveCache` (Caches, trimmed oldest first) and reads
+it on the device:
+
+| File | How it reads |
+| --- | --- |
+| CBZ / ZIP | Unpacked to page images (as before). |
+| PDF | Kept as `book.pdf`. Page sizes come from `CGPDFDocument` up front, so spreads pair; each page is drawn to a JPEG (longer side 2400 px) the first time `URLSessionTransport` reads its `p0000.jpg` URL (`LocalPDFRenderer`), then cached like any page. Password-protected PDFs say so. |
+| EPUB | Unzipped. `EPUBPackage` reads `container.xml`, the OPF (title, manifest, spine) and the contents from the EPUB 3 nav document or the EPUB 2 NCX. Each spine item is a section, parsed with `HTMLBookParser` (only the `<body>`), with images as `file://` URLs inside the book. |
+| Picture-only EPUB | Every section is one image (comics packed with Kindle Comic Converter and the like): `BookManifest.isImageOnly`, and `ReaderView` switches to the image readers, which get the pictures from `pages(for:)`. |
+| TXT | Split into sections of about 40,000 characters at blank lines, parsed with `PlainTextBookParser`. |
+
+The OPDS client prefers a comic archive, then EPUB, then PDF, then text
+when an entry offers several (`OPDSEntry.preferredAcquisition`); Calibre
+the same (`CalibreClient.formatPreference`). Komga keeps rendering PDF pages
+itself; only EPUBs that aren't DiViNa-compatible are downloaded.
+
+Progress for these books is kept on the device (none of these servers
+take EPUB positions from other apps); the section index and the position
+inside it are saved like Kavita books.
+
 ## Later
 
 - Send `bookScrollId` to Kavita for paragraph-exact cross-device resume.
-- Download-and-parse EPUB/TXT for OPDS sources (needs a zip reader; Apple's
-  `Compression` handles deflate).
-- CoreGraphics PDF rendering for sources that only offer the raw PDF.
+- Calibre: write positions back through its viewer API
+  (`book-set-last-read-position`), if people want them shared with
+  Calibre's own reader.
 - Footnote pop-ups (`epub:type="noteref"`), and CSS beyond bold, italic and
   alignment.
+- CBR/RAR and CB7 archives.
