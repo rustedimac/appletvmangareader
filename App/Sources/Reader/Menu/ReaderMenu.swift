@@ -288,16 +288,24 @@ struct ReaderMenu: View {
             .accessibilityIdentifier("reader.menu.\(item.rawValue)")
     }
 
-    /// A row that opens its choices.
+    /// A row that opens its choices: in place of the rows on tvOS, as the
+    /// system pop-up menu on iPhone and iPad (MenuValueRow).
+    @ViewBuilder
     private func pickerRow(_ picker: ReaderMenuPicker) -> some View {
         let spec = pickerSpec(picker)
+        #if os(tvOS)
         let value = spec.choices.first { $0.id == spec.selected }?.title ?? ""
-        return PanelValueRow(title: spec.title, value: value) {
+        PanelValueRow(title: spec.title, value: value) {
             session.menuPicker = picker
             setFocus("\(spec.key).\(spec.selected)")
         }
         .focused($focus, equals: spec.key)
         .accessibilityIdentifier("reader.menu.\(spec.key)")
+        #else
+        let choices: [MenuChoice<String>] = spec.choices.map { MenuChoice(id: $0.id, title: $0.title) }
+        MenuValueRow(title: spec.title, choices: choices, selected: spec.selected,
+                     pick: { spec.pick($0) }, identifier: "reader.menu.\(spec.key)")
+        #endif
     }
 
     /// The open row's choices, in place of the rows.
@@ -450,7 +458,57 @@ struct ReaderMenu: View {
     /// Auto-scroll (vertical) or page-timer (paged) speed, as a named step
     /// (saved for the profile, not the series), and a button that closes the
     /// menu and starts it. The same speed drives both.
+    /// tvOS: Start plus slower/faster. iPhone/iPad: the same − value +
+    /// stepper as Column Width (playing is the chrome's Play button).
+    @ViewBuilder
     private var playControls: some View {
+        #if os(tvOS)
+        tvPlayControls
+        #else
+        touchPlayControls
+        #endif
+    }
+
+    #if os(iOS)
+    private var touchPlayControls: some View {
+        let level = session.autoScrollLevel
+        let webtoon = settings.mode == .webtoon
+        return VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {
+            HStack(spacing: MenuMetrics.stepperSpacing) {
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: -1))
+                } label: {
+                    Image(systemName: "minus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: -1))
+                .accessibilityLabel("Slower")
+                .accessibilityIdentifier("reader.menu.autoScroll.slower")
+
+                Text(WebtoonAutoScroll.label(level))
+                    .font(.callout)
+                    .frame(minWidth: MenuMetrics.stepperValue)
+                    .accessibilityIdentifier("reader.menu.autoScroll.value")
+
+                Button {
+                    session.setAutoScrollLevel(WebtoonAutoScroll.stepped(level, by: 1))
+                } label: {
+                    Image(systemName: "plus").frame(width: MenuMetrics.stepperButton).lineHeightLabel()
+                }
+                .disabled(!WebtoonAutoScroll.canStep(level, by: 1))
+                .accessibilityLabel("Faster")
+                .accessibilityIdentifier("reader.menu.autoScroll.faster")
+            }
+            Text(webtoon
+                 ? "Start it with ▶ in the reader controls. While it runs, tap the sides to change speed."
+                 : "Start it with ▶ in the reader controls. It stops at the end of the chapter.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    #endif
+
+    private var tvPlayControls: some View {
         let level = session.autoScrollLevel
         let webtoon = settings.mode == .webtoon
         return VStack(alignment: .leading, spacing: MenuMetrics.titleToControl) {
@@ -793,7 +851,7 @@ struct ReaderControlsLegend: View {
         }
         .padding(Space.s)
         .background(focused ? Color.white.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: Radius.card))
-        .focusable()
+        .tvFocusable()
         .focused($focused)
         .focusEffectDisabled()
     }

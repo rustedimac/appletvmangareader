@@ -94,7 +94,7 @@ struct PagedReaderView: View {
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())
-        .focusable()
+        .tvFocusable()
         .focusEffectDisabled()
         .focused($focused)
         .accessibilityElement(children: .contain)
@@ -773,7 +773,7 @@ struct ChapterTransitionCard: View {
                 Text(edge == .end ? "No more chapters" : "This is the first chapter")
                     .font(.title3)
                     .accessibilityIdentifier("reader.transition.none")
-                Text("Press Menu to close the reader")
+                Text(Platform.isTV ? "Press Menu to close the reader" : "Tap Close at the top to leave the reader")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

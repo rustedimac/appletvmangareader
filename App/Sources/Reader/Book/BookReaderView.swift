@@ -124,7 +124,7 @@ private struct BookReaderContent: View {
     var body: some View {
         ZStack {
             BookReaderSurface(session: session)
-                .focusable()
+                .tvFocusable()
                 .focusEffectDisabled()
                 .focused($focused)
                 .onRemoteMove(perform: handleMove)

@@ -64,6 +64,28 @@ final class ReaderTouchUITests: XCTestCase {
         XCTAssertTrue(element("reader.zoom").waitForExistence(timeout: 5), "Double-tap didn't zoom in")
     }
 
+    /// Closes the options like a person: drags the iPhone sheet down by its
+    /// top edge (it may have grown to full height), taps outside the iPad
+    /// popover.
+    private func closeOptions() {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            point(0.3, 0.6).tap()
+            return
+        }
+        let panel: CGRect = element("reader.options.panel").frame
+        let screen: CGRect = window.frame
+        let origin: XCUICoordinate = window.coordinate(withNormalizedOffset: .zero)
+        // The grabber strip above the rows (dragging inside the rows scrolls them).
+        let grab = origin.withOffset(CGVector(dx: panel.midX, dy: max(screen.minY + 2, panel.minY - 6)))
+        let drop = origin.withOffset(CGVector(dx: panel.midX, dy: screen.maxY - 10))
+        grab.press(forDuration: 0.1, thenDragTo: drop)
+        // Fallback: swipe down until the rows are back at the top and the sheet follows.
+        for _ in 0..<4 where element("reader.menu").exists {
+            sleep(1)
+            if element("reader.menu").exists { element("reader.menu").swipeDown(velocity: .fast) }
+        }
+    }
+
     private func expectPageStays(_ text: String) {
         // The controls may be hidden; show them to read the number. Wait
         // first so two taps don't count as a double-tap (zoom).
@@ -81,14 +103,93 @@ final class ReaderTouchUITests: XCTestCase {
         for _ in 0..<6 where !tapZones.isHittable { element("reader.menu").swipeUp() }
         XCTAssertTrue(tapZones.exists, "No Tap Zones row:\n\(app.debugDescription)")
         tapZones.tap()
-        let off = element("reader.menu.tapZones.off")
-        XCTAssertTrue(off.waitForExistence(timeout: 3))
+        // The system pop-up menu: items are buttons named by their titles.
+        let off = app.buttons["Off"].firstMatch
+        XCTAssertTrue(off.waitForExistence(timeout: 3), "No pop-up menu:\n\(app.debugDescription)")
         off.tap()
-        // Close the options; with Tap Zones off a side tap only toggles.
-        element("reader.options.done").tap()
+        // Close the options (no Done button) once the pop-up menu has gone;
+        // with Tap Zones off a side tap only toggles.
+        sleep(1)
+        closeOptions()
         XCTAssertTrue(element("reader.menu").waitForNonExistence(timeout: 5), "Options didn't close")
         point(0.1, 0.5).tap()
         expectPageStays("1 / 6")
+    }
+
+    /// A choice row opens the system pop-up menu; picking an item updates
+    /// the row's value and the options stay open (no in-place list).
+    func testChoiceRowOpensPopUpMenu() {
+        launch()
+        element("reader.chrome.options").tap()
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        let mode = app.buttons["reader.menu.mode"]
+        XCTAssertTrue(mode.waitForExistence(timeout: 3), "No Reading Mode row:\n\(app.debugDescription)")
+        XCTAssertEqual(mode.value as? String, "Paged")
+        mode.tap()
+        let vertical = app.buttons["Vertical Scroll"].firstMatch
+        XCTAssertTrue(vertical.waitForExistence(timeout: 3), "No pop-up menu:\n\(app.debugDescription)")
+        XCTAssertFalse(app.staticTexts["Press Menu to go back without changing it."].exists)
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "A keyboard came up with the menu")
+        vertical.tap()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'Vertical Scroll'"), object: mode)
+        XCTAssertEqual(XCTWaiter().wait(for: [changed], timeout: 5), .completed, "Row didn't show the new value")
+        XCTAssertTrue(element("reader.menu").exists, "Options closed after picking")
+        XCTAssertTrue(element("reader.webtoon.strip").waitForExistence(timeout: 5), "Reader didn't switch mode")
+        XCTAssertFalse(app.buttons["reader.options.done"].exists, "No Done button on iOS")
+    }
+
+    /// Right after a pick, the row's value sits fully inside the panel (it
+    /// used to show cut off while the label animated its width).
+    func testPickedValueShowsAtFullWidthAtOnce() {
+        launch()
+        element("reader.chrome.options").tap()
+        let panel = element("reader.options.panel")
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        let mode = app.buttons["reader.menu.mode"]
+        XCTAssertTrue(mode.waitForExistence(timeout: 3))
+        for choice in ["Vertical Scroll", "Paged"] {
+            mode.tap()
+            let item = app.buttons[choice].firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 3), "No \(choice) in the menu")
+            item.tap()
+            // No waiting: read the frame straight away.
+            let row: CGRect = mode.frame
+            let bounds: CGRect = panel.frame
+            XCTAssertEqual(mode.value as? String, choice)
+            XCTAssertGreaterThanOrEqual(row.minX, bounds.minX, "Value starts outside the panel after picking \(choice)")
+            XCTAssertLessThanOrEqual(row.maxX, bounds.maxX, "Value ends outside the panel after picking \(choice)")
+            XCTAssertGreaterThanOrEqual(row.width, 60, "Value squeezed (\(row.width) pt) after picking \(choice)")
+            sleep(1)
+        }
+    }
+
+    /// The speed row is a − value + stepper like Column Width; playing is the
+    /// chrome's Play button, not a button in the options.
+    func testSpeedRowIsAStepper() {
+        launch(["-readerMode", "webtoon"])
+        element("reader.chrome.options").tap()
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        let value = app.staticTexts["reader.menu.autoScroll.value"]
+        let faster = app.buttons["reader.menu.autoScroll.faster"]
+        for _ in 0..<6 where !(faster.exists && faster.isHittable) { element("reader.menu").swipeUp() }
+        XCTAssertTrue(faster.exists, "No speed stepper:\n\(app.debugDescription)")
+        XCTAssertFalse(app.buttons["reader.menu.autoScroll.start"].exists, "Start belongs to the reader controls on iOS")
+        let before = value.label
+        faster.tap()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", before), object: value)
+        XCTAssertEqual(XCTWaiter().wait(for: [changed], timeout: 3), .completed, "+ didn't change the speed")
+        app.buttons["reader.menu.autoScroll.slower"].tap()
+        let back = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", before), object: value)
+        XCTAssertEqual(XCTWaiter().wait(for: [back], timeout: 3), .completed, "− didn't change the speed back")
+    }
+
+    /// Tapping outside the options closes them (sheet on iPhone, popover on iPad).
+    func testTapOutsideClosesOptions() {
+        launch()
+        element("reader.chrome.options").tap()
+        XCTAssertTrue(element("reader.menu").waitForExistence(timeout: 5))
+        point(0.5, 0.1).tap()
+        XCTAssertTrue(element("reader.menu").waitForNonExistence(timeout: 5), "Tap outside didn't close the options")
     }
 
     func testCloseButtonClosesTheReader() {
@@ -136,7 +237,9 @@ final class ReaderTouchUITests: XCTestCase {
         for _ in 0..<6 where !(row.exists && row.isHittable) { element("reader.menu").swipeUp() }
         row.tap()
         // The reader turns right away, options still open.
-        element("reader.menu.orientationLock.landscape").tap()
+        let landscape = app.buttons["Landscape"].firstMatch
+        XCTAssertTrue(landscape.waitForExistence(timeout: 3))
+        landscape.tap()
         defer { XCUIDevice.shared.orientation = .portrait }
         let wide = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let f = self.app.windows.firstMatch.frame
