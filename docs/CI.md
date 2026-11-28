@@ -35,6 +35,31 @@ A run that sits in "queued" for a long time is waiting for a free macOS runner. 
 
 A PR with merge conflicts gets no `pull_request` run. Merge `main` into the branch and push.
 
+## Local CI on the maintainer's Mac
+
+`tools/local_ci.sh` runs a PR's CI on the maintainer's MacBook and reports back to the PR, so a PR gets a verdict in about 20 minutes instead of waiting in the runner queue:
+
+```
+tools/local_ci.sh 17 45 55     # one PR after another
+tools/local_ci.sh --smoke-only 57
+```
+
+For each PR it merges the PR into the current `main` (like GitHub's merge commit), runs the UI lint and `swift test`, builds once, then runs the same UI smoke set CI would pick (`tools/select_ui_tests.py`) and after it the rest of the UI suite. Tests run on three simulator clones at once, which the Mac's 14 cores can carry (unlike the 3-core runners, see below). Results appear on the PR next to the GitHub checks:
+
+| Check | What passed |
+|---|---|
+| `local-mac / smoke` | lint, core tests, build, UI smoke set |
+| `local-mac / full` | all of the above plus every other UI test |
+
+One PR comment (edited on each run, never a new one) gives times and failing tests with their first assertion.
+
+- **Failures already on main don't count against the PR.** A failed test is re-run on `main`, built the same way. If it fails there too, it is listed as "also fails on main" and the check stays green. This covers a red `main` and tests that fail only on the Mac's newer Xcode (the Mac has Xcode 27 and tvOS 26; CI has Xcode 16 and tvOS 18).
+- **Statuses belong to a commit.** A new push to the PR has no `local-mac` status until the script runs again.
+- **It never touches GitHub Actions or your own checkout.** It works in its own clones under `~/Library/Caches/MangaReaderLocalCI`, with its own simulator ("MangaReader Local CI"), and a lock keeps two runs from sharing it. Logs and xcresults stay there under `logs/<PR>-<time>/`.
+- `--no-post` prints the result instead of posting it. Posting uses the `gh` login on the Mac.
+
+**Using it as a merge gate.** A PR is ready to merge when `local-mac / full` is green on its current head commit and the Linux `UI lint` check is green. Until the maintainer decides otherwise, GitHub's own checks still run and still count: a red GitHub check blocks the merge even when the local checks are green, because CI's older Xcode catches compile errors the Mac's compiler accepts.
+
 ## Quick tests: the maintainer's Mac
 
 Use the maintainer's MacBook (with Xcode and a tvOS simulator) for quick checks before pushing, so a fix doesn't wait an hour in the runner queue:
