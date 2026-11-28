@@ -10,6 +10,7 @@ enum ImageDecoder {
 
     /// Original pixel size from the header, with EXIF rotation applied.
     static func pixelSize(of data: Data) -> PageSize? {
+        if let pdf = OnePagePDF(data) { return pdf.pixelSize }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
         return pixelSize(of: source)
     }
@@ -43,6 +44,11 @@ enum ImageDecoder {
     }
 
     static func decode(_ data: Data, targetSize: CGSize?, scaling: ImageScaling) throws -> LoadedImage {
+        if let pdf = OnePagePDF(data) {
+            let longest = maxPixelSize(original: pdf.pixelSize, target: targetSize, scaling: scaling)
+            guard let image = pdf.render(longSide: Double(longest)) else { throw ImagePipelineError.undecodable }
+            return LoadedImage(cgImage: image, pixelSize: pdf.pixelSize)
+        }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               let original = pixelSize(of: source) else {
             throw ImagePipelineError.undecodable
@@ -57,5 +63,31 @@ enum ImageDecoder {
             throw ImagePipelineError.undecodable
         }
         return LoadedImage(cgImage: image, pixelSize: original)
+    }
+}
+
+/// A page a server sent as a PDF instead of a picture (Codex sends PDF
+/// books' pages this way whatever is asked for). Its first page is drawn
+/// with CoreGraphics, the same way `LocalPDFRenderer` draws downloaded PDFs.
+struct OnePagePDF {
+    let page: CGPDFPage
+    /// The page's size at `LocalPDFRenderer.longSide`, which stands in for
+    /// a pixel size (spread pairing and webtoon heights only need the shape).
+    let pixelSize: PageSize
+
+    init?(_ data: Data) {
+        guard data.starts(with: Array("%PDF".utf8)),
+              let provider = CGDataProvider(data: data as CFData),
+              let doc = CGPDFDocument(provider),
+              !doc.isEncrypted || doc.unlockWithPassword(""),
+              let page = doc.page(at: 1),
+              let size = LocalPDFRenderer.size(of: page) else { return nil }
+        self.page = page
+        let scale = LocalPDFRenderer.longSide / max(size.width, size.height)
+        pixelSize = PageSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+    }
+
+    func render(longSide: Double) -> CGImage? {
+        LocalPDFRenderer.image(of: page, longSide: longSide)
     }
 }

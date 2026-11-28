@@ -156,6 +156,8 @@ final class CalibreClientTests: XCTestCase {
         XCTAssertEqual(header, "Basic " + Data("reader:pw".utf8).base64EncodedString())
         let cover = c.imageRequest(URL(string: "http://calibre.test:8080/get/thumb/1/Test_Library")!)
         XCTAssertNotNil(cover.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertTrue(cover.value(forHTTPHeaderField: "Accept")?.hasPrefix("image/") == true,
+                      "image requests ask for a picture (Komga sends PDF pages as PDF otherwise)")
         let elsewhere = c.authorize(URLRequest(url: URL(string: "http://other.test/x.jpg")!))
         XCTAssertNil(elsewhere.value(forHTTPHeaderField: "Authorization"))
 

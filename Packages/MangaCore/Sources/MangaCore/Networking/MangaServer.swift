@@ -150,9 +150,16 @@ public extension MangaServer {
         // `ServerAddressRouter`).
         var request = URLRequest(url: ServerAddressRouter.shared.rewrite(url, for: config))
         request.timeoutInterval = 60
+        // Ask for a picture. Without it URLSession sends */*, and Komga
+        // answers a PDF book's page with the raw one-page PDF instead of a
+        // JPEG.
+        request.setValue(imageAcceptHeader, forHTTPHeaderField: "Accept")
         return authorize(request)
     }
 }
+
+/// The `Accept` header of page and cover requests.
+let imageAcceptHeader = "image/jpeg,image/png,image/webp,image/*;q=0.9,*/*;q=0.5"
 
 /// Creates the right client for a saved server.
 public enum MangaServerFactory {
