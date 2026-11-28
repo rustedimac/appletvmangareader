@@ -66,6 +66,12 @@ struct ReaderTouchChrome<Options: View, Bottom: View>: View {
                 }
                 .popover(isPresented: $optionsPresented, arrowEdge: .top) {
                     options()
+                        // The panel's full size, for layout UI tests.
+                        .background {
+                            Color.clear
+                                .accessibilityElement()
+                                .accessibilityIdentifier("reader.options.panel")
+                        }
                         .safeAreaInset(edge: .top, spacing: 0) {
                             HStack {
                                 Spacer()
@@ -75,6 +81,9 @@ struct ReaderTouchChrome<Options: View, Bottom: View>: View {
                             }
                             .padding(.horizontal, Space.l)
                             .padding(.top, Space.m)
+                            .padding(.bottom, Space.xs)
+                            // Rows scroll under a solid bar, not under the button.
+                            .background(Color(uiColor: .systemGroupedBackground))
                         }
                         .foregroundStyle(.primary)
                         .frame(minWidth: 380, idealWidth: 420, minHeight: 420, idealHeight: 640)

@@ -49,7 +49,6 @@ struct BookReaderMenu: View {
         .ignoresSafeArea()
         #else
         panel
-            .padding(.horizontal, Space.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         #endif
     }
@@ -73,7 +72,7 @@ struct BookReaderMenu: View {
     }
 
     private var panel: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: ReaderMenu.MenuMetrics.sectionSpacing) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(session.series.title).font(.headline).lineLimit(1)
                 Text(session.manifest?.title ?? session.chapter.title)
@@ -90,8 +89,8 @@ struct BookReaderMenu: View {
             case .contents: BookContentsPane(session: session)
             }
         }
-        .padding(.horizontal, 60)
-        .padding(.top, 60)
+        .padding(.horizontal, platformValue(tv: 60, touch: 20))
+        .padding(.top, platformValue(tv: 60, touch: Space.m))
     }
 
     /// Text size keeps its stepper; every other setting is one row (name
@@ -118,7 +117,7 @@ struct BookReaderMenu: View {
                         .accessibilityIdentifier("book.menu.size.smaller")
                         Text("\(Int(settings.fontSize)) pt")
                             .font(.callout.monospacedDigit())
-                            .frame(minWidth: 110)
+                            .frame(minWidth: ReaderMenu.MenuMetrics.stepperValue)
                             .accessibilityIdentifier("book.menu.size.value")
                         Button { set(settings.larger()) } label: {
                             Image(systemName: "textformat.size.larger").lineHeightLabel()
@@ -149,9 +148,9 @@ struct BookReaderMenu: View {
     }
 
     private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: ReaderMenu.MenuMetrics.titleToControl) {
             Text(title).font(.callout.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
-            HStack(spacing: 20) { content() }
+            HStack(spacing: platformValue(tv: 20, touch: Space.s)) { content() }
         }
         .tvFocusSection()
     }

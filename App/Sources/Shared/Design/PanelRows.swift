@@ -22,6 +22,9 @@ enum RowMetrics {
     /// platter edge, and every row keeps the same height because labels are
     /// one line (`lineLimit(1)`).
     static let textInset: CGFloat = Space.xs
+    /// Touch screens: every row is at least a 44 pt target. tvOS rows are
+    /// sized by the system button.
+    static let minHeight: CGFloat? = Platform.isTV ? nil : Size.minTarget
 }
 
 struct PanelValueRow: View {
@@ -39,7 +42,8 @@ struct PanelValueRow: View {
         Button(action: action) {
             SettingsValueRow(title: title, value: value, showsChevron: kind == .opensChoices)
                 .padding(.vertical, RowMetrics.textInset)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: RowMetrics.minHeight, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .accessibilityLabel(title)
         .accessibilityValue(value)
