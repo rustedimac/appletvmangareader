@@ -116,7 +116,7 @@ struct WelcomeView: View {
                 }
                 Spacer(minLength: Space.m)
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle") // option-chip-ok: full-width checklist row
-                    .themedMark(isOn)
+                    .checkMarkStyle(isOn)
             }
             .padding(.vertical, Space.xs)
         }

@@ -111,7 +111,7 @@ server behaviour is worth a look.
 | HOM-02 | A | Customize Home | Rows hide and reorder; Remove from Continue Reading works; Customize Home is reachable with Down from any poster in the last row | `LibraryBrowsingUITests` |
 | HOM-03 | A | Changes show without a relaunch | New server, unticked library, poster size change update Home at once | `ContentRefreshUITests` |
 | HOM-04 | A | Caught Up shelf | Finished series show there | `LibraryBrowsingUITests` |
-| HOM-05 | A | Theme change keeps Home | After switching theme (to a theme and back to Default), every server's rows are still on Home at once, not only Free Library while the servers load again | `HomeThemeSwitchUITests`, `HomeSnapshotTests` |
+| HOM-05 | A | Rebuilt Home keeps its rows | When Home is rebuilt, every server's rows show at once from `AppModel.home`, not only Free Library while the servers load again | `HomeSnapshotTests` |
 | LIB-01 | A | Library grid | Categories as tabs, pages load as you scroll; jump bar loads later pages and focuses the letter | `BrowseUITests`, `LibraryBrowsingUITests`, `BrowseTests` |
 | LIB-02 | A | Sort, filter, defaults | Title A-Z/Z-A, recently added; status/read/genre filters; Library Defaults apply to every library | `LibraryBrowsingUITests`, `LibraryFilterTests`, `LibraryBrowsingTests` |
 | LIB-03 | A | Posters | Title moves clear of the focused cover; long titles wrap to two lines; captions (chapters, pages, progress bar, %, off) line up across a row; progress updates after reading | `PosterLayoutUITests`, `LibraryBrowsingUITests`, `ProgressPercentTests` |
@@ -206,7 +206,6 @@ server behaviour is worth a look.
 | DES-01 | A | Layout rules | Every reachable screen: targets at least 60 pt, inside the safe area, form width, no overlaps, uniform row heights, value next to chevron | `DesignLayoutUITests`, `tools/check_design_tokens.py`, `tools/check_pinned_headers.py`, `tools/check_option_chips.py`, `tools/check_save_buttons.py`, `tools/check_secure_fields.py` |
 | DES-04 | A | Remote and Controller fits | Every tab: section tabs below the tab bar; legend, footnote, Learn the Controls and its caption inside the bottom safe area (tutorial tabs once the button has focus) | `DesignLayoutUITests.testControlsPageNeverClips` |
 | DES-02 | A | Section tabs | Reader and book tabs look like the top bar | `ReaderMenuUITests`, `BookReaderUITests` |
-| DES-03 | S | Themes | All five themes: text on every plate, focused, open and plain, passes 4.5:1 as drawn (library server list, category bar, Choose Libraries, Settings); token pairs pass in light and dark; each theme looks like its Theme Lab tvOS sample (glazed plates / ink plates, themed focus) | `ThemeScreensUITests`, `tools/check_theme_contrast.py`, manual look |
 | A11Y-01 | S | Large text and Bold Text | Largest Dynamic Type and Bold Text: no clipped labels, nothing off screen | manual |
 | A11Y-02 | S | VoiceOver | Tabs, posters, rows and reader pages read a sensible label; reader page says "Page N of M" | manual |
 
@@ -223,7 +222,7 @@ real device before a release. iOS UI tests live in `App/UITests-iOS`.
 | IOS-04 | A | Swipe and zoom | A swipe turns (page follows the finger); pinch zooms up to 4x and pans; double-tap zooms to 2x and back; zoomed, side taps don't turn | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-05 | A | Orientation | Portrait shows single pages, landscape pairs spreads per Page Layout; rotating keeps the page | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-07 | S | Layouts | iPhone: three poster columns in a library, posters inset from the edges, series page with cover beside title and full-width Continue; iPad: more columns, regular series layout; Split View switches to the iPhone layout; Bookmarks opens from Favorites on iPhone; the iPad sidebar lists the servers and opens their libraries | iOS `SmokeUITests`, manual look |
-| IOS-08 | A | System pieces | Settings > iCloud Sync and Backup > Back Up and Restore exports a backup to Files and restores one (an Apple TV backup too); no "Set Up from Your Phone" in the server editor; no Remote and Controller page; light and dark follow the system with the Default theme | iOS `SystemUITests`, manual look |
+| IOS-08 | A | System pieces | Settings > iCloud Sync and Backup > Back Up and Restore exports a backup to Files and restores one (an Apple TV backup too); no "Set Up from Your Phone" in the server editor; no Remote and Controller page; light and dark follow the system | iOS `SystemUITests`, manual look |
 | IOS-09 | S | Page menu and orientation | Long-press a page: Bookmark This Page / Remove Bookmark and Share Page (share sheet with the page image); iPhone: Orientation (Follow Device / Portrait / Landscape) turns and holds the reader (not offered on iPad, where Split View apps can't lock), per series, with a default in Default Reader Settings; a portrait vertical reader fills the width | `ReaderTouchTests`, iOS `ReaderTouchUITests` |
 | IOS-06 | S | Options | The options open as a sheet on iPhone, a popover on iPad, readable over any page, with Tap Zones; Done closes them | iOS `ReaderTouchUITests` |
 

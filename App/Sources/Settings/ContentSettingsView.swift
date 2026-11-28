@@ -175,7 +175,7 @@ struct ContentSettingsView: View {
             HStack {
                 Text(title)
                 Spacer()
-                if isOn { Image(systemName: "checkmark").themedMark(true) }
+                if isOn { Image(systemName: "checkmark").checkMarkStyle(true) }
             }
         }
         .accessibilityIdentifier(id)

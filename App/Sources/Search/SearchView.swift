@@ -22,7 +22,6 @@ struct SearchView: View {
             .browseMargins()
             .browseTitle("Search")
             .seriesNavigation()
-            .themedScreen()
         }
         .resetsNavigationWhenLeft()
         .task(id: "\(model.contentKey)|\(query)") {

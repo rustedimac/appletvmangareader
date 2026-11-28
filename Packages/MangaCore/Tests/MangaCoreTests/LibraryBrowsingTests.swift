@@ -230,16 +230,17 @@ final class HomeLayoutTests: XCTestCase {
 final class BrowsePreferencesTests: XCTestCase {
     let profile = UUID()
 
-    func testThemeRoundTripsAndUnknownFallsBack() throws {
-        var prefs = BrowsePreferences()
-        XCTAssertEqual(prefs.theme, .standard)
-        prefs.theme = .blackStock
-        let encoded = try JSONEncoder().encode(prefs)
-        XCTAssertEqual(String(decoding: encoded, as: UTF8.self), #"{"theme":"blackStock"}"#)
-        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: encoded).theme, .blackStock)
-        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: Data(#"{"theme":"vaporwave"}"#.utf8)).theme,
-                       .standard, "a theme from a newer version falls back to Default")
-        XCTAssertEqual(AppTheme.allCases.filter(\.isLight), [.celadon, .newsprint])
+    /// Settings > Theme was removed (2026-11-28). Preferences saved with a
+    /// theme still decode, keep everything else, and drop the theme on save.
+    func testStoredThemeFromOlderVersionIsIgnored() throws {
+        let old = Data(#"{"theme":"blackStock","gridDensity":"compact","showsProgressPercent":false}"#.utf8)
+        let prefs = try JSONDecoder().decode(BrowsePreferences.self, from: old)
+        XCTAssertEqual(prefs.gridDensity, .compact)
+        XCTAssertFalse(prefs.showsProgressPercent)
+        let encoded = String(decoding: try JSONEncoder().encode(prefs), as: UTF8.self)
+        XCTAssertFalse(encoded.contains("theme"), encoded)
+        XCTAssertEqual(try JSONDecoder().decode(BrowsePreferences.self, from: Data(#"{"theme":"celadon"}"#.utf8)),
+                       BrowsePreferences())
     }
 
     func testDefaultsEncodeToNothingAndOldStateDecodes() throws {

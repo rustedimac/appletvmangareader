@@ -39,6 +39,6 @@ extension View {
 
     /// A section label on a custom (non-Form) page.
     func sectionLabelStyle() -> some View {
-        themedSectionLabel(.headline, fallback: .headline)
+        font(.headline).foregroundStyle(.secondary)
     }
 }

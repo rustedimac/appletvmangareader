@@ -36,7 +36,6 @@ struct SettingsPage<Hero: View, Content: View>: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.large)
             .accessibilityIdentifier("settingsPage.form")
-            .themedScreen()
             .settingsNavigation(navigator)
         #endif
     }
@@ -52,12 +51,11 @@ struct SettingsPage<Hero: View, Content: View>: View {
                     .accessibilityHidden(true)
                 VStack(spacing: Space.s) {
                     Text(title)
-                        .themedHeading(.title3, fallback: .title3.weight(.semibold))
+                        .font(.title3.weight(.semibold))
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("settingsPage.title")
-                    ThemeBrushStroke()
                 }
             }
             .frame(width: Size.heroColumn)
@@ -65,7 +63,6 @@ struct SettingsPage<Hero: View, Content: View>: View {
 
             content
                 .labelStyle(.settingsRow)
-                .environment(\.controlFillsRow, true)
                 // A focused row grows about 10 %; the list would clip it at
                 // its own edges. The mask below does the clipping instead.
                 .scrollClipDisabled() // pinned-header-ok: nothing sits above the form (title is in the side column) and the mask below fades rows at the top
@@ -86,7 +83,6 @@ struct SettingsPage<Hero: View, Content: View>: View {
                 .accessibilityIdentifier("settingsPage.form")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .themedScreen()
         .settingsNavigation(navigator)
     }
     #endif
@@ -150,7 +146,6 @@ extension LabelStyle where Self == SettingsRowLabelStyle {
 /// sits with its own rows.
 struct SettingsHeader: View {
     let title: String
-    @Environment(\.themeStyle) private var theme
 
     init(_ title: String) {
         self.title = title
@@ -158,10 +153,10 @@ struct SettingsHeader: View {
 
     var body: some View {
         Text(title)
-            .font(theme.headingFont(.callout, fallback: .callout.weight(.semibold)))
+            .font(.callout.weight(.semibold))
             // A concrete color: Form headers otherwise get the system's dim
             // header style, which is hard to read across a room.
-            .foregroundColor(theme.sectionLabel ?? Color(uiColor: .label).opacity(0.8))
+            .foregroundColor(Color(uiColor: .label).opacity(0.8))
             .textCase(nil)
             .lineLimit(1)
             .padding(.top, Space.m)

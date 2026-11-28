@@ -39,7 +39,6 @@ struct BookmarksView: View {
             .browseMargins()
             .browseTitle("Bookmarks")
             .seriesNavigation()
-            .themedScreen()
         }
         .resetsNavigationWhenLeft(path: $path)
         // Again after a server is added or a login changes.

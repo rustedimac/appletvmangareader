@@ -210,6 +210,28 @@ final class SavedDataUpgradeTests: XCTestCase {
         }
     }
 
+    /// Builds from 2026-11-26 to 2026-11-28 saved Settings > Theme as
+    /// `browse.theme`. The setting is gone: a stored theme must load like
+    /// the same state without it, with nothing else changed or salvaged.
+    func testStoredAppThemeFromRemovedSettingStillLoads() throws {
+        let original = try SavedJSON.parse(SavedJSON.load(SavedFormats.newestAppState))
+        let baseline = try reencoded(decodeState(SavedJSON.data(original)).0)
+        guard var root = original as? [String: Any], var profiles = root["profileData"] as? [String: Any] else {
+            return XCTFail("fixture has no profileData")
+        }
+        for (id, value) in profiles {
+            guard var data = value as? [String: Any] else { continue }
+            var browse = data["browse"] as? [String: Any] ?? [:]
+            browse["theme"] = "celadon"
+            data["browse"] = browse
+            profiles[id] = data
+        }
+        root["profileData"] = profiles
+        let (state, outcome) = try decodeState(SavedJSON.data(root))
+        XCTAssertEqual(outcome, .decoded)
+        XCTAssertEqual(try SavedJSON.canonical(reencoded(state)), try SavedJSON.canonical(baseline))
+    }
+
     /// Enum values (and any other string) this build doesn't recognize may
     /// reset that setting, but never lose a profile, server, favorite,
     /// bookmark or progress entry.

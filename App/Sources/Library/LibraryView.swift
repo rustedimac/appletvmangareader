@@ -27,7 +27,6 @@ struct LibraryView: View {
             .browseMargins()
             .browseTitle("Library")
             .seriesNavigation()
-            .themedScreen()
         }
         .resetsNavigationWhenLeft()
     }
@@ -40,7 +39,7 @@ private struct ServerListView: View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Servers")
-                    .themedSectionLabel(.headline, fallback: .headline)
+                    .font(.headline).foregroundStyle(.secondary)
                 ForEach(servers) { server in
                     NavigationLink(value: server) {
                         HStack(spacing: 24) {
@@ -87,7 +86,7 @@ struct ServerLibraryView: View {
                     VStack(alignment: .leading, spacing: platformValue(tv: 20, touch: Space.m)) {
                         #if os(tvOS)
                         Text(server.name)
-                            .themedHeading(.title3, fallback: .title3.bold())
+                            .font(.title3.bold())
                         #endif
                         if let errorMessage {
                             BrowseMessage(title: "Couldn't reach \(server.name)", message: errorMessage,
@@ -133,7 +132,6 @@ struct ServerLibraryView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .themedScreen()
     }
 
     /// The A–Z bar only makes sense when the grid is sorted by title.

@@ -47,7 +47,6 @@ struct ICloudSyncView: View {
                 NavigationLink {
                     #if os(tvOS)
                     WiFiBackupView()
-                        .themedScreen()
                     #else
                     FilesBackupView()
                     #endif
